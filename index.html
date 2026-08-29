@@ -19,7 +19,6 @@
     color: #333;
   }
   
-  /* 認証エリアのスタイル */
   #auth-container {
     background: #fff; padding: 15px; margin-bottom: 15px;
     border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -31,7 +30,6 @@
   }
   .btn-auth.logout { background-color: #7f8c8d; }
 
-  /* タブメニューのスタイル */
   .tabs { display: flex; margin-bottom: 0; }
   .tab-button {
     flex: 1; padding: 12px 5px; text-align: center;
@@ -42,7 +40,6 @@
   .tab-button.active { background-color: #3498db; color: white; }
   .tab-button:not(.active):hover { background-color: #ccc; }
 
-  /* カードとコンテンツ */
   .card {
     background: #fff; padding: 20px;
     border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -68,33 +65,23 @@
   input::placeholder { color: #aaa; }
   .auto-filled { background-color: #fff3cd !important; border-color: #ffeeba; }
   
-  /* スライダーのレイアウト */
-  .slider-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  /* スワイプ入力用のスタイル */
+  .swipe-input {
+    cursor: ew-resize;
+    touch-action: pan-y;
   }
-  .slider-wrapper input[type="range"] {
-    flex: 1.5;
-    accent-color: #3498db;
-    height: 8px;
-    padding: 0;
-    border: none;
+  .swipe-input:focus {
+    cursor: text;
   }
-  .slider-wrapper input[type="number"] {
-    flex: 1;
-    padding: 8px;
-    font-size: 15px;
-  }
-
+  
   .section-title {
     margin-top: 20px; margin-bottom: 10px; font-size: 15px;
     font-weight: bold; color: #e67e22; border-left: 4px solid #e67e22;
     padding-left: 8px;
   }
   .section-title.purple { color: #9b59b6; border-left-color: #9b59b6; }
+  .hint-text { font-size: 11px; color: #7f8c8d; font-weight: normal; margin-left: 4px; }
   
-  /* ボタン類 */
   button.action-btn {
     margin-top: 10px; width: 100%; padding: 14px;
     background-color: #3498db; color: white; border: none;
@@ -124,7 +111,6 @@
     margin-right: 5px; margin-top: 8px;
   }
 
-  /* カレンダーのスタイル */
   .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ddd; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
   .calendar-day-header { background: #f4f7f6; text-align: center; font-size: 12px; padding: 6px 0; font-weight: bold; color: #555; }
@@ -139,10 +125,7 @@
   .cal-val.minus { color: #c0392b; font-weight: bold; }
   .cal-val.ev { color: #27ae60; font-weight: bold; }
 
-  /* 結果表示エリア */
-  .result, .simulation {
-    margin-top: 20px; padding: 15px; border-radius: 4px;
-  }
+  .result, .simulation { margin-top: 20px; padding: 15px; border-radius: 4px; }
   .result { background-color: #e8f4f8; border-left: 5px solid #3498db; }
   .simulation { background-color: #fdf2e9; border-left: 5px solid #e67e22; }
   .summary-box { background-color: #f4e8f8; border-left: 5px solid #9b59b6; }
@@ -155,7 +138,6 @@
   .plus { color: #2980b9; font-weight: bold; }
   hr { border: 0; height: 1px; background: #ccc; margin: 15px 0; }
   
-  /* 履歴リスト */
   .history-list {
     margin-top: 10px; font-size: 13px; color: #555;
     max-height: 150px; overflow-y: auto; background: #f9f9f9;
@@ -172,7 +154,6 @@
   }
   .btn-delete-item:hover { background-color: #fceceb; }
 
-  /* 保存データリスト */
   .saved-item {
     background: #fdfdfd; border: 1px solid #ddd;
     border-radius: 6px; padding: 12px; margin-bottom: 10px;
@@ -188,14 +169,12 @@
 </head>
 <body>
 
-<!-- アカウント連携エリア -->
 <div id="auth-container">
   <div id="user-info" style="font-size: 13px; font-weight: bold; color: #555;">ログインしていません (ローカル保存)</div>
   <button id="login-btn" class="btn-auth" onclick="login()">Googleでログイン</button>
   <button id="logout-btn" class="btn-auth logout" onclick="logout()" style="display:none;">ログアウト</button>
 </div>
 
-<!-- タブメニュー -->
 <div class="tabs">
   <button id="btn-tab1" class="tab-button active" onclick="switchTab('tab1')">① 計測</button>
   <button id="btn-tab2" class="tab-button" onclick="switchTab('tab2')">② 期待値</button>
@@ -211,8 +190,8 @@
       <div style="flex: 2;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15"></div>
     </div>
     <div class="form-group" style="margin-top: 15px;">
-      <label>回った回転数を入力 (例: 10)</label>
-      <input type="number" id="measuredSpin" step="1" placeholder="回転数を入力">
+      <label>回った回転数を入力 <span class="hint-text">※枠内を左右にスワイプで数値変更</span></label>
+      <input type="number" id="measuredSpin" class="swipe-input" step="1" value="" placeholder="例: 10">
     </div>
     <div class="btn-container">
       <button class="btn-half" onclick="addMeasurement(125)" style="background-color: #1abc9c;">125玉(500円)追加</button>
@@ -235,64 +214,43 @@
   <div id="tab2" class="tab-content">
     <h2>期待値計算＆シミュレーション</h2>
     
-    <div class="section-title">基本条件</div>
+    <div class="section-title">基本条件 <span class="hint-text">※枠内を左右にスワイプで数値変更</span></div>
     
     <div class="form-group">
       <label>等価ボーダー (回/千円)</label>
-      <div class="slider-wrapper">
-        <input type="range" id="border_slider" min="10.0" max="30.0" step="0.1" value="18.0" oninput="syncSliderToInput('border')">
-        <input type="number" id="border" step="0.1" value="" placeholder="例: 18.0" oninput="syncInputToSlider('border')">
-      </div>
+      <input type="number" id="border" class="swipe-input" step="0.1" value="" placeholder="例: 18.0">
     </div>
     
     <div class="form-group">
       <label>現在の平均回転数 (回/千円)</label>
-      <div class="slider-wrapper">
-        <input type="range" id="spinRate_slider" min="10.0" max="35.0" step="0.1" value="20.0" oninput="syncSliderToInput('spinRate')">
-        <input type="number" id="spinRate" step="0.1" value="" placeholder="例: 20.0" oninput="syncInputToSlider('spinRate')">
-      </div>
+      <input type="number" id="spinRate" class="swipe-input" step="0.1" value="" placeholder="例: 20.0" oninput="removeAutoFillHighlight()">
     </div>
     
     <div class="form-group">
       <label>交換率 (円/玉) ※等価4.0、28玉3.57</label>
-      <div class="slider-wrapper">
-        <input type="range" id="exchangeRate_slider" min="2.50" max="4.00" step="0.01" value="3.57" oninput="syncSliderToInput('exchangeRate')">
-        <input type="number" id="exchangeRate" step="0.01" value="" placeholder="例: 3.57" oninput="syncInputToSlider('exchangeRate')">
-      </div>
+      <input type="number" id="exchangeRate" class="swipe-input" step="0.01" value="" placeholder="例: 3.57">
     </div>
     
     <div class="form-group">
       <label>持ち球比率 (%)</label>
-      <div class="slider-wrapper">
-        <input type="range" id="ballRatio_slider" min="0" max="100" step="1" value="60" oninput="syncSliderToInput('ballRatio')">
-        <input type="number" id="ballRatio" step="1" value="" placeholder="例: 60" oninput="syncInputToSlider('ballRatio')">
-      </div>
+      <input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60">
     </div>
     
     <div class="form-group">
       <label>総回転数 (回) ※トータル期待値・シミュレーション用</label>
-      <div class="slider-wrapper">
-        <input type="range" id="totalSpins_slider" min="100" max="10000" step="10" value="2000" oninput="syncSliderToInput('totalSpins')">
-        <input type="number" id="totalSpins" step="10" value="" placeholder="例: 2000" oninput="syncInputToSlider('totalSpins')">
-      </div>
+      <input type="number" id="totalSpins" class="swipe-input" step="10" value="" placeholder="例: 2000">
     </div>
 
-    <div class="section-title">機種スペック（ブレの計算用）</div>
+    <div class="section-title">機種スペック（ブレの計算用） <span class="hint-text">※枠内を左右にスワイプで数値変更</span></div>
     
     <div class="form-group">
       <label>大当たり確率 (1/〇〇)</label>
-      <div class="slider-wrapper">
-        <input type="range" id="probDenom_slider" min="1.0" max="499.0" step="0.1" value="319.6" oninput="syncSliderToInput('probDenom')">
-        <input type="number" id="probDenom" step="0.1" value="" placeholder="例: 319.6" oninput="syncInputToSlider('probDenom')">
-      </div>
+      <input type="number" id="probDenom" class="swipe-input" step="0.1" value="" placeholder="例: 319.6">
     </div>
     
     <div class="form-group">
       <label>初当たり平均獲得出玉 (玉)</label>
-      <div class="slider-wrapper">
-        <input type="range" id="avgPayout_slider" min="100" max="10500" step="10" value="4500" oninput="syncSliderToInput('avgPayout')">
-        <input type="number" id="avgPayout" step="1" value="" placeholder="例: 4500" oninput="syncInputToSlider('avgPayout')">
-      </div>
+      <input type="number" id="avgPayout" class="swipe-input" step="10" value="" placeholder="例: 4500">
     </div>
     
     <button class="action-btn" onclick="calculateAndSimulate()">期待値を計算＆シミュレート</button>
@@ -359,9 +317,6 @@
 </div>
 
 <script>
-// ==========================================
-// Firebase設定（※ご自身のプロジェクト設定に書き換えてください）
-// ==========================================
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -371,19 +326,14 @@ const firebaseConfig = {
   appId: "YOUR_APP_ID"
 };
 
-// Firebaseの初期化
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 let currentUser = null;
 
-// ==========================================
-// グローバル変数 & ユーティリティ
-// ==========================================
 let lastCalculatedEV = 0; 
 let historyData = [];
 
-// カレンダー用の状態変数
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
 
@@ -391,7 +341,50 @@ function formatCurrency(num) {
   return (num > 0 ? "+" : "") + Math.round(num).toLocaleString() + " 円";
 }
 
-// --- 初期化処理 ---
+function setupSwipeInput(id, step, min, max, defaultVal) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  let isDragging = false;
+  let startX = 0;
+  let startVal = 0;
+
+  const onStart = (e) => {
+    isDragging = true;
+    startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    startVal = parseFloat(el.value);
+    if (isNaN(startVal)) startVal = defaultVal;
+  };
+
+  el.addEventListener('mousedown', onStart);
+  el.addEventListener('touchstart', onStart, {passive: true});
+
+  const onMove = (e) => {
+    if (!isDragging) return;
+    let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    let deltaX = clientX - startX;
+    
+    let steps = Math.trunc(deltaX / 8); 
+    
+    if (steps !== 0) {
+      let newVal = startVal + (steps * step);
+      if (newVal < min) newVal = min;
+      if (newVal > max) newVal = max;
+      
+      let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
+      el.value = newVal.toFixed(decimals);
+      
+      if (id === 'spinRate') removeAutoFillHighlight();
+    }
+  };
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, {passive: true});
+
+  const onEnd = () => { isDragging = false; };
+  window.addEventListener('mouseup', onEnd);
+  window.addEventListener('touchend', onEnd);
+}
+
 window.onload = function() {
   const today = new Date();
   currentCalYear = today.getFullYear();
@@ -406,7 +399,15 @@ window.onload = function() {
   document.getElementById('evSaveDate').value = todayStr;
   document.getElementById('actualDate').value = todayStr;
   
-  // 認証状態の監視
+  setupSwipeInput('measuredSpin', 1, 0, 999, 10);
+  setupSwipeInput('border', 0.1, 10.0, 30.0, 18.0);
+  setupSwipeInput('spinRate', 0.1, 10.0, 35.0, 20.0);
+  setupSwipeInput('exchangeRate', 0.01, 2.50, 4.00, 3.57);
+  setupSwipeInput('ballRatio', 1, 0, 100, 60);
+  setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
+  setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6);
+  setupSwipeInput('avgPayout', 10, 100, 10500, 4500);
+
   auth.onAuthStateChanged(user => {
     if (user) {
       currentUser = user;
@@ -426,9 +427,6 @@ window.onload = function() {
   });
 };
 
-// ==========================================
-// 認証機能 (Google Login)
-// ==========================================
 function login() {
   const provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider).catch(error => {
@@ -438,7 +436,6 @@ function login() {
 }
 function logout() { auth.signOut(); }
 
-// --- タブ切り替え ---
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
@@ -447,9 +444,6 @@ function switchTab(tabId) {
   if(tabId === 'tab3') renderCalendar();
 }
 
-// ==========================================
-// データ保存・取得ロジック
-// ==========================================
 async function getRecordsData() {
   if (currentUser) {
     try {
@@ -485,9 +479,6 @@ async function saveCalendarData(calendar) {
   }
 }
 
-// ==========================================
-// ツール①：回転率計測ツール
-// ==========================================
 function addMeasurement(balls) {
   const spinInput = document.getElementById('measuredSpin');
   const spins = parseFloat(spinInput.value);
@@ -506,7 +497,8 @@ function updateMeasurementDisplay() {
   let historyHtml = '<strong>入力履歴:</strong><br>';
   for (let i = historyData.length - 1; i >= 0; i--) {
     totalBalls += historyData[i].balls; totalSpins += historyData[i].spins;
-    historyHtml += `<div class="history-item"><span>${i + 1}回目: ${historyData[i].balls}玉で <strong>${historyData[i].spins}回</strong></span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
+    let cvt = historyData[i].balls === 125 ? `<span style="font-size: 11px; color: #7f8c8d; margin-left: 6px;">(250玉換算: ${historyData[i].spins * 2}回)</span>` : "";
+    historyHtml += `<div class="history-item"><span>${i + 1}回目: ${historyData[i].balls}玉で <strong>${historyData[i].spins}回</strong>${cvt}</span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
   }
   const avg250 = (totalSpins / totalBalls) * 250;
   document.getElementById('avg250').innerText = avg250.toFixed(2) + " 回";
@@ -543,7 +535,10 @@ async function renderSavedRecords() {
     let historyHtml = '';
     if (r.history && r.history.length > 0) {
       historyHtml = `<details style="margin-top: 8px;"><summary style="cursor: pointer; font-size: 13px; font-weight: bold; color: #2980b9;">計測履歴を表示</summary><div class="saved-history-box">`;
-      r.history.forEach((h, index) => { historyHtml += `<div style="margin-bottom: 4px; border-bottom: 1px dashed #ddd; padding-bottom: 2px;">${index + 1}回目: ${h.balls}玉 で <strong>${h.spins}回</strong></div>`; });
+      r.history.forEach((h, index) => { 
+        let cvt = h.balls === 125 ? `<span style="font-size: 11px; color: #7f8c8d; margin-left: 6px;">(250玉換算: ${h.spins * 2}回)</span>` : "";
+        historyHtml += `<div style="margin-bottom: 4px; border-bottom: 1px dashed #ddd; padding-bottom: 2px;">${index + 1}回目: ${h.balls}玉 で <strong>${h.spins}回</strong>${cvt}</div>`; 
+      });
       historyHtml += `</div></details>`;
     }
     html += `<div class="saved-item">
@@ -560,12 +555,8 @@ async function renderSavedRecords() {
 }
 function useRecordForCalc(avg, machineName) {
   const spinInput = document.getElementById('spinRate');
-  const spinSlider = document.getElementById('spinRate_slider');
-  
   spinInput.value = avg.toFixed(2);
-  spinSlider.value = avg.toFixed(2); // スライダーも同期
   spinInput.classList.add('auto-filled');
-  
   document.getElementById('evSaveMachine').value = machineName; 
   switchTab('tab2');
 }
@@ -576,25 +567,6 @@ async function deleteRecord(id) {
     await saveRecordsData(records.filter(r => r.id !== id));
     renderSavedRecords();
   }
-}
-
-// ==========================================
-// ツール②：期待値＆分散シミュレーション（スライダー連動）
-// ==========================================
-function syncSliderToInput(id) {
-  const slider = document.getElementById(id + '_slider');
-  const input = document.getElementById(id);
-  input.value = slider.value;
-  if(id === 'spinRate') removeAutoFillHighlight();
-}
-
-function syncInputToSlider(id) {
-  const slider = document.getElementById(id + '_slider');
-  const input = document.getElementById(id);
-  if(input.value !== "") {
-    slider.value = input.value;
-  }
-  if(id === 'spinRate') removeAutoFillHighlight();
 }
 
 function getNormalRandom(mean, stdDev) {
@@ -663,9 +635,6 @@ async function saveExpectedValueToCalendar() {
   renderCalendar();
 }
 
-// ==========================================
-// ツール③：収支カレンダー (視覚化対応・期待値切り上げ)
-// ==========================================
 function changeMonth(diff) {
   currentCalMonth += diff;
   if(currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
@@ -731,7 +700,7 @@ async function renderCalendar() {
     let cellContent = `<div class="cal-date" style="color:${dateColor};">${day}</div>`;
     
     if(dayData) {
-      const ceiledEV = Math.ceil(dayData.ev || 0); // 期待値を1円未満切り上げ
+      const ceiledEV = Math.ceil(dayData.ev || 0); 
       const actualVal = dayData.actual || 0;
       
       monthlyEV += ceiledEV;
