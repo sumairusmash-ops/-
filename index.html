@@ -317,18 +317,25 @@
 </div>
 
 <script>
+// ==========================================
+// Firebase設定
+// ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:29579d6c91d54a54bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore();
+// ※Firebaseをご利用の場合は、上記のYOUR_API_KEYなどを設定してください。
+if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const auth = firebase.apps.length ? firebase.auth() : null;
+const db = firebase.apps.length ? firebase.firestore() : null;
 let currentUser = null;
 
 let lastCalculatedEV = 0; 
@@ -341,6 +348,9 @@ function formatCurrency(num) {
   return (num > 0 ? "+" : "") + Math.round(num).toLocaleString() + " 円";
 }
 
+// ==========================================
+// スワイプ入力（ドラッグ調整）機能
+// ==========================================
 function setupSwipeInput(id, step, min, max, defaultVal) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -408,33 +418,39 @@ window.onload = function() {
   setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6);
   setupSwipeInput('avgPayout', 10, 100, 10500, 4500);
 
-  auth.onAuthStateChanged(user => {
-    if (user) {
-      currentUser = user;
-      document.getElementById('user-info').innerText = `ログイン中: ${user.email}`;
-      document.getElementById('user-info').style.color = '#27ae60';
-      document.getElementById('login-btn').style.display = 'none';
-      document.getElementById('logout-btn').style.display = 'inline-block';
-    } else {
-      currentUser = null;
-      document.getElementById('user-info').innerText = 'ログインしていません (ローカル保存)';
-      document.getElementById('user-info').style.color = '#555';
-      document.getElementById('login-btn').style.display = 'inline-block';
-      document.getElementById('logout-btn').style.display = 'none';
-    }
+  if (auth) {
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        currentUser = user;
+        document.getElementById('user-info').innerText = `ログイン中: ${user.email}`;
+        document.getElementById('user-info').style.color = '#27ae60';
+        document.getElementById('login-btn').style.display = 'none';
+        document.getElementById('logout-btn').style.display = 'inline-block';
+      } else {
+        currentUser = null;
+        document.getElementById('user-info').innerText = 'ログインしていません (ローカル保存)';
+        document.getElementById('user-info').style.color = '#555';
+        document.getElementById('login-btn').style.display = 'inline-block';
+        document.getElementById('logout-btn').style.display = 'none';
+      }
+      renderSavedRecords();
+      renderCalendar();
+    });
+  } else {
     renderSavedRecords();
     renderCalendar();
-  });
+  }
 };
 
 function login() {
+  if(!auth) return alert("Firebaseの設定が完了していません。");
   const provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider).catch(error => {
     console.error("ログインエラー:", error);
     alert("ログインに失敗しました。設定を確認してください。");
   });
 }
-function logout() { auth.signOut(); }
+function logout() { if(auth) auth.signOut(); }
 
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -445,7 +461,7 @@ function switchTab(tabId) {
 }
 
 async function getRecordsData() {
-  if (currentUser) {
+  if (currentUser && db) {
     try {
       const doc = await db.collection('users').doc(currentUser.uid).get();
       return doc.exists ? (doc.data().records || []) : [];
@@ -455,14 +471,14 @@ async function getRecordsData() {
   }
 }
 async function saveRecordsData(records) {
-  if (currentUser) {
+  if (currentUser && db) {
     await db.collection('users').doc(currentUser.uid).set({ records: records }, { merge: true });
   } else {
     localStorage.setItem('pachinko_records', JSON.stringify(records));
   }
 }
 async function getCalendarData() {
-  if (currentUser) {
+  if (currentUser && db) {
     try {
       const doc = await db.collection('users').doc(currentUser.uid).get();
       return doc.exists ? (doc.data().calendar || {}) : {};
@@ -472,7 +488,7 @@ async function getCalendarData() {
   }
 }
 async function saveCalendarData(calendar) {
-  if (currentUser) {
+  if (currentUser && db) {
     await db.collection('users').doc(currentUser.uid).set({ calendar: calendar }, { merge: true });
   } else {
     localStorage.setItem('pachinko_calendar', JSON.stringify(calendar));
