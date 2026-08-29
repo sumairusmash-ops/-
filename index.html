@@ -68,7 +68,7 @@
   /* スワイプ入力用のスタイル */
   .swipe-input {
     cursor: ew-resize;
-    touch-action: pan-y;
+    touch-action: pan-y; /* 縦スクロールは許可し、横スワイプを検知 */
   }
   .swipe-input:focus {
     cursor: text;
@@ -190,8 +190,8 @@
       <div style="flex: 2;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15"></div>
     </div>
     <div class="form-group" style="margin-top: 15px;">
-      <label>回った回転数を入力 <span class="hint-text">※枠内を左右にスワイプで数値変更</span></label>
-      <input type="number" id="measuredSpin" class="swipe-input" step="1" value="" placeholder="例: 10">
+      <label>回った回転数を入力 (例: 10)</label>
+      <input type="number" id="measuredSpin" step="1" placeholder="回転数を入力">
     </div>
     <div class="btn-container">
       <button class="btn-half" onclick="addMeasurement(125)" style="background-color: #1abc9c;">125玉(500円)追加</button>
@@ -317,20 +317,27 @@
 </div>
 
 <script>
+// ==========================================
+// Firebase設定（※ご自身のプロジェクト設定に書き換えてください）
+// ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:29579d6c91d54a54bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
+// Firebaseの初期化
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 let currentUser = null;
 
+// ==========================================
+// グローバル変数 & ユーティリティ
+// ==========================================
 let lastCalculatedEV = 0; 
 let historyData = [];
 
@@ -341,6 +348,9 @@ function formatCurrency(num) {
   return (num > 0 ? "+" : "") + Math.round(num).toLocaleString() + " 円";
 }
 
+// ==========================================
+// スワイプ入力（ドラッグ調整）機能
+// ==========================================
 function setupSwipeInput(id, step, min, max, defaultVal) {
   const el = document.getElementById(id);
   if (!el) return;
@@ -363,6 +373,7 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
     let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     let deltaX = clientX - startX;
     
+    // 8ピクセル移動するごとに1ステップ変化させる
     let steps = Math.trunc(deltaX / 8); 
     
     if (steps !== 0) {
@@ -385,6 +396,7 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
   window.addEventListener('touchend', onEnd);
 }
 
+// --- 初期化処理 ---
 window.onload = function() {
   const today = new Date();
   currentCalYear = today.getFullYear();
@@ -399,7 +411,7 @@ window.onload = function() {
   document.getElementById('evSaveDate').value = todayStr;
   document.getElementById('actualDate').value = todayStr;
   
-  setupSwipeInput('measuredSpin', 1, 0, 999, 10);
+  // スワイプ入力の初期化（ID, 1目盛り幅, 最小値, 最大値, 空欄時のデフォルト値）
   setupSwipeInput('border', 0.1, 10.0, 30.0, 18.0);
   setupSwipeInput('spinRate', 0.1, 10.0, 35.0, 20.0);
   setupSwipeInput('exchangeRate', 0.01, 2.50, 4.00, 3.57);
@@ -408,6 +420,7 @@ window.onload = function() {
   setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6);
   setupSwipeInput('avgPayout', 10, 100, 10500, 4500);
 
+  // 認証状態の監視
   auth.onAuthStateChanged(user => {
     if (user) {
       currentUser = user;
@@ -427,6 +440,9 @@ window.onload = function() {
   });
 };
 
+// ==========================================
+// 認証機能 (Google Login)
+// ==========================================
 function login() {
   const provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider).catch(error => {
@@ -436,6 +452,7 @@ function login() {
 }
 function logout() { auth.signOut(); }
 
+// --- タブ切り替え ---
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
@@ -444,6 +461,9 @@ function switchTab(tabId) {
   if(tabId === 'tab3') renderCalendar();
 }
 
+// ==========================================
+// データ保存・取得ロジック
+// ==========================================
 async function getRecordsData() {
   if (currentUser) {
     try {
@@ -479,6 +499,9 @@ async function saveCalendarData(calendar) {
   }
 }
 
+// ==========================================
+// ツール①：回転率計測ツール
+// ==========================================
 function addMeasurement(balls) {
   const spinInput = document.getElementById('measuredSpin');
   const spins = parseFloat(spinInput.value);
@@ -497,8 +520,7 @@ function updateMeasurementDisplay() {
   let historyHtml = '<strong>入力履歴:</strong><br>';
   for (let i = historyData.length - 1; i >= 0; i--) {
     totalBalls += historyData[i].balls; totalSpins += historyData[i].spins;
-    let cvt = historyData[i].balls === 125 ? `<span style="font-size: 11px; color: #7f8c8d; margin-left: 6px;">(250玉換算: ${historyData[i].spins * 2}回)</span>` : "";
-    historyHtml += `<div class="history-item"><span>${i + 1}回目: ${historyData[i].balls}玉で <strong>${historyData[i].spins}回</strong>${cvt}</span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
+    historyHtml += `<div class="history-item"><span>${i + 1}回目: ${historyData[i].balls}玉で <strong>${historyData[i].spins}回</strong></span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
   }
   const avg250 = (totalSpins / totalBalls) * 250;
   document.getElementById('avg250').innerText = avg250.toFixed(2) + " 回";
@@ -535,10 +557,7 @@ async function renderSavedRecords() {
     let historyHtml = '';
     if (r.history && r.history.length > 0) {
       historyHtml = `<details style="margin-top: 8px;"><summary style="cursor: pointer; font-size: 13px; font-weight: bold; color: #2980b9;">計測履歴を表示</summary><div class="saved-history-box">`;
-      r.history.forEach((h, index) => { 
-        let cvt = h.balls === 125 ? `<span style="font-size: 11px; color: #7f8c8d; margin-left: 6px;">(250玉換算: ${h.spins * 2}回)</span>` : "";
-        historyHtml += `<div style="margin-bottom: 4px; border-bottom: 1px dashed #ddd; padding-bottom: 2px;">${index + 1}回目: ${h.balls}玉 で <strong>${h.spins}回</strong>${cvt}</div>`; 
-      });
+      r.history.forEach((h, index) => { historyHtml += `<div style="margin-bottom: 4px; border-bottom: 1px dashed #ddd; padding-bottom: 2px;">${index + 1}回目: ${h.balls}玉 で <strong>${h.spins}回</strong></div>`; });
       historyHtml += `</div></details>`;
     }
     html += `<div class="saved-item">
@@ -569,6 +588,9 @@ async function deleteRecord(id) {
   }
 }
 
+// ==========================================
+// ツール②：期待値＆分散シミュレーション
+// ==========================================
 function getNormalRandom(mean, stdDev) {
   let u1 = 1 - Math.random(); let u2 = 1 - Math.random(); 
   return (Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2)) * stdDev + mean;
@@ -635,6 +657,9 @@ async function saveExpectedValueToCalendar() {
   renderCalendar();
 }
 
+// ==========================================
+// ツール③：収支カレンダー (視覚化対応・期待値切り上げ)
+// ==========================================
 function changeMonth(diff) {
   currentCalMonth += diff;
   if(currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
