@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>パチンコ総合計算ツール</title>
+<!-- Firebase SDKの読み込み -->
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    padding: 15px;
+    max-width: 500px;
+    margin: 0 auto;
+    background-color: #f4f7f6;
+    color: #333;
+  }
+  
+  /* 認証エリアのスタイル */
+  #auth-container {
+    background: #fff; padding: 15px; margin-bottom: 15px;
+    border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .btn-auth {
+    background-color: #4285F4; color: white; border: none;
+    padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer;
+  }
+  .btn-auth.logout { background-color: #7f8c8d; }
+
+  /* タブメニューのスタイル */
+  .tabs { display: flex; margin-bottom: 0; }
+  .tab-button {
+    flex: 1; padding: 12px 5px; text-align: center;
+    background-color: #ddd; color: #7f8c8d; border: none;
+    cursor: pointer; font-weight: bold; font-size: 13px;
+    border-radius: 8px 8px 0 0; transition: background-color 0.2s;
+  }
+  .tab-button.active { background-color: #3498db; color: white; }
+  .tab-button:not(.active):hover { background-color: #ccc; }
+
+  /* カードとコンテンツ */
+  .card {
+    background: #fff; padding: 20px;
+    border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; animation: fadeIn 0.3s; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  h2 {
+    margin-top: 0; font-size: 18px; color: #2c3e50;
+    border-bottom: 2px solid #3498db; padding-bottom: 10px;
+  }
+  .form-group { margin-bottom: 12px; }
+  label {
+    display: block; font-size: 13px; font-weight: bold;
+    margin-bottom: 4px; color: #555;
+  }
+  input {
+    width: 100%; padding: 10px; border: 1px solid #ccc;
+    border-radius: 4px; box-sizing: border-box; font-size: 16px;
+    transition: background-color 0.3s;
+  }
+  /* 自動入力された欄のハイライト */
+  .auto-filled { background-color: #fff3cd !important; border-color: #ffeeba; }
+  
+  .section-title {
+    margin-top: 20px; margin-bottom: 10px; font-size: 15px;
+    font-weight: bold; color: #e67e22; border-left: 4px solid #e67e22;
+    padding-left: 8px;
+  }
+  .section-title.purple { color: #9b59b6; border-left-color: #9b59b6; }
+  
+  /* ボタン類 */
+  button.action-btn {
+    margin-top: 10px; width: 100%; padding: 14px;
+    background-color: #3498db; color: white; border: none;
+    border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer;
+  }
+  button.action-btn:hover { background-color: #2980b9; }
+  .btn-half {
+    width: 48%; display: inline-block; padding: 14px 0;
+    color: white; border: none; border-radius: 4px;
+    font-weight: bold; font-size: 14px; cursor: pointer;
+  }
+  .btn-reset {
+    background-color: #95a5a6; margin-top: 10px; width: 100%;
+    padding: 10px; color: white; border: none; border-radius: 4px;
+    font-weight: bold; cursor: pointer;
+  }
+  .btn-save {
+    background-color: #e67e22; margin-top: 15px; width: 100%;
+    padding: 12px; color: white; border: none; border-radius: 4px;
+    font-weight: bold; font-size: 15px; cursor: pointer;
+  }
+  .btn-save:hover { background-color: #d35400; }
+  .btn-container { display: flex; justify-content: space-between; margin-top: 10px; }
+  .btn-small {
+    padding: 6px 12px; font-size: 12px; font-weight: bold;
+    color: white; border: none; border-radius: 4px; cursor: pointer;
+    margin-right: 5px; margin-top: 8px;
+  }
+
+  /* 結果表示エリア */
+  .result, .simulation {
+    margin-top: 20px; padding: 15px; border-radius: 4px;
+  }
+  .result { background-color: #e8f4f8; border-left: 5px solid #3498db; }
+  .simulation { background-color: #fdf2e9; border-left: 5px solid #e67e22; }
+  .summary-box { background-color: #f4e8f8; border-left: 5px solid #9b59b6; }
+  .result p, .simulation p, .summary-box p { margin: 8px 0; font-size: 15px; display: flex; justify-content: space-between; }
+  
+  .highlight { font-weight: bold; color: #e74c3c; font-size: 18px; }
+  .total { font-size: 18px; font-weight: bold; color: #27ae60; }
+  .sim-value { font-weight: bold; color: #333; }
+  .minus { color: #c0392b; font-weight: bold; }
+  .plus { color: #2980b9; font-weight: bold; }
+  hr { border: 0; height: 1px; background: #ccc; margin: 15px 0; }
+  
+  /* 履歴リスト */
+  .history-list {
+    margin-top: 10px; font-size: 13px; color: #555;
+    max-height: 150px; overflow-y: auto; background: #f9f9f9;
+    padding: 10px; border: 1px solid #eee; border-radius: 4px;
+  }
+  .history-item { 
+    border-bottom: 1px dashed #ccc; padding: 6px 0; 
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .btn-delete-item {
+    background: none; border: none; color: #e74c3c; cursor: pointer;
+    font-size: 13px; font-weight: bold; padding: 4px 8px; border-radius: 4px;
+  }
+  .btn-delete-item:hover { background-color: #fceceb; }
+
+  /* 保存データリスト */
+  .saved-item {
+    background: #fdfdfd; border: 1px solid #ddd;
+    border-radius: 6px; padding: 12px; margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  details summary { outline: none; }
+  .saved-history-box {
+    margin-top: 8px; padding: 8px; background-color: #f4f7f6;
+    border-left: 3px solid #ccc; font-size: 12px;
+    color: #555; max-height: 120px; overflow-y: auto;
+  }
+</style>
+</head>
+<body>
+
+<!-- アカウント連携エリア -->
+<div id="auth-container">
+  <div id="user-info" style="font-size: 13px; font-weight: bold; color: #555;">ログインしていません (ローカル保存)</div>
+  <button id="login-btn" class="btn-auth" onclick="login()">Googleでログイン</button>
+  <button id="logout-btn" class="btn-auth logout" onclick="logout()" style="display:none;">ログアウト</button>
+</div>
+
+<!-- タブメニュー -->
+<div class="tabs">
+  <button id="btn-tab1" class="tab-button active" onclick="switchTab('tab1')">① 計測</button>
+  <button id="btn-tab2" class="tab-button" onclick="switchTab('tab2')">② 期待値</button>
+  <button id="btn-tab3" class="tab-button" onclick="switchTab('tab3')">③ カレンダー</button>
+</div>
+
+<div class="card">
+  <!-- ツール1：回転率（ベース）計測 -->
+  <div id="tab1" class="tab-content active">
+    <h2>新規計測</h2>
+    
+    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+      <div style="flex: 1;"><label>日付</label><input type="date" id="recordDate"></div>
+      <div style="flex: 2;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15"></div>
+    </div>
+
+    <div class="form-group" style="margin-top: 15px;">
+      <label>回った回転数を入力 (例: 10)</label>
+      <input type="number" id="measuredSpin" step="1" placeholder="回転数を入力">
+    </div>
+    
+    <div class="btn-container">
+      <button class="btn-half" onclick="addMeasurement(125)" style="background-color: #1abc9c;">125玉(500円)追加</button>
+      <button class="btn-half" onclick="addMeasurement(250)" style="background-color: #16a085;">250玉(1000円)追加</button>
+    </div>
+
+    <div class="result" id="measurementResult" style="display: none;">
+      <p><span>250玉(千円)平均:</span> <span id="avg250" class="highlight"></span></p>
+      <hr>
+      <p><span>トータル回転数:</span> <span id="totalMeasuredSpins"></span></p>
+      <p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls"></span></p>
+      
+      <div class="history-list" id="historyList"></div>
+      
+      <button class="btn-save" onclick="saveCurrentRecord()">この記録を機種データとして保存</button>
+      <button class="btn-reset" onclick="resetMeasurement()">現在の入力をすべてリセット</button>
+    </div>
+
+    <div class="section-title" style="margin-top: 30px;">保存された機種データ</div>
+    <div id="savedRecordsContainer"></div>
+  </div>
+
+  <!-- ツール2：期待値＆分散シミュレーター -->
+  <div id="tab2" class="tab-content">
+    <h2>期待値計算＆シミュレーション</h2>
+    <div class="section-title">基本条件</div>
+    <div class="form-group"><label>等価ボーダー (回/千円)</label><input type="number" id="border" step="0.1" value="18.0"></div>
+    
+    <!-- ★自動入力時に色を変える欄 -->
+    <div class="form-group">
+      <label>現在の平均回転数 (回/千円)</label>
+      <input type="number" id="spinRate" step="0.1" value="20.0" oninput="removeAutoFillHighlight()">
+    </div>
+    
+    <div class="form-group"><label>交換率 (円/玉) ※等価4.0、28玉3.57</label><input type="number" id="exchangeRate" step="0.01" value="3.57"></div>
+    <div class="form-group"><label>持ち球比率 (%)</label><input type="number" id="ballRatio" step="1" value="60"></div>
+    <div class="form-group"><label>総回転数 (回) ※トータル期待値・シミュレーション用</label><input type="number" id="totalSpins" step="100" value="2000"></div>
+
+    <div class="section-title">機種スペック（ブレの計算用）</div>
+    <div class="form-group"><label>大当たり確率 (1/〇〇)</label><input type="number" id="probDenom" step="0.1" value="319.6"></div>
+    <div class="form-group"><label>初当たり平均獲得出玉 (玉)</label><input type="number" id="avgPayout" step="10" value="4500"></div>
+    
+    <button class="action-btn" onclick="calculateAndSimulate()">期待値を計算＆シミュレート</button>
+    
+    <div class="result" id="resultArea" style="display: none;">
+      <p><span>1回転あたり:</span> <span id="resSpin" style="font-weight: bold;"></span></p>
+      <hr>
+      <p><span>トータル理論期待値:</span> <span id="resTotal" class="total"></span></p>
+
+      <div style="margin-top: 15px; background: #fff; padding: 15px; border-radius: 4px; border: 1px solid #3498db;">
+        <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #2980b9;">この期待値をカレンダーに記録</div>
+        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+          <input type="date" id="evSaveDate" style="flex: 1;">
+          <input type="text" id="evSaveMachine" placeholder="機種名" style="flex: 1;">
+        </div>
+        <button class="btn-small" style="width: 100%; background: #3498db; margin:0;" onclick="saveExpectedValueToCalendar()">ツール③のカレンダーに保存</button>
+      </div>
+    </div>
+
+    <div class="simulation" id="simArea" style="display: none;">
+      <div style="font-weight: bold; margin-bottom: 10px; color: #d35400;">1万回シミュレーション結果（実収支）</div>
+      <p><span>上位 5% (大上振れ):</span> <span id="simTop5" class="sim-value plus"></span></p>
+      <p><span>上位 25% (やや上振れ):</span> <span id="simTop25" class="sim-value plus"></span></p>
+      <p><span>中央値 (50%):</span> <span id="simMedian" class="sim-value"></span></p>
+      <p><span>下位 25% (やや欠損):</span> <span id="simBot25" class="sim-value minus"></span></p>
+      <p><span>下位 5% (大欠損):</span> <span id="simBot5" class="sim-value minus"></span></p>
+    </div>
+  </div>
+
+  <!-- ツール3：収支カレンダー -->
+  <div id="tab3" class="tab-content">
+    <h2>収支カレンダー</h2>
+    
+    <div class="form-group">
+      <label>表示月</label>
+      <input type="month" id="monthSelector" onchange="renderCalendar()">
+    </div>
+    
+    <div class="result summary-box">
+      <p><span>月間期待値:</span> <span id="monthlyEV" style="font-weight: bold; color: #27ae60;"></span></p>
+      <p><span>月間実収支:</span> <span id="monthlyActual" style="font-weight: bold; color: #2980b9;"></span></p>
+      <hr>
+      <p><span>収支のブレ (実収支 - 期待値):</span> <span id="monthlyDiff" style="font-weight: bold;"></span></p>
+    </div>
+
+    <div class="section-title purple">実収支の入力</div>
+    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+      <div style="flex: 1;">
+        <label>日付</label>
+        <input type="date" id="actualDate">
+      </div>
+      <div style="flex: 1.5;">
+        <label>実収支 (負けはマイナス)</label>
+        <input type="number" id="actualAmount" placeholder="例: -15000">
+      </div>
+    </div>
+    <button class="action-btn" style="background-color: #9b59b6; margin-top: 0;" onclick="saveActualBalance()">実収支を保存</button>
+
+    <div class="section-title purple">日別データ</div>
+    <div id="calendarList"></div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// Firebase設定（※ご自身のプロジェクト設定に書き換えてください）
+// ==========================================
+const firebaseConfig = {
+  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
+  authDomain: "pachinco-fb565.firebaseapp.com",
+  projectId: "pachinco-fb565",
+  storageBucket: "pachinco-fb565.firebasestorage.app",
+  messagingSenderId: "695101913449",
+  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+};
+
+// Firebaseの初期化
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let currentUser = null;
+
+// ==========================================
+// グローバル変数 & ユーティリティ
+// ==========================================
+let lastCalculatedEV = 0; 
+let historyData = [];
+
+function formatCurrency(num) {
+  return (num > 0 ? "+" : "") + Math.round(num).toLocaleString() + " 円";
+}
+
+// --- 初期化処理 ---
+window.onload = function() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${yyyy}-${mm}-${dd}`;
+  const monthStr = `${yyyy}-${mm}`;
+  
+  document.getElementById('recordDate').value = todayStr;
+  document.getElementById('evSaveDate').value = todayStr;
+  document.getElementById('actualDate').value = todayStr;
+  document.getElementById('monthSelector').value = monthStr;
+  
+  // 認証状態の監視
+  auth.onAuthStateChanged(user => {
+    if (user) {
+      currentUser = user;
+      document.getElementById('user-info').innerText = `ログイン中: ${user.email}`;
+      document.getElementById('user-info').style.color = '#27ae60';
+      document.getElementById('login-btn').style.display = 'none';
+      document.getElementById('logout-btn').style.display = 'inline-block';
+    } else {
+      currentUser = null;
+      document.getElementById('user-info').innerText = 'ログインしていません (ローカル保存)';
+      document.getElementById('user-info').style.color = '#555';
+      document.getElementById('login-btn').style.display = 'inline-block';
+      document.getElementById('logout-btn').style.display = 'none';
+    }
+    // ユーザー状態が変わったらデータを再取得して表示
+    renderSavedRecords();
+    renderCalendar();
+  });
+};
+
+// ==========================================
+// 認証機能 (Google Login)
+// ==========================================
+function login() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(error => {
+    console.error("ログインエラー:", error);
+    alert("ログインに失敗しました。設定を確認してください。\n※Firebase設定が未完了の場合はローカル環境で動作します。");
+  });
+}
+
+function logout() {
+  auth.signOut();
+}
+
+// --- タブ切り替え ---
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  document.getElementById('btn-' + tabId).classList.add('active');
+}
+
+// ==========================================
+// データ保存・取得ロジック（クラウド or ローカル）
+// ==========================================
+async function getRecordsData() {
+  if (currentUser) {
+    try {
+      const doc = await db.collection('users').doc(currentUser.uid).get();
+      return doc.exists ? (doc.data().records || []) : [];
+    } catch(e) { console.error(e); return []; }
+  } else {
+    return JSON.parse(localStorage.getItem('pachinko_records') || "[]");
+  }
+}
+
+async function saveRecordsData(records) {
+  if (currentUser) {
+    await db.collection('users').doc(currentUser.uid).set({ records: records }, { merge: true });
+  } else {
+    localStorage.setItem('pachinko_records', JSON.stringify(records));
+  }
+}
+
+async function getCalendarData() {
+  if (currentUser) {
+    try {
+      const doc = await db.collection('users').doc(currentUser.uid).get();
+      return doc.exists ? (doc.data().calendar || {}) : {};
+    } catch(e) { console.error(e); return {}; }
+  } else {
+    return JSON.parse(localStorage.getItem('pachinko_calendar') || "{}");
+  }
+}
+
+async function saveCalendarData(calendar) {
+  if (currentUser) {
+    await db.collection('users').doc(currentUser.uid).set({ calendar: calendar }, { merge: true });
+  } else {
+    localStorage.setItem('pachinko_calendar', JSON.stringify(calendar));
+  }
+}
+
+
+// ==========================================
+// ツール①：回転率計測ツール
+// ==========================================
+function addMeasurement(balls) {
+  const spinInput = document.getElementById('measuredSpin');
+  const spins = parseFloat(spinInput.value);
+  if (isNaN(spins) || spins < 0) return alert("正しい回転数を入力してください。");
+  
+  historyData.push({ balls: balls, spins: spins });
+  spinInput.value = ''; spinInput.focus();
+  updateMeasurementDisplay();
+}
+
+function deleteHistoryItem(index) {
+  historyData.splice(index, 1);
+  updateMeasurementDisplay();
+}
+
+function updateMeasurementDisplay() {
+  if (historyData.length === 0) { 
+    document.getElementById('measurementResult').style.display = 'none'; 
+    return; 
+  }
+  
+  let totalBalls = 0, totalSpins = 0;
+  let historyHtml = '<strong>入力履歴:</strong><br>';
+  
+  for (let i = historyData.length - 1; i >= 0; i--) {
+    totalBalls += historyData[i].balls; 
+    totalSpins += historyData[i].spins;
+    
+    historyHtml += `
+      <div class="history-item">
+        <span>${i + 1}回目: ${historyData[i].balls}玉で <strong>${historyData[i].spins}回</strong></span>
+        <button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button>
+      </div>`;
+  }
+  
+  const avg250 = (totalSpins / totalBalls) * 250;
+  document.getElementById('avg250').innerText = avg250.toFixed(2) + " 回";
+  document.getElementById('totalMeasuredSpins').innerText = totalSpins + " 回";
+  document.getElementById('totalMeasuredBalls').innerText = totalBalls + " 玉";
+  document.getElementById('historyList').innerHTML = historyHtml;
+  
+  document.getElementById('measurementResult').style.display = 'block';
+}
+
+function resetMeasurement() {
+  if(confirm("現在の入力データをすべてクリアしますか？")) { 
+    historyData = []; 
+    updateMeasurementDisplay(); 
+  }
+}
+
+async function saveCurrentRecord() {
+  const date = document.getElementById('recordDate').value;
+  const machine = document.getElementById('machineName').value.trim();
+  if (!date || !machine) return alert("日付と機種名を入力してください。");
+  if (historyData.length === 0) return alert("回転数の履歴がありません。");
+  
+  let totalBalls = 0, totalSpins = 0;
+  historyData.forEach(d => { totalBalls += d.balls; totalSpins += d.spins; });
+  const avg250 = (totalSpins / totalBalls) * 250;
+
+  const records = await getRecordsData();
+  records.push({ id: Date.now(), date: date, machine: machine, totalBalls: totalBalls, totalSpins: totalSpins, avg250: avg250, history: [...historyData] });
+  
+  await saveRecordsData(records);
+
+  alert(`${machine} のデータを保存しました。`);
+  historyData = []; document.getElementById('machineName').value = ''; 
+  updateMeasurementDisplay(); renderSavedRecords();
+}
+
+async function renderSavedRecords() {
+  const records = await getRecordsData();
+  const container = document.getElementById('savedRecordsContainer');
+  if (records.length === 0) return container.innerHTML = '<p style="font-size:13px; color:#777;">保存されたデータはありません。</p>';
+  
+  records.sort((a, b) => new Date(b.date) - new Date(a.date));
+  let html = '';
+  records.forEach(r => {
+    let historyHtml = '';
+    if (r.history && r.history.length > 0) {
+      historyHtml = `<details style="margin-top: 8px;"><summary style="cursor: pointer; font-size: 13px; font-weight: bold; color: #2980b9;">計測履歴を表示</summary><div class="saved-history-box">`;
+      r.history.forEach((h, index) => { historyHtml += `<div style="margin-bottom: 4px; border-bottom: 1px dashed #ddd; padding-bottom: 2px;">${index + 1}回目: ${h.balls}玉 で <strong>${h.spins}回</strong></div>`; });
+      historyHtml += `</div></details>`;
+    }
+    html += `<div class="saved-item">
+      <div style="font-weight:bold; color:#2c3e50; font-size: 15px;">${r.date} ｜ ${r.machine}</div>
+      <div style="font-size:13px; margin:6px 0; color:#555;">総投資: ${r.totalBalls}玉 / 総回転: ${r.totalSpins}回<br><span style="color:#e74c3c; font-weight:bold; font-size:14px;">250玉平均: ${r.avg250.toFixed(2)} 回</span></div>
+      ${historyHtml}
+      <div style="margin-top: 10px;">
+        <button class="btn-small" style="background:#3498db;" onclick="useRecordForCalc(${r.avg250}, '${r.machine}')">期待値を計算</button>
+        <button class="btn-small" style="background:#95a5a6;" onclick="deleteRecord(${r.id})">削除</button>
+      </div>
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+// ★自動入力時に色を変えるロジック
+function useRecordForCalc(avg, machineName) {
+  const spinInput = document.getElementById('spinRate');
+  spinInput.value = avg.toFixed(2);
+  spinInput.classList.add('auto-filled'); // 黄色くハイライト
+  
+  document.getElementById('evSaveMachine').value = machineName; 
+  switchTab('tab2');
+}
+
+// ★手動で入力されたら色を元に戻す
+function removeAutoFillHighlight() {
+  document.getElementById('spinRate').classList.remove('auto-filled');
+}
+
+async function deleteRecord(id) {
+  if(confirm("このデータを削除しますか？")) {
+    let records = await getRecordsData();
+    await saveRecordsData(records.filter(r => r.id !== id));
+    renderSavedRecords();
+  }
+}
+
+// ==========================================
+// ツール②：期待値＆分散シミュレーション
+// ==========================================
+function getNormalRandom(mean, stdDev) {
+  let u1 = 1 - Math.random(); let u2 = 1 - Math.random(); 
+  return (Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2)) * stdDev + mean;
+}
+
+function calculateAndSimulate() {
+  const B = parseFloat(document.getElementById('border').value);
+  const R = parseFloat(document.getElementById('spinRate').value);
+  const E = parseFloat(document.getElementById('exchangeRate').value);
+  const M = parseFloat(document.getElementById('ballRatio').value) / 100;
+  
+  const totalSpins = parseFloat(document.getElementById('totalSpins').value);
+  const probDenom = parseFloat(document.getElementById('probDenom').value);
+  const avgPayout = parseFloat(document.getElementById('avgPayout').value);
+
+  if (!B || !R || !E || isNaN(M) || !totalSpins || !probDenom || !avgPayout) return alert("数値をすべて正しく入力してください。");
+
+  const expectedReturn = (250 * E) / B;
+  const actualCost = ((250 * E * M) / R) + ((1000 * (1 - M)) / R);
+  const evSpin = expectedReturn - actualCost;
+  
+  lastCalculatedEV = evSpin * totalSpins; 
+
+  document.getElementById('resSpin').innerText = evSpin.toFixed(2) + " 円";
+  document.getElementById('resTotal').innerText = formatCurrency(lastCalculatedEV);
+  document.getElementById('resultArea').style.display = 'block';
+
+  const hitProb = 1 / probDenom;
+  const meanHits = totalSpins * hitProb;
+  const stdDevHits = Math.sqrt(totalSpins * hitProb * (1 - hitProb));
+  let results = [];
+  
+  for (let i = 0; i < 10000; i++) {
+    let simulatedHits = Math.max(0, getNormalRandom(meanHits, stdDevHits));
+    results.push((simulatedHits * avgPayout * E) - (actualCost * totalSpins));
+  }
+  results.sort((a, b) => a - b);
+  
+  document.getElementById('simBot5').innerText = formatCurrency(results[500]);
+  document.getElementById('simBot25').innerText = formatCurrency(results[2500]);
+  document.getElementById('simMedian').innerText = formatCurrency(results[5000]);
+  document.getElementById('simTop25').innerText = formatCurrency(results[7500]);
+  document.getElementById('simTop5').innerText = formatCurrency(results[9500]);
+  document.getElementById('simArea').style.display = 'block';
+}
+
+async function saveExpectedValueToCalendar() {
+  const date = document.getElementById('evSaveDate').value;
+  const machine = document.getElementById('evSaveMachine').value || "機種不明";
+  
+  if(!date) return alert("日付を入力してください");
+  if(lastCalculatedEV === 0) return alert("期待値が計算されていません。先に「期待値を計算」ボタンを押してください。");
+
+  const cal = await getCalendarData();
+  if(!cal[date]) cal[date] = { ev: 0, actual: 0, details: [] };
+  
+  cal[date].ev += lastCalculatedEV; 
+  cal[date].details.push(`${machine} (期待値: ${formatCurrency(lastCalculatedEV)})`);
+  
+  await saveCalendarData(cal);
+  alert(`${date} のカレンダーに期待値を保存しました。`);
+  
+  renderCalendar();
+}
+
+// ==========================================
+// ツール③：収支カレンダー
+// ==========================================
+async function saveActualBalance() {
+  const date = document.getElementById('actualDate').value;
+  const amount = parseFloat(document.getElementById('actualAmount').value);
+  
+  if(!date || isNaN(amount)) return alert("日付と収支を正しく入力してください");
+  
+  const cal = await getCalendarData();
+  if(!cal[date]) cal[date] = { ev: 0, actual: 0, details: [] };
+  
+  cal[date].actual = amount; 
+  await saveCalendarData(cal);
+  
+  alert(`${date} の実収支を保存しました`);
+  document.getElementById('actualAmount').value = '';
+  renderCalendar();
+}
+
+async function renderCalendar() {
+  const monthStr = document.getElementById('monthSelector').value; 
+  if(!monthStr) return;
+  
+  const cal = await getCalendarData();
+  let monthlyEV = 0;
+  let monthlyActual = 0;
+  let html = '';
+
+  const dates = Object.keys(cal).filter(d => d.startsWith(monthStr)).sort((a,b) => b.localeCompare(a));
+  
+  dates.forEach(d => {
+    const dayData = cal[d];
+    monthlyEV += dayData.ev;
+    monthlyActual += dayData.actual;
+    
+    const diff = dayData.actual - dayData.ev;
+    const diffColor = diff > 0 ? 'plus' : (diff < 0 ? 'minus' : '');
+    
+    html += `
+    <div class="saved-item" style="border-left: 4px solid #9b59b6;">
+      <div style="font-weight:bold; color:#2c3e50;">${d}</div>
+      <div style="font-size: 13px; margin: 6px 0; display: flex; justify-content: space-between;">
+        <span>期待値: <span style="color:#27ae60; font-weight:bold;">${formatCurrency(dayData.ev)}</span></span>
+        <span>実収支: <span style="color:#2980b9; font-weight:bold;">${formatCurrency(dayData.actual)}</span></span>
+      </div>
+      <div style="font-size: 13px; margin-bottom: 6px;">
+        ブレ: <span class="${diffColor}">${formatCurrency(diff)}</span>
+      </div>
+      <div style="font-size: 12px; color: #777; background: #f9f9f9; padding: 4px; border-radius: 4px;">
+        ${dayData.details.length > 0 ? dayData.details.join('<br>') : '稼働記録なし'}
+      </div>
+      <button class="btn-small" style="background:#e74c3c; margin-top:8px;" onclick="deleteCalendarDay('${d}')">この日の記録を削除</button>
+    </div>
+    `;
+  });
+
+  if(dates.length === 0) {
+    html = '<p style="font-size:13px; color:#777;">この月のデータはありません。</p>';
+  }
+
+  document.getElementById('monthlyEV').innerText = formatCurrency(monthlyEV);
+  document.getElementById('monthlyActual').innerText = formatCurrency(monthlyActual);
+  
+  const mDiff = monthlyActual - monthlyEV;
+  const mDiffEl = document.getElementById('monthlyDiff');
+  mDiffEl.innerText = formatCurrency(mDiff);
+  mDiffEl.className = mDiff > 0 ? 'plus' : (mDiff < 0 ? 'minus' : '');
+
+  document.getElementById('calendarList').innerHTML = html;
+}
+
+async function deleteCalendarDay(date) {
+  if(confirm(`${date} の記録をすべて削除しますか？`)) {
+    const cal = await getCalendarData();
+    delete cal[date];
+    await saveCalendarData(cal);
+    renderCalendar();
+  }
+}
+</script>
+
+</body>
+</html>
