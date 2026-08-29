@@ -55,22 +55,38 @@
     margin-top: 0; font-size: 18px; color: #2c3e50;
     border-bottom: 2px solid #3498db; padding-bottom: 10px;
   }
-  .form-group { margin-bottom: 12px; }
+  .form-group { margin-bottom: 15px; }
   label {
     display: block; font-size: 13px; font-weight: bold;
-    margin-bottom: 4px; color: #555;
+    margin-bottom: 6px; color: #555;
   }
   input {
     width: 100%; padding: 10px; border: 1px solid #ccc;
     border-radius: 4px; box-sizing: border-box; font-size: 16px;
     transition: background-color 0.3s;
   }
-  /* プレースホルダーの色を少し濃くする */
   input::placeholder { color: #aaa; }
-
-  /* 自動入力された欄のハイライト */
   .auto-filled { background-color: #fff3cd !important; border-color: #ffeeba; }
   
+  /* スライダーのレイアウト */
+  .slider-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .slider-wrapper input[type="range"] {
+    flex: 1.5;
+    accent-color: #3498db;
+    height: 8px;
+    padding: 0;
+    border: none;
+  }
+  .slider-wrapper input[type="number"] {
+    flex: 1;
+    padding: 8px;
+    font-size: 15px;
+  }
+
   .section-title {
     margin-top: 20px; margin-bottom: 10px; font-size: 15px;
     font-weight: bold; color: #e67e22; border-left: 4px solid #e67e22;
@@ -107,6 +123,21 @@
     color: white; border: none; border-radius: 4px; cursor: pointer;
     margin-right: 5px; margin-top: 8px;
   }
+
+  /* カレンダーのスタイル */
+  .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ddd; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+  .calendar-day-header { background: #f4f7f6; text-align: center; font-size: 12px; padding: 6px 0; font-weight: bold; color: #555; }
+  .calendar-cell { background: #fff; min-height: 55px; padding: 4px; cursor: pointer; position: relative; display: flex; flex-direction: column; transition: background-color 0.2s; }
+  .calendar-cell:hover { background: #e8f4f8; }
+  .calendar-cell.active-day { outline: 2px solid #9b59b6; outline-offset: -2px; background: #f4e8f8; }
+  .calendar-cell.other-month { background: #fafafa; cursor: default; }
+  .calendar-cell.other-month:hover { background: #fafafa; }
+  .cal-date { font-weight: bold; margin-bottom: 2px; font-size: 13px; }
+  .cal-val { font-size: 10px; margin-top: auto; word-break: break-all; line-height: 1.2; text-align: right; }
+  .cal-val.plus { color: #2980b9; font-weight: bold; }
+  .cal-val.minus { color: #c0392b; font-weight: bold; }
+  .cal-val.ev { color: #27ae60; font-weight: bold; }
 
   /* 結果表示エリア */
   .result, .simulation {
@@ -175,34 +206,27 @@
   <!-- ツール1：回転率（ベース）計測 -->
   <div id="tab1" class="tab-content active">
     <h2>新規計測</h2>
-    
     <div style="display: flex; gap: 10px; margin-bottom: 12px;">
       <div style="flex: 1;"><label>日付</label><input type="date" id="recordDate"></div>
       <div style="flex: 2;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15"></div>
     </div>
-
     <div class="form-group" style="margin-top: 15px;">
       <label>回った回転数を入力 (例: 10)</label>
       <input type="number" id="measuredSpin" step="1" placeholder="回転数を入力">
     </div>
-    
     <div class="btn-container">
       <button class="btn-half" onclick="addMeasurement(125)" style="background-color: #1abc9c;">125玉(500円)追加</button>
       <button class="btn-half" onclick="addMeasurement(250)" style="background-color: #16a085;">250玉(1000円)追加</button>
     </div>
-
     <div class="result" id="measurementResult" style="display: none;">
       <p><span>250玉(千円)平均:</span> <span id="avg250" class="highlight"></span></p>
       <hr>
       <p><span>トータル回転数:</span> <span id="totalMeasuredSpins"></span></p>
       <p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls"></span></p>
-      
       <div class="history-list" id="historyList"></div>
-      
       <button class="btn-save" onclick="saveCurrentRecord()">この記録を機種データとして保存</button>
       <button class="btn-reset" onclick="resetMeasurement()">現在の入力をすべてリセット</button>
     </div>
-
     <div class="section-title" style="margin-top: 30px;">保存された機種データ</div>
     <div id="savedRecordsContainer"></div>
   </div>
@@ -211,39 +235,64 @@
   <div id="tab2" class="tab-content">
     <h2>期待値計算＆シミュレーション</h2>
     
-    <!-- ★初期値を空白にし、placeholderに入力例を設定 -->
     <div class="section-title">基本条件</div>
+    
     <div class="form-group">
       <label>等価ボーダー (回/千円)</label>
-      <input type="number" id="border" step="0.1" value="" placeholder="例: 18.0">
+      <div class="slider-wrapper">
+        <input type="range" id="border_slider" min="10.0" max="30.0" step="0.1" value="18.0" oninput="syncSliderToInput('border')">
+        <input type="number" id="border" step="0.1" value="" placeholder="例: 18.0" oninput="syncInputToSlider('border')">
+      </div>
     </div>
     
     <div class="form-group">
       <label>現在の平均回転数 (回/千円)</label>
-      <input type="number" id="spinRate" step="0.1" value="" placeholder="例: 20.0" oninput="removeAutoFillHighlight()">
+      <div class="slider-wrapper">
+        <input type="range" id="spinRate_slider" min="10.0" max="35.0" step="0.1" value="20.0" oninput="syncSliderToInput('spinRate')">
+        <input type="number" id="spinRate" step="0.1" value="" placeholder="例: 20.0" oninput="syncInputToSlider('spinRate')">
+      </div>
     </div>
     
     <div class="form-group">
       <label>交換率 (円/玉) ※等価4.0、28玉3.57</label>
-      <input type="number" id="exchangeRate" step="0.01" value="" placeholder="例: 3.57">
+      <div class="slider-wrapper">
+        <input type="range" id="exchangeRate_slider" min="2.50" max="4.00" step="0.01" value="3.57" oninput="syncSliderToInput('exchangeRate')">
+        <input type="number" id="exchangeRate" step="0.01" value="" placeholder="例: 3.57" oninput="syncInputToSlider('exchangeRate')">
+      </div>
     </div>
+    
     <div class="form-group">
       <label>持ち球比率 (%)</label>
-      <input type="number" id="ballRatio" step="1" value="" placeholder="例: 60">
+      <div class="slider-wrapper">
+        <input type="range" id="ballRatio_slider" min="0" max="100" step="1" value="60" oninput="syncSliderToInput('ballRatio')">
+        <input type="number" id="ballRatio" step="1" value="" placeholder="例: 60" oninput="syncInputToSlider('ballRatio')">
+      </div>
     </div>
+    
     <div class="form-group">
       <label>総回転数 (回) ※トータル期待値・シミュレーション用</label>
-      <input type="number" id="totalSpins" step="10" value="" placeholder="例: 2000">
+      <div class="slider-wrapper">
+        <input type="range" id="totalSpins_slider" min="100" max="10000" step="10" value="2000" oninput="syncSliderToInput('totalSpins')">
+        <input type="number" id="totalSpins" step="10" value="" placeholder="例: 2000" oninput="syncInputToSlider('totalSpins')">
+      </div>
     </div>
 
     <div class="section-title">機種スペック（ブレの計算用）</div>
+    
     <div class="form-group">
       <label>大当たり確率 (1/〇〇)</label>
-      <input type="number" id="probDenom" step="0.1" value="" placeholder="例: 319.6">
+      <div class="slider-wrapper">
+        <input type="range" id="probDenom_slider" min="1.0" max="499.0" step="0.1" value="319.6" oninput="syncSliderToInput('probDenom')">
+        <input type="number" id="probDenom" step="0.1" value="" placeholder="例: 319.6" oninput="syncInputToSlider('probDenom')">
+      </div>
     </div>
+    
     <div class="form-group">
       <label>初当たり平均獲得出玉 (玉)</label>
-      <input type="number" id="avgPayout" step="1" value="" placeholder="例: 4500">
+      <div class="slider-wrapper">
+        <input type="range" id="avgPayout_slider" min="100" max="10500" step="10" value="4500" oninput="syncSliderToInput('avgPayout')">
+        <input type="number" id="avgPayout" step="1" value="" placeholder="例: 4500" oninput="syncInputToSlider('avgPayout')">
+      </div>
     </div>
     
     <button class="action-btn" onclick="calculateAndSimulate()">期待値を計算＆シミュレート</button>
@@ -252,7 +301,6 @@
       <p><span>1回転あたり:</span> <span id="resSpin" style="font-weight: bold;"></span></p>
       <hr>
       <p><span>トータル理論期待値:</span> <span id="resTotal" class="total"></span></p>
-
       <div style="margin-top: 15px; background: #fff; padding: 15px; border-radius: 4px; border: 1px solid #3498db;">
         <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #2980b9;">この期待値をカレンダーに記録</div>
         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
@@ -277,19 +325,22 @@
   <div id="tab3" class="tab-content">
     <h2>収支カレンダー</h2>
     
-    <div class="form-group">
-      <label>表示月</label>
-      <input type="month" id="monthSelector" onchange="renderCalendar()">
+    <div class="calendar-header">
+      <button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(-1)">◀ 前月</button>
+      <div id="calendarMonthLabel" style="font-weight:bold; font-size:16px; color:#2c3e50;"></div>
+      <button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(1)">次月 ▶</button>
     </div>
     
-    <div class="result summary-box">
+    <div id="visualCalendar" class="calendar-grid" style="margin-bottom: 15px;"></div>
+    
+    <div class="result summary-box" style="margin-top: 0;">
       <p><span>月間期待値:</span> <span id="monthlyEV" style="font-weight: bold; color: #27ae60;"></span></p>
       <p><span>月間実収支:</span> <span id="monthlyActual" style="font-weight: bold; color: #2980b9;"></span></p>
       <hr>
-      <p><span>収支のブレ (実収支 - 期待値):</span> <span id="monthlyDiff" style="font-weight: bold;"></span></p>
+      <p><span>収支のブレ:</span> <span id="monthlyDiff" style="font-weight: bold;"></span></p>
     </div>
 
-    <div class="section-title purple">実収支の入力</div>
+    <div class="section-title purple">選択した日付に実収支を入力</div>
     <div style="display: flex; gap: 10px; margin-bottom: 12px;">
       <div style="flex: 1;">
         <label>日付</label>
@@ -302,7 +353,7 @@
     </div>
     <button class="action-btn" style="background-color: #9b59b6; margin-top: 0;" onclick="saveActualBalance()">実収支を保存</button>
 
-    <div class="section-title purple">日別データ</div>
+    <div class="section-title purple">月間の日別データ詳細</div>
     <div id="calendarList"></div>
   </div>
 </div>
@@ -332,6 +383,10 @@ let currentUser = null;
 let lastCalculatedEV = 0; 
 let historyData = [];
 
+// カレンダー用の状態変数
+let currentCalYear = new Date().getFullYear();
+let currentCalMonth = new Date().getMonth();
+
 function formatCurrency(num) {
   return (num > 0 ? "+" : "") + Math.round(num).toLocaleString() + " 円";
 }
@@ -339,16 +394,17 @@ function formatCurrency(num) {
 // --- 初期化処理 ---
 window.onload = function() {
   const today = new Date();
+  currentCalYear = today.getFullYear();
+  currentCalMonth = today.getMonth();
+  
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
   const todayStr = `${yyyy}-${mm}-${dd}`;
-  const monthStr = `${yyyy}-${mm}`;
   
   document.getElementById('recordDate').value = todayStr;
   document.getElementById('evSaveDate').value = todayStr;
   document.getElementById('actualDate').value = todayStr;
-  document.getElementById('monthSelector').value = monthStr;
   
   // 認証状態の監視
   auth.onAuthStateChanged(user => {
@@ -365,7 +421,6 @@ window.onload = function() {
       document.getElementById('login-btn').style.display = 'inline-block';
       document.getElementById('logout-btn').style.display = 'none';
     }
-    // ユーザー状態が変わったらデータを再取得して表示
     renderSavedRecords();
     renderCalendar();
   });
@@ -378,13 +433,10 @@ function login() {
   const provider = new firebase.auth.GoogleAuthProvider();
   auth.signInWithPopup(provider).catch(error => {
     console.error("ログインエラー:", error);
-    alert("ログインに失敗しました。設定を確認してください。\n※Firebase設定が未完了の場合はローカル環境で動作します。");
+    alert("ログインに失敗しました。設定を確認してください。");
   });
 }
-
-function logout() {
-  auth.signOut();
-}
+function logout() { auth.signOut(); }
 
 // --- タブ切り替え ---
 function switchTab(tabId) {
@@ -392,22 +444,22 @@ function switchTab(tabId) {
   document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
   document.getElementById(tabId).classList.add('active');
   document.getElementById('btn-' + tabId).classList.add('active');
+  if(tabId === 'tab3') renderCalendar();
 }
 
 // ==========================================
-// データ保存・取得ロジック（クラウド or ローカル）
+// データ保存・取得ロジック
 // ==========================================
 async function getRecordsData() {
   if (currentUser) {
     try {
       const doc = await db.collection('users').doc(currentUser.uid).get();
       return doc.exists ? (doc.data().records || []) : [];
-    } catch(e) { console.error(e); return []; }
+    } catch(e) { return []; }
   } else {
     return JSON.parse(localStorage.getItem('pachinko_records') || "[]");
   }
 }
-
 async function saveRecordsData(records) {
   if (currentUser) {
     await db.collection('users').doc(currentUser.uid).set({ records: records }, { merge: true });
@@ -415,18 +467,16 @@ async function saveRecordsData(records) {
     localStorage.setItem('pachinko_records', JSON.stringify(records));
   }
 }
-
 async function getCalendarData() {
   if (currentUser) {
     try {
       const doc = await db.collection('users').doc(currentUser.uid).get();
       return doc.exists ? (doc.data().calendar || {}) : {};
-    } catch(e) { console.error(e); return {}; }
+    } catch(e) { return {}; }
   } else {
     return JSON.parse(localStorage.getItem('pachinko_calendar') || "{}");
   }
 }
-
 async function saveCalendarData(calendar) {
   if (currentUser) {
     await db.collection('users').doc(currentUser.uid).set({ calendar: calendar }, { merge: true });
@@ -442,78 +492,51 @@ function addMeasurement(balls) {
   const spinInput = document.getElementById('measuredSpin');
   const spins = parseFloat(spinInput.value);
   if (isNaN(spins) || spins < 0) return alert("正しい回転数を入力してください。");
-  
   historyData.push({ balls: balls, spins: spins });
   spinInput.value = ''; spinInput.focus();
   updateMeasurementDisplay();
 }
-
 function deleteHistoryItem(index) {
   historyData.splice(index, 1);
   updateMeasurementDisplay();
 }
-
 function updateMeasurementDisplay() {
-  if (historyData.length === 0) { 
-    document.getElementById('measurementResult').style.display = 'none'; 
-    return; 
-  }
-  
+  if (historyData.length === 0) { document.getElementById('measurementResult').style.display = 'none'; return; }
   let totalBalls = 0, totalSpins = 0;
   let historyHtml = '<strong>入力履歴:</strong><br>';
-  
   for (let i = historyData.length - 1; i >= 0; i--) {
-    totalBalls += historyData[i].balls; 
-    totalSpins += historyData[i].spins;
-    
-    historyHtml += `
-      <div class="history-item">
-        <span>${i + 1}回目: ${historyData[i].balls}玉で <strong>${historyData[i].spins}回</strong></span>
-        <button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button>
-      </div>`;
+    totalBalls += historyData[i].balls; totalSpins += historyData[i].spins;
+    historyHtml += `<div class="history-item"><span>${i + 1}回目: ${historyData[i].balls}玉で <strong>${historyData[i].spins}回</strong></span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
   }
-  
   const avg250 = (totalSpins / totalBalls) * 250;
   document.getElementById('avg250').innerText = avg250.toFixed(2) + " 回";
   document.getElementById('totalMeasuredSpins').innerText = totalSpins + " 回";
   document.getElementById('totalMeasuredBalls').innerText = totalBalls + " 玉";
   document.getElementById('historyList').innerHTML = historyHtml;
-  
   document.getElementById('measurementResult').style.display = 'block';
 }
-
 function resetMeasurement() {
-  if(confirm("現在の入力データをすべてクリアしますか？")) { 
-    historyData = []; 
-    updateMeasurementDisplay(); 
-  }
+  if(confirm("現在の入力データをすべてクリアしますか？")) { historyData = []; updateMeasurementDisplay(); }
 }
-
 async function saveCurrentRecord() {
   const date = document.getElementById('recordDate').value;
   const machine = document.getElementById('machineName').value.trim();
   if (!date || !machine) return alert("日付と機種名を入力してください。");
   if (historyData.length === 0) return alert("回転数の履歴がありません。");
-  
   let totalBalls = 0, totalSpins = 0;
   historyData.forEach(d => { totalBalls += d.balls; totalSpins += d.spins; });
   const avg250 = (totalSpins / totalBalls) * 250;
-
   const records = await getRecordsData();
   records.push({ id: Date.now(), date: date, machine: machine, totalBalls: totalBalls, totalSpins: totalSpins, avg250: avg250, history: [...historyData] });
-  
   await saveRecordsData(records);
-
   alert(`${machine} のデータを保存しました。`);
   historyData = []; document.getElementById('machineName').value = ''; 
   updateMeasurementDisplay(); renderSavedRecords();
 }
-
 async function renderSavedRecords() {
   const records = await getRecordsData();
   const container = document.getElementById('savedRecordsContainer');
   if (records.length === 0) return container.innerHTML = '<p style="font-size:13px; color:#777;">保存されたデータはありません。</p>';
-  
   records.sort((a, b) => new Date(b.date) - new Date(a.date));
   let html = '';
   records.forEach(r => {
@@ -535,20 +558,18 @@ async function renderSavedRecords() {
   });
   container.innerHTML = html;
 }
-
 function useRecordForCalc(avg, machineName) {
   const spinInput = document.getElementById('spinRate');
+  const spinSlider = document.getElementById('spinRate_slider');
+  
   spinInput.value = avg.toFixed(2);
+  spinSlider.value = avg.toFixed(2); // スライダーも同期
   spinInput.classList.add('auto-filled');
   
   document.getElementById('evSaveMachine').value = machineName; 
   switchTab('tab2');
 }
-
-function removeAutoFillHighlight() {
-  document.getElementById('spinRate').classList.remove('auto-filled');
-}
-
+function removeAutoFillHighlight() { document.getElementById('spinRate').classList.remove('auto-filled'); }
 async function deleteRecord(id) {
   if(confirm("このデータを削除しますか？")) {
     let records = await getRecordsData();
@@ -558,40 +579,45 @@ async function deleteRecord(id) {
 }
 
 // ==========================================
-// ツール②：期待値＆分散シミュレーション
+// ツール②：期待値＆分散シミュレーション（スライダー連動）
 // ==========================================
+function syncSliderToInput(id) {
+  const slider = document.getElementById(id + '_slider');
+  const input = document.getElementById(id);
+  input.value = slider.value;
+  if(id === 'spinRate') removeAutoFillHighlight();
+}
+
+function syncInputToSlider(id) {
+  const slider = document.getElementById(id + '_slider');
+  const input = document.getElementById(id);
+  if(input.value !== "") {
+    slider.value = input.value;
+  }
+  if(id === 'spinRate') removeAutoFillHighlight();
+}
+
 function getNormalRandom(mean, stdDev) {
   let u1 = 1 - Math.random(); let u2 = 1 - Math.random(); 
   return (Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2)) * stdDev + mean;
 }
 
 function calculateAndSimulate() {
-  // 未入力項目のチェックロジック
   const inputs = [
-    { id: 'border', name: '等価ボーダー' },
-    { id: 'spinRate', name: '現在の平均回転数' },
-    { id: 'exchangeRate', name: '交換率' },
-    { id: 'ballRatio', name: '持ち球比率' },
-    { id: 'totalSpins', name: '総回転数' },
-    { id: 'probDenom', name: '大当たり確率' },
+    { id: 'border', name: '等価ボーダー' }, { id: 'spinRate', name: '現在の平均回転数' },
+    { id: 'exchangeRate', name: '交換率' }, { id: 'ballRatio', name: '持ち球比率' },
+    { id: 'totalSpins', name: '総回転数' }, { id: 'probDenom', name: '大当たり確率' },
     { id: 'avgPayout', name: '初当たり平均獲得出玉' }
   ];
   
   let missing = [];
-  inputs.forEach(item => {
-    if (!document.getElementById(item.id).value) missing.push(item.name);
-  });
-
-  if (missing.length > 0) {
-    alert("以下の項目が未入力です：\n・" + missing.join("\n・"));
-    return;
-  }
+  inputs.forEach(item => { if (!document.getElementById(item.id).value) missing.push(item.name); });
+  if (missing.length > 0) return alert("以下の項目が未入力です：\n・" + missing.join("\n・"));
 
   const B = parseFloat(document.getElementById('border').value);
   const R = parseFloat(document.getElementById('spinRate').value);
   const E = parseFloat(document.getElementById('exchangeRate').value);
   const M = parseFloat(document.getElementById('ballRatio').value) / 100;
-  
   const totalSpins = parseFloat(document.getElementById('totalSpins').value);
   const probDenom = parseFloat(document.getElementById('probDenom').value);
   const avgPayout = parseFloat(document.getElementById('avgPayout').value);
@@ -603,20 +629,18 @@ function calculateAndSimulate() {
   lastCalculatedEV = evSpin * totalSpins; 
 
   document.getElementById('resSpin').innerText = evSpin.toFixed(2) + " 円";
-  document.getElementById('resTotal').innerText = formatCurrency(lastCalculatedEV);
+  document.getElementById('resTotal').innerText = formatCurrency(Math.ceil(lastCalculatedEV));
   document.getElementById('resultArea').style.display = 'block';
 
   const hitProb = 1 / probDenom;
   const meanHits = totalSpins * hitProb;
   const stdDevHits = Math.sqrt(totalSpins * hitProb * (1 - hitProb));
   let results = [];
-  
   for (let i = 0; i < 10000; i++) {
     let simulatedHits = Math.max(0, getNormalRandom(meanHits, stdDevHits));
     results.push((simulatedHits * avgPayout * E) - (actualCost * totalSpins));
   }
   results.sort((a, b) => a - b);
-  
   document.getElementById('simBot5').innerText = formatCurrency(results[500]);
   document.getElementById('simBot25').innerText = formatCurrency(results[2500]);
   document.getElementById('simMedian').innerText = formatCurrency(results[5000]);
@@ -628,92 +652,140 @@ function calculateAndSimulate() {
 async function saveExpectedValueToCalendar() {
   const date = document.getElementById('evSaveDate').value;
   const machine = document.getElementById('evSaveMachine').value || "機種不明";
-  
   if(!date) return alert("日付を入力してください");
   if(lastCalculatedEV === 0) return alert("期待値が計算されていません。先に「期待値を計算」ボタンを押してください。");
-
   const cal = await getCalendarData();
   if(!cal[date]) cal[date] = { ev: 0, actual: 0, details: [] };
-  
   cal[date].ev += lastCalculatedEV; 
-  cal[date].details.push(`${machine} (期待値: ${formatCurrency(lastCalculatedEV)})`);
-  
+  cal[date].details.push(`${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))})`);
   await saveCalendarData(cal);
   alert(`${date} のカレンダーに期待値を保存しました。`);
-  
   renderCalendar();
 }
 
 // ==========================================
-// ツール③：収支カレンダー
+// ツール③：収支カレンダー (視覚化対応・期待値切り上げ)
 // ==========================================
+function changeMonth(diff) {
+  currentCalMonth += diff;
+  if(currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; }
+  if(currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; }
+  renderCalendar();
+}
+
+function selectDate(dateStr) {
+  document.getElementById('actualDate').value = dateStr;
+  renderCalendar(); 
+  document.getElementById('actualAmount').focus(); 
+}
+
 async function saveActualBalance() {
   const date = document.getElementById('actualDate').value;
   const amount = parseFloat(document.getElementById('actualAmount').value);
-  
   if(!date || isNaN(amount)) return alert("日付と収支を正しく入力してください");
-  
   const cal = await getCalendarData();
   if(!cal[date]) cal[date] = { ev: 0, actual: 0, details: [] };
-  
   cal[date].actual = amount; 
   await saveCalendarData(cal);
-  
   alert(`${date} の実収支を保存しました`);
   document.getElementById('actualAmount').value = '';
   renderCalendar();
 }
 
 async function renderCalendar() {
-  const monthStr = document.getElementById('monthSelector').value; 
-  if(!monthStr) return;
-  
   const cal = await getCalendarData();
+  const year = currentCalYear;
+  const month = currentCalMonth;
+  
+  document.getElementById('calendarMonthLabel').innerText = `${year}年 ${month + 1}月`;
+  
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  
+  let html = `
+    <div class="calendar-day-header" style="color:#e74c3c;">日</div>
+    <div class="calendar-day-header">月</div>
+    <div class="calendar-day-header">火</div>
+    <div class="calendar-day-header">水</div>
+    <div class="calendar-day-header">木</div>
+    <div class="calendar-day-header">金</div>
+    <div class="calendar-day-header" style="color:#2980b9;">土</div>
+  `;
+              
+  for(let i=0; i<firstDay; i++){ html += `<div class="calendar-cell other-month"></div>`; }
+  
   let monthlyEV = 0;
   let monthlyActual = 0;
-  let html = '';
+  const monthStr = `${year}-${String(month+1).padStart(2,'0')}`;
+  const selectedDateVal = document.getElementById('actualDate').value;
 
-  const dates = Object.keys(cal).filter(d => d.startsWith(monthStr)).sort((a,b) => b.localeCompare(a));
-  
-  dates.forEach(d => {
-    const dayData = cal[d];
-    monthlyEV += dayData.ev;
-    monthlyActual += dayData.actual;
+  for(let day=1; day<=daysInMonth; day++){
+    const dateStr = `${monthStr}-${String(day).padStart(2,'0')}`;
+    const dayData = cal[dateStr];
     
-    const diff = dayData.actual - dayData.ev;
-    const diffColor = diff > 0 ? 'plus' : (diff < 0 ? 'minus' : '');
-    
-    html += `
-    <div class="saved-item" style="border-left: 4px solid #9b59b6;">
-      <div style="font-weight:bold; color:#2c3e50;">${d}</div>
-      <div style="font-size: 13px; margin: 6px 0; display: flex; justify-content: space-between;">
-        <span>期待値: <span style="color:#27ae60; font-weight:bold;">${formatCurrency(dayData.ev)}</span></span>
-        <span>実収支: <span style="color:#2980b9; font-weight:bold;">${formatCurrency(dayData.actual)}</span></span>
-      </div>
-      <div style="font-size: 13px; margin-bottom: 6px;">
-        ブレ: <span class="${diffColor}">${formatCurrency(diff)}</span>
-      </div>
-      <div style="font-size: 12px; color: #777; background: #f9f9f9; padding: 4px; border-radius: 4px;">
-        ${dayData.details.length > 0 ? dayData.details.join('<br>') : '稼働記録なし'}
-      </div>
-      <button class="btn-small" style="background:#e74c3c; margin-top:8px;" onclick="deleteCalendarDay('${d}')">この日の記録を削除</button>
-    </div>
-    `;
-  });
+    const currentDayOfWeek = (firstDay + day - 1) % 7;
+    let dateColor = '#333';
+    if(currentDayOfWeek === 0) dateColor = '#e74c3c';
+    if(currentDayOfWeek === 6) dateColor = '#2980b9';
 
-  if(dates.length === 0) {
-    html = '<p style="font-size:13px; color:#777;">この月のデータはありません。</p>';
+    let cellContent = `<div class="cal-date" style="color:${dateColor};">${day}</div>`;
+    
+    if(dayData) {
+      const ceiledEV = Math.ceil(dayData.ev || 0); // 期待値を1円未満切り上げ
+      const actualVal = dayData.actual || 0;
+      
+      monthlyEV += ceiledEV;
+      monthlyActual += actualVal;
+      
+      if(dayData.ev) cellContent += `<div class="cal-val ev">期:${ceiledEV.toLocaleString()}</div>`;
+      if(dayData.actual) {
+        const aClass = actualVal >= 0 ? 'plus' : 'minus';
+        cellContent += `<div class="cal-val ${aClass}">実:${actualVal.toLocaleString()}</div>`;
+      }
+    }
+    
+    const activeClass = (selectedDateVal === dateStr) ? 'active-day' : '';
+    html += `<div class="calendar-cell ${activeClass}" onclick="selectDate('${dateStr}')">${cellContent}</div>`;
   }
+  
+  const totalCells = firstDay + daysInMonth;
+  const remainingCells = (7 - (totalCells % 7)) % 7;
+  for(let i=0; i<remainingCells; i++) { html += `<div class="calendar-cell other-month"></div>`; }
+  
+  document.getElementById('visualCalendar').innerHTML = html;
 
   document.getElementById('monthlyEV').innerText = formatCurrency(monthlyEV);
   document.getElementById('monthlyActual').innerText = formatCurrency(monthlyActual);
-  
   const mDiff = monthlyActual - monthlyEV;
   const mDiffEl = document.getElementById('monthlyDiff');
   mDiffEl.innerText = formatCurrency(mDiff);
   mDiffEl.className = mDiff > 0 ? 'plus' : (mDiff < 0 ? 'minus' : '');
 
-  document.getElementById('calendarList').innerHTML = html;
+  let listHtml = '';
+  const dates = Object.keys(cal).filter(d => d.startsWith(monthStr)).sort((a,b) => b.localeCompare(a));
+  dates.forEach(d => {
+    const dayData = cal[d];
+    const ceiledEV = Math.ceil(dayData.ev || 0); 
+    const actualVal = dayData.actual || 0;
+    const diff = actualVal - ceiledEV; 
+    const diffColor = diff > 0 ? 'plus' : (diff < 0 ? 'minus' : '');
+    
+    listHtml += `
+    <div class="saved-item" style="border-left: 4px solid #9b59b6;">
+      <div style="font-weight:bold; color:#2c3e50;">${d}</div>
+      <div style="font-size: 13px; margin: 6px 0; display: flex; justify-content: space-between;">
+        <span>期待値: <span style="color:#27ae60; font-weight:bold;">${formatCurrency(ceiledEV)}</span></span>
+        <span>実収支: <span style="color:#2980b9; font-weight:bold;">${formatCurrency(actualVal)}</span></span>
+      </div>
+      <div style="font-size: 13px; margin-bottom: 6px;">ブレ: <span class="${diffColor}">${formatCurrency(diff)}</span></div>
+      <div style="font-size: 12px; color: #777; background: #f9f9f9; padding: 4px; border-radius: 4px;">
+        ${dayData.details.length > 0 ? dayData.details.join('<br>') : '稼働記録なし'}
+      </div>
+      <button class="btn-small" style="background:#e74c3c; margin-top:8px;" onclick="deleteCalendarDay('${d}')">この日の記録を削除</button>
+    </div>`;
+  });
+  if(dates.length === 0) listHtml = '<p style="font-size:13px; color:#777;">この月のデータはありません。</p>';
+  document.getElementById('calendarList').innerHTML = listHtml;
 }
 
 async function deleteCalendarDay(date) {
