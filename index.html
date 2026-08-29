@@ -65,6 +65,9 @@
     border-radius: 4px; box-sizing: border-box; font-size: 16px;
     transition: background-color 0.3s;
   }
+  /* プレースホルダーの色を少し濃くする */
+  input::placeholder { color: #aaa; }
+
   /* 自動入力された欄のハイライト */
   .auto-filled { background-color: #fff3cd !important; border-color: #ffeeba; }
   
@@ -207,22 +210,41 @@
   <!-- ツール2：期待値＆分散シミュレーター -->
   <div id="tab2" class="tab-content">
     <h2>期待値計算＆シミュレーション</h2>
-    <div class="section-title">基本条件</div>
-    <div class="form-group"><label>等価ボーダー (回/千円)</label><input type="number" id="border" step="0.1" value="18.0"></div>
     
-    <!-- ★自動入力時に色を変える欄 -->
+    <!-- ★初期値を空白にし、placeholderに入力例を設定 -->
+    <div class="section-title">基本条件</div>
     <div class="form-group">
-      <label>現在の平均回転数 (回/千円)</label>
-      <input type="number" id="spinRate" step="0.1" value="20.0" oninput="removeAutoFillHighlight()">
+      <label>等価ボーダー (回/千円)</label>
+      <input type="number" id="border" step="0.1" value="" placeholder="例: 18.0">
     </div>
     
-    <div class="form-group"><label>交換率 (円/玉) ※等価4.0、28玉3.57</label><input type="number" id="exchangeRate" step="0.01" value="3.57"></div>
-    <div class="form-group"><label>持ち球比率 (%)</label><input type="number" id="ballRatio" step="1" value="60"></div>
-    <div class="form-group"><label>総回転数 (回) ※トータル期待値・シミュレーション用</label><input type="number" id="totalSpins" step="100" value="2000"></div>
+    <div class="form-group">
+      <label>現在の平均回転数 (回/千円)</label>
+      <input type="number" id="spinRate" step="0.1" value="" placeholder="例: 20.0" oninput="removeAutoFillHighlight()">
+    </div>
+    
+    <div class="form-group">
+      <label>交換率 (円/玉) ※等価4.0、28玉3.57</label>
+      <input type="number" id="exchangeRate" step="0.01" value="" placeholder="例: 3.57">
+    </div>
+    <div class="form-group">
+      <label>持ち球比率 (%)</label>
+      <input type="number" id="ballRatio" step="1" value="" placeholder="例: 60">
+    </div>
+    <div class="form-group">
+      <label>総回転数 (回) ※トータル期待値・シミュレーション用</label>
+      <input type="number" id="totalSpins" step="10" value="" placeholder="例: 2000">
+    </div>
 
     <div class="section-title">機種スペック（ブレの計算用）</div>
-    <div class="form-group"><label>大当たり確率 (1/〇〇)</label><input type="number" id="probDenom" step="0.1" value="319.6"></div>
-    <div class="form-group"><label>初当たり平均獲得出玉 (玉)</label><input type="number" id="avgPayout" step="10" value="4500"></div>
+    <div class="form-group">
+      <label>大当たり確率 (1/〇〇)</label>
+      <input type="number" id="probDenom" step="0.1" value="" placeholder="例: 319.6">
+    </div>
+    <div class="form-group">
+      <label>初当たり平均獲得出玉 (玉)</label>
+      <input type="number" id="avgPayout" step="1" value="" placeholder="例: 4500">
+    </div>
     
     <button class="action-btn" onclick="calculateAndSimulate()">期待値を計算＆シミュレート</button>
     
@@ -290,12 +312,12 @@
 // Firebase設定（※ご自身のプロジェクト設定に書き換えてください）
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 // Firebaseの初期化
@@ -413,7 +435,6 @@ async function saveCalendarData(calendar) {
   }
 }
 
-
 // ==========================================
 // ツール①：回転率計測ツール
 // ==========================================
@@ -515,17 +536,15 @@ async function renderSavedRecords() {
   container.innerHTML = html;
 }
 
-// ★自動入力時に色を変えるロジック
 function useRecordForCalc(avg, machineName) {
   const spinInput = document.getElementById('spinRate');
   spinInput.value = avg.toFixed(2);
-  spinInput.classList.add('auto-filled'); // 黄色くハイライト
+  spinInput.classList.add('auto-filled');
   
   document.getElementById('evSaveMachine').value = machineName; 
   switchTab('tab2');
 }
 
-// ★手動で入力されたら色を元に戻す
 function removeAutoFillHighlight() {
   document.getElementById('spinRate').classList.remove('auto-filled');
 }
@@ -547,6 +566,27 @@ function getNormalRandom(mean, stdDev) {
 }
 
 function calculateAndSimulate() {
+  // 未入力項目のチェックロジック
+  const inputs = [
+    { id: 'border', name: '等価ボーダー' },
+    { id: 'spinRate', name: '現在の平均回転数' },
+    { id: 'exchangeRate', name: '交換率' },
+    { id: 'ballRatio', name: '持ち球比率' },
+    { id: 'totalSpins', name: '総回転数' },
+    { id: 'probDenom', name: '大当たり確率' },
+    { id: 'avgPayout', name: '初当たり平均獲得出玉' }
+  ];
+  
+  let missing = [];
+  inputs.forEach(item => {
+    if (!document.getElementById(item.id).value) missing.push(item.name);
+  });
+
+  if (missing.length > 0) {
+    alert("以下の項目が未入力です：\n・" + missing.join("\n・"));
+    return;
+  }
+
   const B = parseFloat(document.getElementById('border').value);
   const R = parseFloat(document.getElementById('spinRate').value);
   const E = parseFloat(document.getElementById('exchangeRate').value);
@@ -555,8 +595,6 @@ function calculateAndSimulate() {
   const totalSpins = parseFloat(document.getElementById('totalSpins').value);
   const probDenom = parseFloat(document.getElementById('probDenom').value);
   const avgPayout = parseFloat(document.getElementById('avgPayout').value);
-
-  if (!B || !R || !E || isNaN(M) || !totalSpins || !probDenom || !avgPayout) return alert("数値をすべて正しく入力してください。");
 
   const expectedReturn = (250 * E) / B;
   const actualCost = ((250 * E * M) / R) + ((1000 * (1 - M)) / R);
