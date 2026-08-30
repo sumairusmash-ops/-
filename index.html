@@ -784,12 +784,13 @@ function login() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
   const provider = new firebase.auth.GoogleAuthProvider();
   
-  // ★必ずアカウント選択画面を表示させる設定
+  // アカウント選択画面を強制的に出す設定
   provider.setCustomParameters({
     prompt: 'select_account'
   });
   
-  auth.signInWithRedirect(provider).catch(error => {
+  // リダイレクトではなく、安定している「ポップアップ方式」に戻す
+  auth.signInWithPopup(provider).catch(error => {
     console.error("ログインエラー:", error);
     alert("ログインに失敗しました。");
   });
