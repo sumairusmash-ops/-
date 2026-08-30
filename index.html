@@ -522,12 +522,12 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -739,6 +739,15 @@ window.onload = function() {
   updateModeIndicator();
 
   if (auth) {
+    // 【追記】リダイレクトから戻ってきた時の結果を確実に受け取る処理
+    auth.getRedirectResult().then(result => {
+      if (result && result.user) {
+        console.log("ログイン完了");
+      }
+    }).catch(error => {
+      console.error("ログイン受け取りエラー:", error);
+    });
+
     auth.onAuthStateChanged(user => {
       if (user) {
         currentUser = user;
@@ -772,7 +781,6 @@ window.onload = function() {
     });
   }
 };
-
 function login() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
   const provider = new firebase.auth.GoogleAuthProvider();
