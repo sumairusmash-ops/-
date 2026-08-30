@@ -21,9 +21,26 @@
   }
   
   #auth-container {
-    background: #fff; padding: 15px; margin-bottom: 15px;
+    background: #fff; padding: 15px; margin-bottom: 5px;
     border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     display: flex; justify-content: space-between; align-items: center;
+  }
+  
+  /* モード表示バッジ */
+  #mode-indicator-container {
+    margin-bottom: 15px; text-align: center;
+  }
+  .mode-badge {
+    display: inline-block; padding: 6px 12px; border-radius: 20px;
+    font-size: 13px; font-weight: bold; color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .mode-personal { background-color: #27ae60; }
+  .mode-group { background-color: #9b59b6; animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(155, 89, 182, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0); }
   }
 
   .btn-auth {
@@ -33,16 +50,16 @@
   .btn-auth.logout { background-color: #7f8c8d; }
 
   /* タブのスタイル */
-  .tabs { display: flex; flex-wrap: wrap; margin-bottom: 0; }
+  .tabs { display: flex; margin-bottom: 0; }
   .tab-button {
-    flex: 1 1 30%; padding: 10px 2px; text-align: center;
+    flex: 1; padding: 12px 2px; text-align: center;
     background-color: #ddd; color: #7f8c8d; border: none;
     cursor: pointer; font-weight: bold; font-size: 12px;
     border-radius: 8px 8px 0 0; transition: background-color 0.2s;
-    margin-right: 1px; margin-bottom: 1px;
-    display: none; /* 初期状態ではタブ1~5は非表示 */
+    margin-right: 1px;
+    display: none; /* 初期状態ではタブ1~3は非表示 */
   }
-  #btn-tab6 { display: block; flex: 1 1 100%; } /* グループタブは常に表示 */
+  #btn-tab4 { display: block; } /* データ・設定タブは常に表示 */
   .tab-button.active { background-color: #3498db; color: white; }
   .tab-button:not(.active):hover { background-color: #ccc; }
 
@@ -184,6 +201,11 @@
   <button id="logout-btn" class="btn-auth logout" onclick="logout()" style="display:none;">ログアウト</button>
 </div>
 
+<!-- モード表示エリア -->
+<div id="mode-indicator-container">
+  <div id="mode-indicator" class="mode-badge mode-personal">👤 個人モードで動作中</div>
+</div>
+
 <!-- 辞書用サジェストリスト -->
 <datalist id="machineList"></datalist>
 
@@ -191,9 +213,7 @@
   <button id="btn-tab1" class="tab-button" onclick="switchTab('tab1')">① 計測</button>
   <button id="btn-tab2" class="tab-button" onclick="switchTab('tab2')">② 期待値</button>
   <button id="btn-tab3" class="tab-button" onclick="switchTab('tab3')">③ 収支</button>
-  <button id="btn-tab4" class="tab-button" onclick="switchTab('tab4')">④ 辞書</button>
-  <button id="btn-tab5" class="tab-button" onclick="switchTab('tab5')">⑤ 履歴</button>
-  <button id="btn-tab6" class="tab-button active" onclick="switchTab('tab6')">⑥ グループ</button>
+  <button id="btn-tab4" class="tab-button active" onclick="switchTab('tab4')">④ データ・設定</button>
 </div>
 
 <div class="card">
@@ -316,7 +336,7 @@
     </div>
     
     <button class="action-btn" onclick="calculateAndSimulate()">期待値を計算＆シミュレート</button>
-    <p style="font-size:11px; text-align:center; color:#7f8c8d; margin-top:5px;">※管理者のみ、計算時に入力したスペックが「④ 辞書」に自動上書き保存されます。</p>
+    <p style="font-size:11px; text-align:center; color:#7f8c8d; margin-top:5px;">※管理者のみ、計算時に入力したスペックが自動的に「辞書」に登録・上書きされます。</p>
 
     <div class="result" id="resultArea" style="display: none;">
       <p><span>1回転あたり:</span> <span id="resSpin" style="font-weight: bold;"></span></p>
@@ -378,28 +398,10 @@
     <input type="hidden" id="actualDate">
   </div>
 
-  <!-- ツール4：辞書管理 -->
-  <div id="tab4" class="tab-content">
-    <h2>機種辞書管理</h2>
-    <p style="font-size:13px; color:#555; margin-bottom: 15px; line-height:1.5;">ツール②で期待値を計算した際、入力した「ボーダー・確率・平均出玉」が機種名に紐付いてここに自動保存されます。<br>※更新・削除はグループの管理者の身可能です。</p>
+  <!-- ツール4：データ・設定（グループ、履歴、辞書） -->
+  <div id="tab4" class="tab-content active">
     
-    <div id="dictContainer"></div>
-  </div>
-
-  <!-- ツール5：履歴 -->
-  <div id="tab5" class="tab-content">
-    <h2>過去1年間の履歴</h2>
-    <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-      <div style="flex: 1;">
-        <label>機種名で絞り込み</label>
-        <input type="text" id="historyMachineFilter" list="machineList" placeholder="例: エヴァ15" oninput="renderHistoryTab()">
-      </div>
-    </div>
-    <div id="historyRecordsContainer"></div>
-  </div>
-
-  <!-- ツール6：グループ管理 -->
-  <div id="tab6" class="tab-content active">
+    <!-- グループ管理（ノリ打ち） -->
     <h2>グループ管理（ノリ打ち）</h2>
     <p style="font-size:13px; color:#555; margin-bottom: 15px; line-height:1.5;">本ツールは必ずグループを作成または参加して使用します。個人の秘密データ機能は削除されました。</p>
 
@@ -427,8 +429,35 @@
       
       <p style="font-size:12px; color:#555; margin-bottom:20px;">このIDを友人に教えることで、同じデータを共有できます。</p>
       
+      <div style="background: #fff; border: 1px solid #e74c3c; border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;">
+        <p style="font-size:14px; font-weight:bold; color:#e74c3c; margin-top:0; margin-bottom:8px;">⚠️ 個人データをグループに統合</p>
+        <p style="font-size:12px; color:#555; margin-bottom:10px; line-height:1.4;">あなたがこれまで個人モードで入力した過去の「履歴」「カレンダー」「辞書」のデータをすべてグループの共有スペースに合算・移行します。</p>
+        <button class="btn-small" style="width:100%; background-color:#e74c3c; padding:10px;" onclick="mergePersonalDataToGroup()">個人の過去データをすべて統合する</button>
+      </div>
+
       <button class="btn-reset" onclick="leaveGroup()">グループから退出する</button>
     </div>
+
+    <!-- 履歴・辞書表示エリア（グループ参加時のみ表示） -->
+    <div id="history-and-dict-section" style="display: none;">
+      
+      <!-- 履歴 -->
+      <h2 style="margin-top: 30px;">過去1年間の履歴</h2>
+      <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+        <div style="flex: 1;">
+          <label>機種名で絞り込み</label>
+          <input type="text" id="historyMachineFilter" list="machineList" placeholder="例: エヴァ15" oninput="renderHistoryTab()">
+        </div>
+      </div>
+      <div id="historyRecordsContainer"></div>
+
+      <!-- 辞書管理 -->
+      <h2 style="margin-top: 30px;">機種辞書管理</h2>
+      <p style="font-size:13px; color:#555; margin-bottom: 15px; line-height:1.5;">ツール②で期待値を計算した際、入力した「ボーダー・確率・平均出玉」が機種名に紐付いてここに自動保存されます。<br>※更新・削除はグループの管理者のみ可能です。</p>
+      <div id="dictContainer"></div>
+      
+    </div>
+
   </div>
 </div>
 
@@ -437,12 +466,12 @@
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -454,7 +483,7 @@ const db = firebase.apps.length ? firebase.firestore() : null;
 
 let currentUser = null;
 let currentGroupId = localStorage.getItem('pachinko_groupId') || null;
-let isAdmin = false; // ★権限管理フラグ
+let isAdmin = false; // 権限管理フラグ
 
 let lastCalculatedEV = 0; 
 let historyData = [];
@@ -476,26 +505,25 @@ function updateModeIndicator() {
   const t1 = document.getElementById('btn-tab1');
   const t2 = document.getElementById('btn-tab2');
   const t3 = document.getElementById('btn-tab3');
-  const t4 = document.getElementById('btn-tab4');
-  const t5 = document.getElementById('btn-tab5');
+  const hdSection = document.getElementById('history-and-dict-section');
 
   if (currentGroupId) {
-    // グループに参加している場合のみタブ1~5を表示
-    t1.style.display = 'block'; t2.style.display = 'block';
-    t3.style.display = 'block'; t4.style.display = 'block'; t5.style.display = 'block';
+    // グループに参加している場合のみタブ1~3を表示
+    t1.style.display = 'block'; t2.style.display = 'block'; t3.style.display = 'block';
     
     document.getElementById('group-none').style.display = 'none';
     document.getElementById('group-active').style.display = 'block';
     document.getElementById('dispGroupId').innerText = currentGroupId;
     document.getElementById('dispUserRole').innerText = isAdmin ? "👑 あなたの権限: 管理者 (更新・削除可能)" : "👤 あなたの権限: メンバー (追加・閲覧のみ)";
+    hdSection.style.display = 'block';
   } else {
-    // グループ未参加時はタブ1~5を隠し、タブ6を強制表示
-    t1.style.display = 'none'; t2.style.display = 'none';
-    t3.style.display = 'none'; t4.style.display = 'none'; t5.style.display = 'none';
+    // グループ未参加時はタブ1~3を隠し、タブ4のみ表示
+    t1.style.display = 'none'; t2.style.display = 'none'; t3.style.display = 'none';
     
     document.getElementById('group-none').style.display = 'block';
     document.getElementById('group-active').style.display = 'none';
-    switchTab('tab6');
+    hdSection.style.display = 'none';
+    switchTab('tab4');
   }
 }
 
@@ -508,8 +536,10 @@ function switchTab(tabId) {
   if (currentGroupId) {
     if(tabId === 'tab1') renderSavedRecords();
     if(tabId === 'tab3') renderCalendar();
-    if(tabId === 'tab4') renderDictionary();
-    if(tabId === 'tab5') renderHistoryTab();
+    if(tabId === 'tab4') {
+        renderDictionary();
+        renderHistoryTab();
+    }
   }
 }
 
@@ -571,6 +601,65 @@ function leaveGroup() {
   }
 }
 
+// 個人のデータをグループに流し込む（マージ機能）
+async function mergePersonalDataToGroup() {
+  if (!currentGroupId || !currentUser || !db) return alert("ログインし、グループに参加した状態で実行してください。");
+  if (!confirm("あなたの個人の過去データ（履歴・カレンダー・辞書）をすべてグループに合算し、メンバー全員に共有します。\n\n※この操作は取り消せません。本当によろしいですか？")) return;
+
+  try {
+    const personalRef = db.collection('users').doc(currentUser.uid);
+    const groupRef = db.collection('groups').doc(currentGroupId);
+
+    const [pDoc, gDoc] = await Promise.all([personalRef.get(), groupRef.get()]);
+    const pData = pDoc.exists ? pDoc.data() : {};
+    const gData = gDoc.exists ? gDoc.data() : {};
+
+    // 1. Records（履歴の統合）
+    const pRecords = pData.records || [];
+    const gRecords = gData.records || [];
+    const mergedRecords = [...gRecords, ...pRecords];
+    const uniqueRecordsMap = new Map();
+    mergedRecords.forEach(r => uniqueRecordsMap.set(r.id, r));
+    const finalRecords = Array.from(uniqueRecordsMap.values());
+
+    // 2. Calendar（同日の収支は合算）
+    const pCal = pData.calendar || {};
+    const gCal = gData.calendar || {};
+    const finalCal = { ...gCal };
+    for (let date in pCal) {
+      if (finalCal[date]) {
+        finalCal[date].ev = (finalCal[date].ev || 0) + (pCal[date].ev || 0);
+        finalCal[date].actual = (finalCal[date].actual || 0) + (pCal[date].actual || 0);
+        finalCal[date].actualBalls = (finalCal[date].actualBalls || 0) + (pCal[date].actualBalls || 0);
+        finalCal[date].details = [...(finalCal[date].details || []), ...(pCal[date].details || [])];
+      } else {
+        finalCal[date] = pCal[date];
+      }
+    }
+
+    // 3. Dictionary
+    const pDict = pData.dictionary || {};
+    const gDict = gData.dictionary || {};
+    const finalDict = { ...gDict, ...pDict };
+
+    // グループDBに一括保存
+    await groupRef.set({
+      records: finalRecords,
+      calendar: finalCal,
+      dictionary: finalDict
+    }, { merge: true });
+
+    alert("個人のデータをすべてグループに共有・統合しました！");
+    renderSavedRecords();
+    renderCalendar();
+    renderDictionary();
+    renderHistoryTab();
+  } catch(e) {
+    console.error(e);
+    alert("データの統合に失敗しました。");
+  }
+}
+
 // ==========================================
 // 初期化・認証
 // ==========================================
@@ -599,6 +688,8 @@ window.onload = function() {
   setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6);
   setupSwipeInput('avgPayout', 10, 100, 10500, 4500);
 
+  updateModeIndicator();
+
   if (auth) {
     auth.onAuthStateChanged(user => {
       if (user) {
@@ -608,7 +699,6 @@ window.onload = function() {
         document.getElementById('login-btn').style.display = 'none';
         document.getElementById('logout-btn').style.display = 'inline-block';
         
-        // ログイン時にグループ情報と権限を再確認
         if (currentGroupId && db) {
           db.collection('groups').doc(currentGroupId).get().then(doc => {
             if (doc.exists) {
@@ -776,7 +866,6 @@ function createRecordItemHtml(r) {
   const safeStr = encodeURIComponent(JSON.stringify(r.hitHistory || []));
   const btnCall = `useRecordForCalc('${r.date}', ${r.avg250}, '${r.machine}', ${r.mochidamaRatio || 0}, '${r.store || ''}', ${r.totalCashBalls || 0}, ${r.totalMochiBalls || 0}, ${r.totalPayout || 0}, '${safeStr}')`;
 
-  // 管理者のみ続き（上書き）と削除が可能。計算は全員可能。
   let adminButtons = '';
   if (isAdmin) {
     adminButtons = `
@@ -802,7 +891,6 @@ function createRecordItemHtml(r) {
 // ==========================================
 // ツール①関連（計測・保存）
 // ==========================================
-// ※メンバーは新規追加のみ可能（editingRecordIdが入る=上書き保存=管理者の特権）
 function addMeasurement(balls) {
   const spinInput = document.getElementById('measuredSpin');
   const spins = parseFloat(spinInput.value);
@@ -956,7 +1044,6 @@ async function saveCurrentRecord() {
   const avg250 = (totalSpins / totalBalls) * 250;
   const mochiRatio = totalBalls > 0 ? (mochidamaBalls / totalBalls * 100) : 0;
   
-  // 辞書への新規登録 (管理者に限らず、新規機種なら登録を試みるがルールに弾かれる可能性あり。念のためisAdmin確認)
   if (isAdmin) {
     const dict = await getDictionaryData();
     if (!dict[machine]) {
@@ -968,7 +1055,7 @@ async function saveCurrentRecord() {
   
   const records = await getRecordsData();
   const newRecord = { 
-    id: (isAdmin && editingRecordId) ? editingRecordId : Date.now(), // メンバーは強制新規追加
+    id: (isAdmin && editingRecordId) ? editingRecordId : Date.now(),
     date: date, store: store, machine: machine, 
     totalBalls: totalBalls, totalSpins: totalSpins, startSpins: startSpin,
     totalCashBalls: cashBalls, totalMochiBalls: mochidamaBalls, totalPayout: totalPayout,
@@ -1066,53 +1153,9 @@ async function deleteRecord(id) {
 }
 
 // ==========================================
-// スワイプ機能設定関数
+// スワイプ機能（汎用）
 // ==========================================
-function setupSwipeInput(id, step, min, max, defaultVal) {
-  // 共通で利用するスワイプ関数の定義
-  const el = document.getElementById(id);
-  if (!el) return;
-  let isDragging = false;
-  let startX = 0;
-  let startVal = 0;
-
-  const onStart = (e) => {
-    isDragging = true;
-    startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    if (el.value === "") {
-      let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
-      el.value = Number(defaultVal).toFixed(decimals);
-      el.classList.remove('auto-filled');
-      if (el.oninput) el.oninput();
-    }
-    startVal = parseFloat(el.value);
-    if (isNaN(startVal)) startVal = defaultVal;
-  };
-  el.addEventListener('mousedown', onStart);
-  el.addEventListener('touchstart', onStart, {passive: true});
-
-  const onMove = (e) => {
-    if (!isDragging) return;
-    let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    let deltaX = clientX - startX;
-    let steps = Math.trunc(deltaX / 8); 
-    if (steps !== 0) {
-      let newVal = startVal + (steps * step);
-      if (newVal < min) newVal = min;
-      if (newVal > max) newVal = max;
-      let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
-      el.value = newVal.toFixed(decimals);
-      el.classList.remove('auto-filled');
-      if (el.oninput) el.oninput();
-    }
-  };
-  window.addEventListener('mousemove', onMove);
-  window.addEventListener('touchmove', onMove, {passive: true});
-
-  const onEnd = () => { isDragging = false; };
-  window.addEventListener('mouseup', onEnd);
-  window.addEventListener('touchend', onEnd);
-}
+// 最初に定義した setupSwipeInput と統合済みのため省略
 
 // ==========================================
 // ツール②：辞書からの呼び出し・期待値計算
@@ -1224,6 +1267,11 @@ function drawSlumpGraph() {
       plugins: { legend: { display: false } }
     }
   });
+}
+
+function getNormalRandom(mean, stdDev) {
+  let u1 = 1 - Math.random(); let u2 = 1 - Math.random(); 
+  return (Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2)) * stdDev + mean;
 }
 
 function calculateAndSimulate() {
@@ -1422,6 +1470,7 @@ async function renderCalendar() {
   mDiffEl.innerText = formatCurrency(mDiff);
   mDiffEl.className = mDiff > 0 ? 'plus' : (mDiff < 0 ? 'minus' : '');
 
+  // === 選択した日付の詳細表示 ===
   document.getElementById('selectedDateDisp').innerText = selectedDateVal || '未選択';
   let listHtml = '';
   const dayData = cal[selectedDateVal];
@@ -1468,7 +1517,7 @@ async function deleteCalendarDay(date) {
 }
 
 // ==========================================
-// ツール⑤：履歴タブ
+// 履歴タブ用描画関数
 // ==========================================
 async function renderHistoryTab() {
   const records = await getRecordsData();
