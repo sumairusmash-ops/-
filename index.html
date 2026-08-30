@@ -783,7 +783,12 @@ window.onload = function() {
 function login() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
   const provider = new firebase.auth.GoogleAuthProvider();
-  // リダイレクト方式に変更
+  
+  // ★必ずアカウント選択画面を表示させる設定
+  provider.setCustomParameters({
+    prompt: 'select_account'
+  });
+  
   auth.signInWithRedirect(provider).catch(error => {
     console.error("ログインエラー:", error);
     alert("ログインに失敗しました。");
