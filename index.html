@@ -50,13 +50,13 @@
   .btn-auth.logout { background-color: #7f8c8d; }
 
   /* タブのスタイル */
-  .tabs { display: flex; margin-bottom: 0; }
+  .tabs { display: flex; flex-wrap: wrap; margin-bottom: 0; }
   .tab-button {
-    flex: 1; padding: 12px 2px; text-align: center;
+    flex: 1 1 30%; padding: 10px 2px; text-align: center;
     background-color: #ddd; color: #7f8c8d; border: none;
     cursor: pointer; font-weight: bold; font-size: 12px;
     border-radius: 8px 8px 0 0; transition: background-color 0.2s;
-    margin-right: 1px;
+    margin-right: 1px; margin-bottom: 1px;
     display: none; /* 初期状態ではタブ1~3は非表示 */
   }
   #btn-tab4 { display: block; } /* データ・設定タブは常に表示 */
@@ -463,15 +463,71 @@
 
 <script>
 // ==========================================
+// スワイプ機能設定（一番上に定義）
+// ==========================================
+function setupSwipeInput(id, step, min, max, defaultVal) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  let isDragging = false;
+  let startX = 0;
+  let startVal = 0;
+
+  const onStart = (e) => {
+    isDragging = true;
+    startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    
+    if (el.value === "") {
+      let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
+      el.value = Number(defaultVal).toFixed(decimals);
+      el.classList.remove('auto-filled');
+      if (el.oninput) el.oninput();
+    }
+    
+    startVal = parseFloat(el.value);
+    if (isNaN(startVal)) startVal = defaultVal;
+  };
+
+  el.addEventListener('mousedown', onStart);
+  el.addEventListener('touchstart', onStart, {passive: true});
+
+  const onMove = (e) => {
+    if (!isDragging) return;
+    let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    let deltaX = clientX - startX;
+    
+    let steps = Math.trunc(deltaX / 8); 
+    
+    if (steps !== 0) {
+      let newVal = startVal + (steps * step);
+      if (newVal < min) newVal = min;
+      if (newVal > max) newVal = max;
+      
+      let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
+      el.value = newVal.toFixed(decimals);
+      el.classList.remove('auto-filled');
+      
+      if (el.oninput) el.oninput();
+    }
+  };
+
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, {passive: true});
+
+  const onEnd = () => { isDragging = false; };
+  window.addEventListener('mouseup', onEnd);
+  window.addEventListener('touchend', onEnd);
+}
+
+// ==========================================
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -508,18 +564,14 @@ function updateModeIndicator() {
   const hdSection = document.getElementById('history-and-dict-section');
 
   if (currentGroupId) {
-    // グループに参加している場合のみタブ1~3を表示
     t1.style.display = 'block'; t2.style.display = 'block'; t3.style.display = 'block';
-    
     document.getElementById('group-none').style.display = 'none';
     document.getElementById('group-active').style.display = 'block';
     document.getElementById('dispGroupId').innerText = currentGroupId;
     document.getElementById('dispUserRole').innerText = isAdmin ? "👑 あなたの権限: 管理者 (更新・削除可能)" : "👤 あなたの権限: メンバー (追加・閲覧のみ)";
     hdSection.style.display = 'block';
   } else {
-    // グループ未参加時はタブ1~3を隠し、タブ4のみ表示
     t1.style.display = 'none'; t2.style.display = 'none'; t3.style.display = 'none';
-    
     document.getElementById('group-none').style.display = 'block';
     document.getElementById('group-active').style.display = 'none';
     hdSection.style.display = 'none';
@@ -558,7 +610,7 @@ async function createGroup() {
   try {
     await db.collection('groups').doc(newId).set({ created: Date.now(), creator: currentUser.uid });
     currentGroupId = newId;
-    isAdmin = true; // 作成者は管理者
+    isAdmin = true; 
     localStorage.setItem('pachinko_groupId', newId);
     updateModeIndicator();
     alert(`グループを作成しました！\nID: ${newId}\n友人にこのIDを教えて参加してもらってください。`);
@@ -577,7 +629,7 @@ async function joinGroup() {
     const doc = await db.collection('groups').doc(idInput).get();
     if (doc.exists) {
       currentGroupId = idInput;
-      isAdmin = (doc.data().creator === currentUser.uid); // 一致すれば管理者
+      isAdmin = (doc.data().creator === currentUser.uid); 
       localStorage.setItem('pachinko_groupId', idInput);
       document.getElementById('joinGroupId').value = '';
       updateModeIndicator();
@@ -614,7 +666,6 @@ async function mergePersonalDataToGroup() {
     const pData = pDoc.exists ? pDoc.data() : {};
     const gData = gDoc.exists ? gDoc.data() : {};
 
-    // 1. Records（履歴の統合）
     const pRecords = pData.records || [];
     const gRecords = gData.records || [];
     const mergedRecords = [...gRecords, ...pRecords];
@@ -622,7 +673,6 @@ async function mergePersonalDataToGroup() {
     mergedRecords.forEach(r => uniqueRecordsMap.set(r.id, r));
     const finalRecords = Array.from(uniqueRecordsMap.values());
 
-    // 2. Calendar（同日の収支は合算）
     const pCal = pData.calendar || {};
     const gCal = gData.calendar || {};
     const finalCal = { ...gCal };
@@ -637,12 +687,10 @@ async function mergePersonalDataToGroup() {
       }
     }
 
-    // 3. Dictionary
     const pDict = pData.dictionary || {};
     const gDict = gData.dictionary || {};
     const finalDict = { ...gDict, ...pDict };
 
-    // グループDBに一括保存
     await groupRef.set({
       records: finalRecords,
       calendar: finalCal,
@@ -728,6 +776,7 @@ window.onload = function() {
 function login() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
   const provider = new firebase.auth.GoogleAuthProvider();
+  // リダイレクト方式に変更
   auth.signInWithRedirect(provider).catch(error => {
     console.error("ログインエラー:", error);
     alert("ログインに失敗しました。");
@@ -783,7 +832,6 @@ async function renderDictionary() {
   for(let m in dict) {
     const spec = dict[m];
     
-    // 管理者のみ更新・削除ボタンを表示
     let adminButtons = '';
     if (isAdmin) {
       adminButtons = `
@@ -1055,7 +1103,7 @@ async function saveCurrentRecord() {
   
   const records = await getRecordsData();
   const newRecord = { 
-    id: (isAdmin && editingRecordId) ? editingRecordId : Date.now(),
+    id: (isAdmin && editingRecordId) ? editingRecordId : Date.now(), 
     date: date, store: store, machine: machine, 
     totalBalls: totalBalls, totalSpins: totalSpins, startSpins: startSpin,
     totalCashBalls: cashBalls, totalMochiBalls: mochidamaBalls, totalPayout: totalPayout,
@@ -1151,11 +1199,6 @@ async function deleteRecord(id) {
     renderHistoryTab();
   }
 }
-
-// ==========================================
-// スワイプ機能（汎用）
-// ==========================================
-// 最初に定義した setupSwipeInput と統合済みのため省略
 
 // ==========================================
 // ツール②：辞書からの呼び出し・期待値計算
@@ -1294,7 +1337,6 @@ function calculateAndSimulate() {
   const probDenom = parseFloat(document.getElementById('probDenom').value);
   const avgPayout = parseFloat(document.getElementById('avgPayout').value);
 
-  // === 管理者のみ辞書への保存（自動更新）処理を実行 ===
   const calcMachine = document.getElementById('calcMachineName').value.trim();
   if(calcMachine && isAdmin) {
     getDictionaryData().then(dict => {
@@ -1470,7 +1512,6 @@ async function renderCalendar() {
   mDiffEl.innerText = formatCurrency(mDiff);
   mDiffEl.className = mDiff > 0 ? 'plus' : (mDiff < 0 ? 'minus' : '');
 
-  // === 選択した日付の詳細表示 ===
   document.getElementById('selectedDateDisp').innerText = selectedDateVal || '未選択';
   let listHtml = '';
   const dayData = cal[selectedDateVal];
@@ -1517,7 +1558,7 @@ async function deleteCalendarDay(date) {
 }
 
 // ==========================================
-// 履歴タブ用描画関数
+// ツール⑤：履歴タブ用描画関数
 // ==========================================
 async function renderHistoryTab() {
   const records = await getRecordsData();
