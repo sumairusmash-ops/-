@@ -35,7 +35,7 @@
     font-size: 13px; font-weight: bold; color: white;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
-  .mode-personal { background-color: #27ae60; }
+  .mode-warning { background-color: #e67e22; }
   .mode-group { background-color: #9b59b6; animation: pulse 2s infinite; }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.4); }
@@ -50,13 +50,13 @@
   .btn-auth.logout { background-color: #7f8c8d; }
 
   /* タブのスタイル */
-  .tabs { display: flex; flex-wrap: wrap; margin-bottom: 0; }
+  .tabs { display: flex; margin-bottom: 0; }
   .tab-button {
-    flex: 1 1 30%; padding: 10px 2px; text-align: center;
+    flex: 1; padding: 12px 2px; text-align: center;
     background-color: #ddd; color: #7f8c8d; border: none;
     cursor: pointer; font-weight: bold; font-size: 12px;
     border-radius: 8px 8px 0 0; transition: background-color 0.2s;
-    margin-right: 1px; margin-bottom: 1px;
+    margin-right: 1px;
     display: none; /* 初期状態ではタブ1~3は非表示 */
   }
   #btn-tab4 { display: block; } /* データ・設定タブは常に表示 */
@@ -203,7 +203,7 @@
 
 <!-- モード表示エリア -->
 <div id="mode-indicator-container">
-  <div id="mode-indicator" class="mode-badge mode-personal">👤 個人モードで動作中</div>
+  <div id="mode-indicator" class="mode-badge mode-warning">⚠️ グループ未参加</div>
 </div>
 
 <!-- 辞書用サジェストリスト -->
@@ -292,7 +292,6 @@
     
     <div class="section-title">基本条件 <span class="hint-text">※枠内スワイプ対応</span></div>
     
-    <!-- 辞書連携用 機種名 -->
     <div class="form-group" style="background: #e8f4f8; padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
       <label style="color: #2980b9;">機種名 (辞書からスペックを自動入力)</label>
       <input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="loadMachineSpec()">
@@ -403,7 +402,7 @@
     
     <!-- グループ管理（ノリ打ち） -->
     <h2>グループ管理（ノリ打ち）</h2>
-    <p style="font-size:13px; color:#555; margin-bottom: 15px; line-height:1.5;">本ツールは必ずグループを作成または参加して使用します。個人の秘密データ機能は削除されました。</p>
+    <p style="font-size:13px; color:#555; margin-bottom: 15px; line-height:1.5;">本ツールは必ずグループを作成または参加して使用します。</p>
 
     <!-- グループ未参加時 -->
     <div id="group-none" class="group-box">
@@ -463,7 +462,7 @@
 
 <script>
 // ==========================================
-// スワイプ機能設定（一番上に定義）
+// スワイプ機能設定
 // ==========================================
 function setupSwipeInput(id, step, min, max, defaultVal) {
   const el = document.getElementById(id);
@@ -522,13 +521,14 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
+
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
   firebase.initializeApp(firebaseConfig);
 }
@@ -538,7 +538,7 @@ const db = firebase.apps.length ? firebase.firestore() : null;
 
 let currentUser = null;
 let currentGroupId = localStorage.getItem('pachinko_groupId') || null;
-let isAdmin = false; // 権限管理フラグ
+let isAdmin = false; 
 
 let lastCalculatedEV = 0; 
 let historyData = [];
@@ -554,13 +554,14 @@ function formatCurrency(num) {
 }
 
 // ==========================================
-// タブ・モード表示管理
+// タブ・モード表示管理（バッジ連動修正済み）
 // ==========================================
 function updateModeIndicator() {
   const t1 = document.getElementById('btn-tab1');
   const t2 = document.getElementById('btn-tab2');
   const t3 = document.getElementById('btn-tab3');
   const hdSection = document.getElementById('history-and-dict-section');
+  const ind = document.getElementById('mode-indicator');
 
   if (currentGroupId) {
     t1.style.display = 'block'; t2.style.display = 'block'; t3.style.display = 'block';
@@ -569,11 +570,21 @@ function updateModeIndicator() {
     document.getElementById('dispGroupId').innerText = currentGroupId;
     document.getElementById('dispUserRole').innerText = isAdmin ? "👑 あなたの権限: 管理者 (更新・削除可能)" : "👤 あなたの権限: メンバー (追加・閲覧のみ)";
     hdSection.style.display = 'block';
+    
+    if (ind) {
+      ind.className = 'mode-badge mode-group';
+      ind.innerText = `👥 グループ共有中 (ID: ${currentGroupId})`;
+    }
   } else {
     t1.style.display = 'none'; t2.style.display = 'none'; t3.style.display = 'none';
     document.getElementById('group-none').style.display = 'block';
     document.getElementById('group-active').style.display = 'none';
     hdSection.style.display = 'none';
+    
+    if (ind) {
+      ind.className = 'mode-badge mode-warning';
+      ind.innerText = `⚠️ グループ未参加 (作成・参加してください)`;
+    }
     switchTab('tab4');
   }
 }
@@ -594,7 +605,6 @@ function switchTab(tabId) {
   }
 }
 
-// データベースの参照先（強制的にグループドキュメントのみ）
 async function getDbRef() {
   if (!currentUser || !currentGroupId || !db) return null;
   return db.collection('groups').doc(currentGroupId);
@@ -652,7 +662,6 @@ function leaveGroup() {
   }
 }
 
-// 個人のデータをグループに流し込む（マージ機能）
 async function mergePersonalDataToGroup() {
   if (!currentGroupId || !currentUser || !db) return alert("ログインし、グループに参加した状態で実行してください。");
   if (!confirm("あなたの個人の過去データ（履歴・カレンダー・辞書）をすべてグループに合算し、メンバー全員に共有します。\n\n※この操作は取り消せません。本当によろしいですか？")) return;
@@ -738,15 +747,6 @@ window.onload = function() {
   updateModeIndicator();
 
   if (auth) {
-    // 【追記】リダイレクトから戻ってきた時の結果を確実に受け取る処理
-    auth.getRedirectResult().then(result => {
-      if (result && result.user) {
-        console.log("ログイン完了");
-      }
-    }).catch(error => {
-      console.error("ログイン受け取りエラー:", error);
-    });
-
     auth.onAuthStateChanged(user => {
       if (user) {
         currentUser = user;
@@ -780,16 +780,13 @@ window.onload = function() {
     });
   }
 };
+
 function login() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
   const provider = new firebase.auth.GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
   
-  // アカウント選択画面を強制的に出す設定
-  provider.setCustomParameters({
-    prompt: 'select_account'
-  });
-  
-  // リダイレクトではなく、安定している「ポップアップ方式」に戻す
+  // ポップアップ方式で確実に安定稼働
   auth.signInWithPopup(provider).catch(error => {
     console.error("ログインエラー:", error);
     alert("ログインに失敗しました。");
