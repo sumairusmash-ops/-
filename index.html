@@ -35,7 +35,7 @@
     font-size: 13px; font-weight: bold; color: white;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
-  .mode-personal { background-color: #27ae60; }
+  .mode-warning { background-color: #e67e22; }
   .mode-group { background-color: #9b59b6; animation: pulse 2s infinite; }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.4); }
@@ -191,6 +191,12 @@
     border-radius: 6px; padding: 15px; margin-top: 15px;
     text-align: center;
   }
+  
+  /* 入力者バッジ */
+  .author-badge {
+    background: #eee; padding: 2px 6px; border-radius: 4px;
+    font-size: 11px; margin-left: 8px; color: #555; font-weight: normal;
+  }
 </style>
 </head>
 <body>
@@ -203,7 +209,7 @@
 
 <!-- モード表示エリア -->
 <div id="mode-indicator-container">
-  <div id="mode-indicator" class="mode-badge mode-personal">👤 個人モードで動作中</div>
+  <div id="mode-indicator" class="mode-badge mode-warning">⚠️ グループ未参加</div>
 </div>
 
 <!-- 辞書用サジェストリスト -->
@@ -292,7 +298,6 @@
     
     <div class="section-title">基本条件 <span class="hint-text">※枠内スワイプ対応</span></div>
     
-    <!-- 辞書連携用 機種名 -->
     <div class="form-group" style="background: #e8f4f8; padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
       <label style="color: #2980b9;">機種名 (辞書からスペックを自動入力)</label>
       <input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="loadMachineSpec()">
@@ -407,6 +412,14 @@
 
     <!-- グループ未参加時 -->
     <div id="group-none" class="group-box">
+      
+      <!-- ニックネーム設定 -->
+      <div class="form-group" style="text-align: left; background: #fff3cd; padding: 10px; border-radius: 6px; border: 1px solid #ffeeba; margin-bottom: 20px;">
+        <label style="color: #d35400;">参加時のニックネーム (任意)</label>
+        <p style="font-size:11px; color:#7f8c8d; margin-top:0; margin-bottom:8px;">※未入力の場合はメールアドレスの先頭5文字が使われます。</p>
+        <input type="text" id="nicknameInput" placeholder="例: たろう">
+      </div>
+
       <div style="margin-bottom: 20px;">
         <p style="font-size:14px; font-weight:bold; color:#2c3e50; margin-bottom:10px;">新しくグループを作る</p>
         <p style="font-size:11px; color:#e74c3c; margin-bottom:10px;">※作成したあなたが「管理者」になり、データの更新・削除が可能になります。</p>
@@ -426,6 +439,15 @@
       <p style="font-size:13px; color:#27ae60; font-weight:bold; margin-bottom:5px;">現在共有中のグループID</p>
       <div id="dispGroupId" style="font-size:32px; font-weight:bold; letter-spacing:4px; color:#2c3e50; margin-bottom:10px;"></div>
       <div id="dispUserRole" style="font-size:14px; font-weight:bold; margin-bottom:20px; color:#e67e22;"></div>
+      
+      <!-- ニックネーム変更エリア -->
+      <div style="background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;">
+        <p style="font-size:12px; color:#555; margin-top:0; margin-bottom:5px;">現在のあなたのニックネーム: <span id="dispNickname" style="font-weight:bold; color:#2980b9; font-size:14px;"></span></p>
+        <div style="display:flex; gap:5px;">
+          <input type="text" id="updateNicknameInput" placeholder="新しいニックネーム" style="flex:1; padding:6px; font-size:14px;">
+          <button class="btn-small" style="background-color:#3498db; margin:0;" onclick="updateNickname()">変更</button>
+        </div>
+      </div>
       
       <p style="font-size:12px; color:#555; margin-bottom:20px;">このIDを友人に教えることで、同じデータを共有できます。</p>
       
@@ -476,7 +498,6 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
     isDragging = true;
     startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     
-    // 関数なら実行して値を取得
     let def = typeof defaultVal === 'function' ? defaultVal() : defaultVal;
     
     if (el.value === "") {
@@ -525,12 +546,12 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -553,6 +574,42 @@ let slumpChartInstance = null;
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
 
+// ==========================================
+// ニックネーム管理関数
+// ==========================================
+function getNickname() {
+  let name = localStorage.getItem('pachinko_nickname');
+  if (name && name.trim() !== "") {
+    return name.trim();
+  }
+  if (currentUser && currentUser.email) {
+    return currentUser.email.substring(0, 5);
+  }
+  return "名無し";
+}
+
+function updateNickname() {
+  const newName = document.getElementById('updateNicknameInput').value.trim();
+  if(newName) {
+    localStorage.setItem('pachinko_nickname', newName);
+    alert("ニックネームを更新しました！");
+    document.getElementById('updateNicknameInput').value = '';
+    updateModeIndicator();
+  } else {
+    alert("ニックネームを入力してください。");
+  }
+}
+
+function saveNicknameFromInput() {
+  const name = document.getElementById('nicknameInput').value.trim();
+  if (name) {
+    localStorage.setItem('pachinko_nickname', name);
+  } else {
+    localStorage.removeItem('pachinko_nickname'); // デフォルトを使用させる
+  }
+}
+
+
 function formatCurrency(num) {
   return (num > 0 ? "+" : "") + Math.round(num).toLocaleString() + " 円";
 }
@@ -573,6 +630,7 @@ function updateModeIndicator() {
     document.getElementById('group-active').style.display = 'block';
     document.getElementById('dispGroupId').innerText = currentGroupId;
     document.getElementById('dispUserRole').innerText = isAdmin ? "👑 あなたの権限: 管理者 (更新・削除可能)" : "👤 あなたの権限: メンバー (追加・閲覧のみ)";
+    document.getElementById('dispNickname').innerText = getNickname(); // ニックネーム表示更新
     hdSection.style.display = 'block';
     
     if (ind) {
@@ -619,6 +677,9 @@ async function getDbRef() {
 // ==========================================
 async function createGroup() {
   if (!currentUser || !db) return alert("Firebaseにログインしてください。");
+  
+  saveNicknameFromInput(); // ニックネーム保存
+
   const newId = Math.random().toString(36).substr(2, 6).toUpperCase(); 
   try {
     await db.collection('groups').doc(newId).set({ created: Date.now(), creator: currentUser.uid });
@@ -636,6 +697,9 @@ async function createGroup() {
 
 async function joinGroup() {
   if (!currentUser || !db) return alert("Firebaseにログインしてください。");
+  
+  saveNicknameFromInput(); // ニックネーム保存
+
   const idInput = document.getElementById('joinGroupId').value.trim().toUpperCase();
   if (idInput.length !== 6) return alert("6桁のグループIDを入力してください。");
   try {
@@ -931,6 +995,9 @@ function createRecordItemHtml(r) {
   let startDisp = (r.startSpins !== undefined && r.startSpins >= 0) ? ` <span style="color:#7f8c8d; font-size:11px;">(開始${r.startSpins}G → 終了${r.startSpins + r.totalSpins}G)</span>` : '';
   let storeDisp = r.store ? `<span style="color:#7f8c8d; font-size:12px; margin-right:6px;">[${r.store}]</span>` : '';
   
+  // ニックネーム（入力者）バッジの追加
+  let authorDisp = r.author ? `<span class="author-badge">👤 ${r.author}</span>` : '';
+  
   const safeStr = encodeURIComponent(JSON.stringify(r.hitHistory || []));
   const btnCall = `useRecordForCalc('${r.date}', ${r.avg250}, '${r.machine}', ${r.mochidamaRatio || 0}, '${r.store || ''}', ${r.totalCashBalls || 0}, ${r.totalMochiBalls || 0}, ${r.totalPayout || 0}, '${safeStr}')`;
 
@@ -943,7 +1010,7 @@ function createRecordItemHtml(r) {
   }
 
   return `<div class="saved-item">
-    <div style="font-weight:bold; color:#2c3e50; font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}</div>
+    <div style="font-weight:bold; color:#2c3e50; font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}${authorDisp}</div>
     <div style="font-size:13px; margin:6px 0; color:#555;">総投資: ${r.totalBalls}玉 / 自力回転: ${r.totalSpins}回${startDisp}<br>
     <span style="color:#e74c3c; font-weight:bold; font-size:14px;">250玉平均: ${r.avg250.toFixed(2)} 回</span>
     <span style="color:#e67e22; font-weight:bold; font-size:13px; margin-left:10px;">持球比率: ${dispRatio}%</span>
@@ -965,7 +1032,6 @@ function addMeasurement(balls) {
   
   if (isNaN(currentMachineSpin) || currentMachineSpin < 0) return alert("現在のデータ機回転数を正しく入力してください。");
   
-  // 前回までの回転数合計を計算
   const startSpin = parseInt(document.getElementById('startSpin').value) || 0;
   let totalSpinsSoFar = 0;
   historyData.forEach(d => { 
@@ -1140,6 +1206,7 @@ async function saveCurrentRecord() {
   const newRecord = { 
     id: (isAdmin && editingRecordId) ? editingRecordId : Date.now(), 
     date: date, store: store, machine: machine, 
+    author: getNickname(), // ★ニックネームの追加
     totalBalls: totalBalls, totalSpins: totalSpins, startSpins: startSpin,
     totalCashBalls: cashBalls, totalMochiBalls: mochidamaBalls, totalPayout: totalPayout,
     avg250: avg250, mochidamaRatio: mochiRatio, 
@@ -1449,7 +1516,8 @@ async function saveExpectedValueToCalendar() {
   cal[date].actual = (cal[date].actual || 0) + actualAmt;
   cal[date].actualBalls = (cal[date].actualBalls || 0) + diffBalls;
   
-  cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)})${hitText}`);
+  // カレンダーの詳細にニックネームを追記
+  cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:#7f8c8d;">👤 ${getNickname()}</span>${hitText}`);
   
   await saveCalendarData(cal);
   alert(`${date} のカレンダーにデータを保存しました。`);
