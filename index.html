@@ -298,6 +298,7 @@
     
     <div class="section-title">基本条件 <span class="hint-text">※枠内スワイプ対応</span></div>
     
+    <!-- 辞書連携用 機種名 -->
     <div class="form-group" style="background: #e8f4f8; padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
       <label style="color: #2980b9;">機種名 (辞書からスペックを自動入力)</label>
       <input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="loadMachineSpec()">
@@ -546,12 +547,12 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -995,11 +996,11 @@ function createRecordItemHtml(r) {
   let startDisp = (r.startSpins !== undefined && r.startSpins >= 0) ? ` <span style="color:#7f8c8d; font-size:11px;">(開始${r.startSpins}G → 終了${r.startSpins + r.totalSpins}G)</span>` : '';
   let storeDisp = r.store ? `<span style="color:#7f8c8d; font-size:12px; margin-right:6px;">[${r.store}]</span>` : '';
   
-  // ニックネーム（入力者）バッジの追加
   let authorDisp = r.author ? `<span class="author-badge">👤 ${r.author}</span>` : '';
   
   const safeStr = encodeURIComponent(JSON.stringify(r.hitHistory || []));
-  const btnCall = `useRecordForCalc('${r.date}', ${r.avg250}, '${r.machine}', ${r.mochidamaRatio || 0}, '${r.store || ''}', ${r.totalCashBalls || 0}, ${r.totalMochiBalls || 0}, ${r.totalPayout || 0}, '${safeStr}')`;
+  const safeHist = encodeURIComponent(JSON.stringify(r.history || []));
+  const btnCall = `useRecordForCalc('${r.date}', ${r.avg250}, '${r.machine}', ${r.mochidamaRatio || 0}, '${r.store || ''}', ${r.totalCashBalls || 0}, ${r.totalMochiBalls || 0}, ${r.totalPayout || 0}, '${safeStr}', '${safeHist}')`;
 
   let adminButtons = '';
   if (isAdmin) {
@@ -1206,7 +1207,7 @@ async function saveCurrentRecord() {
   const newRecord = { 
     id: (isAdmin && editingRecordId) ? editingRecordId : Date.now(), 
     date: date, store: store, machine: machine, 
-    author: getNickname(), // ★ニックネームの追加
+    author: getNickname(), 
     totalBalls: totalBalls, totalSpins: totalSpins, startSpins: startSpin,
     totalCashBalls: cashBalls, totalMochiBalls: mochidamaBalls, totalPayout: totalPayout,
     avg250: avg250, mochidamaRatio: mochiRatio, 
@@ -1328,12 +1329,13 @@ async function loadMachineSpec() {
   }
 }
 
-async function useRecordForCalc(recordDate, avg, machineName, mochidamaRatio, storeName, cashBalls, mochiBalls, payout, hitHistoryStr) {
+async function useRecordForCalc(recordDate, avg, machineName, mochidamaRatio, storeName, cashBalls, mochiBalls, payout, hitHistoryStr, historyStr) {
   currentPassData = {
     cashBalls: cashBalls || 0,
     mochiBalls: mochiBalls || 0,
     payout: payout || 0,
-    hitHistory: hitHistoryStr ? JSON.parse(decodeURIComponent(hitHistoryStr)) : []
+    hitHistory: hitHistoryStr ? JSON.parse(decodeURIComponent(hitHistoryStr)) : [],
+    history: historyStr ? JSON.parse(decodeURIComponent(historyStr)) : []
   };
 
   document.getElementById('calcMachineName').value = machineName || ""; 
@@ -1516,12 +1518,41 @@ async function saveExpectedValueToCalendar() {
   cal[date].actual = (cal[date].actual || 0) + actualAmt;
   cal[date].actualBalls = (cal[date].actualBalls || 0) + diffBalls;
   
-  // カレンダーの詳細にニックネームを追記
   cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:#7f8c8d;">👤 ${getNickname()}</span>${hitText}`);
   
   await saveCalendarData(cal);
   alert(`${date} のカレンダーにデータを保存しました。`);
   renderCalendar();
+
+  document.getElementById('calcMachineName').value = '';
+  document.getElementById('border').value = '';
+  document.getElementById('spinRate').value = '';
+  document.getElementById('exchangeRate').value = '';
+  document.getElementById('ballRatio').value = '';
+  document.getElementById('totalSpins').value = '';
+  document.getElementById('probDenom').value = '';
+  document.getElementById('avgPayout').value = '';
+  
+  document.getElementById('evSaveStore').value = '';
+  document.getElementById('evSaveMachine').value = '';
+  
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  document.getElementById('evSaveDate').value = `${yyyy}-${mm}-${dd}`;
+
+  document.getElementById('resultArea').style.display = 'none';
+  document.getElementById('simArea').style.display = 'none';
+  if(document.getElementById('graphContainer')) document.getElementById('graphContainer').style.display = 'none';
+
+  ['border', 'spinRate', 'ballRatio', 'probDenom', 'avgPayout'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.classList.remove('auto-filled');
+  });
+
+  lastCalculatedEV = 0;
+  currentPassData = null;
 }
 
 function removeAutoFillHighlight() { document.getElementById('spinRate').classList.remove('auto-filled'); }
