@@ -35,7 +35,7 @@
     font-size: 13px; font-weight: bold; color: white;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
-  .mode-warning { background-color: #e67e22; }
+  .mode-personal { background-color: #27ae60; }
   .mode-group { background-color: #9b59b6; animation: pulse 2s infinite; }
   @keyframes pulse {
     0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.4); }
@@ -50,13 +50,13 @@
   .btn-auth.logout { background-color: #7f8c8d; }
 
   /* タブのスタイル */
-  .tabs { display: flex; margin-bottom: 0; }
+  .tabs { display: flex; flex-wrap: wrap; margin-bottom: 0; }
   .tab-button {
-    flex: 1; padding: 12px 2px; text-align: center;
+    flex: 1 1 30%; padding: 10px 2px; text-align: center;
     background-color: #ddd; color: #7f8c8d; border: none;
     cursor: pointer; font-weight: bold; font-size: 12px;
     border-radius: 8px 8px 0 0; transition: background-color 0.2s;
-    margin-right: 1px;
+    margin-right: 1px; margin-bottom: 1px;
     display: none; /* 初期状態ではタブ1~3は非表示 */
   }
   #btn-tab4 { display: block; } /* データ・設定タブは常に表示 */
@@ -203,7 +203,7 @@
 
 <!-- モード表示エリア -->
 <div id="mode-indicator-container">
-  <div id="mode-indicator" class="mode-badge mode-warning">⚠️ グループ未参加</div>
+  <div id="mode-indicator" class="mode-badge mode-personal">👤 個人モードで動作中</div>
 </div>
 
 <!-- 辞書用サジェストリスト -->
@@ -232,8 +232,8 @@
     </div>
     
     <div class="form-group" style="margin-top: 15px; background: #fdfdfd; padding: 10px; border-radius: 6px; border: 1px solid #e1e1e1;">
-      <label>回った回転数を入力 <span class="hint-text">※枠内スワイプ対応</span></label>
-      <input type="number" id="measuredSpin" class="swipe-input" step="1" value="" placeholder="例: 10">
+      <label>現在のデータ機回転数を入力 <span class="hint-text">※枠内スワイプ対応</span></label>
+      <input type="number" id="measuredSpin" class="swipe-input" step="1" value="" placeholder="例: 160">
       
       <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
         <div style="display: flex; align-items: center; gap: 6px;">
@@ -292,6 +292,7 @@
     
     <div class="section-title">基本条件 <span class="hint-text">※枠内スワイプ対応</span></div>
     
+    <!-- 辞書連携用 機種名 -->
     <div class="form-group" style="background: #e8f4f8; padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
       <label style="color: #2980b9;">機種名 (辞書からスペックを自動入力)</label>
       <input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="loadMachineSpec()">
@@ -475,15 +476,18 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
     isDragging = true;
     startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     
+    // 関数なら実行して値を取得
+    let def = typeof defaultVal === 'function' ? defaultVal() : defaultVal;
+    
     if (el.value === "") {
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
-      el.value = Number(defaultVal).toFixed(decimals);
+      el.value = Number(def).toFixed(decimals);
       el.classList.remove('auto-filled');
       if (el.oninput) el.oninput();
     }
     
     startVal = parseFloat(el.value);
-    if (isNaN(startVal)) startVal = defaultVal;
+    if (isNaN(startVal)) startVal = def;
   };
 
   el.addEventListener('mousedown', onStart);
@@ -521,12 +525,12 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -554,7 +558,7 @@ function formatCurrency(num) {
 }
 
 // ==========================================
-// タブ・モード表示管理（バッジ連動修正済み）
+// タブ・モード表示管理
 // ==========================================
 function updateModeIndicator() {
   const t1 = document.getElementById('btn-tab1');
@@ -733,8 +737,15 @@ window.onload = function() {
   document.getElementById('evSaveDate').value = todayStr;
   document.getElementById('actualDate').value = todayStr;
   
+  // スワイプ機能の初期化（ツール①の measuredSpin は現在までの合計値から計算）
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
-  setupSwipeInput('measuredSpin', 1, 0, 999, 10);
+  setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
+    const start = parseInt(document.getElementById('startSpin').value) || 0;
+    let soFar = 0;
+    historyData.forEach(d => { if (d.type === 'spin' || !d.type) soFar += d.spins; });
+    return start + soFar + 15; // 前回から +15 くらいをデフォルトにする
+  });
+  
   setupSwipeInput('payoutAmount', 10, 0, 100000, 1500); 
   setupSwipeInput('border', 0.1, 10.0, 30.0, 18.0);
   setupSwipeInput('spinRate', 0.1, 10.0, 35.0, 20.0);
@@ -786,7 +797,6 @@ function login() {
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   
-  // ポップアップ方式で確実に安定稼働
   auth.signInWithPopup(provider).catch(error => {
     console.error("ログインエラー:", error);
     alert("ログインに失敗しました。");
@@ -951,8 +961,23 @@ function createRecordItemHtml(r) {
 // ==========================================
 function addMeasurement(balls) {
   const spinInput = document.getElementById('measuredSpin');
-  const spins = parseFloat(spinInput.value);
-  if (isNaN(spins) || spins < 0) return alert("正しい回転数を入力してください。");
+  const currentMachineSpin = parseFloat(spinInput.value);
+  
+  if (isNaN(currentMachineSpin) || currentMachineSpin < 0) return alert("現在のデータ機回転数を正しく入力してください。");
+  
+  // 前回までの回転数合計を計算
+  const startSpin = parseInt(document.getElementById('startSpin').value) || 0;
+  let totalSpinsSoFar = 0;
+  historyData.forEach(d => { 
+    if (d.type === 'spin' || !d.type) totalSpinsSoFar += d.spins; 
+  });
+  
+  const lastSpin = startSpin + totalSpinsSoFar;
+  const spins = currentMachineSpin - lastSpin;
+
+  if (spins <= 0) {
+    return alert(`現在の回転数は、前回の回転数 (${lastSpin}回) より大きい数値を入力してください。`);
+  }
   
   const isMochi = document.getElementById('isMochidama').checked;
   const hitNormal = document.getElementById('hitNormal').checked;
