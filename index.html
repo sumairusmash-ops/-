@@ -13,59 +13,46 @@
 <style>
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    padding: 15px;
+    padding: 15px 15px 80px 15px; /* フッターナビの分、下部に余白を確保 */
     max-width: 500px;
     margin: 0 auto;
     background-color: #f4f7f6;
     color: #333;
   }
   
-  #auth-container {
-    background: #fff; padding: 15px; margin-bottom: 5px;
-    border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    display: flex; justify-content: space-between; align-items: center;
+  /* スマホ風フッターナビゲーション */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background-color: #fff;
+    display: flex;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom); /* iPhoneのホームバー対応 */
   }
-  
-  /* モード表示バッジ */
-  #mode-indicator-container {
-    margin-bottom: 15px; text-align: center;
+  .bottom-nav button {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 10px 0;
+    font-size: 11px;
+    font-weight: bold;
+    color: #7f8c8d;
+    cursor: pointer;
+    transition: color 0.2s;
   }
-  .mode-badge {
-    display: inline-block; padding: 6px 12px; border-radius: 20px;
-    font-size: 13px; font-weight: bold; color: white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  .bottom-nav button span.icon {
+    display: block;
+    font-size: 20px;
+    margin-bottom: 4px;
   }
-  .mode-warning { background-color: #e67e22; }
-  .mode-group { background-color: #9b59b6; animation: pulse 2s infinite; }
-  @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(155, 89, 182, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0); }
+  .bottom-nav button.active {
+    color: #3498db;
   }
-
-  .btn-auth {
-    background-color: #4285F4; color: white; border: none;
-    padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer;
-  }
-  .btn-auth.logout { background-color: #7f8c8d; }
-
-  /* タブのスタイル */
-  .tabs { display: flex; flex-wrap: wrap; margin-bottom: 0; }
-  .tab-button {
-    flex: 1 1 30%; padding: 10px 2px; text-align: center;
-    background-color: #ddd; color: #7f8c8d; border: none;
-    cursor: pointer; font-weight: bold; font-size: 12px;
-    border-radius: 8px 8px 0 0; transition: background-color 0.2s;
-    margin-right: 1px; margin-bottom: 1px;
-    display: none; /* 初期状態ではタブ1~3は非表示 */
-  }
-  #btn-tab4 { display: block; } /* データ・設定タブは常に表示 */
-  .tab-button.active { background-color: #3498db; color: white; }
-  .tab-button:not(.active):hover { background-color: #ccc; }
 
   .card {
     background: #fff; padding: 20px;
-    border-radius: 0 0 8px 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
   }
   .tab-content { display: none; }
   .tab-content.active { display: block; animation: fadeIn 0.3s; }
@@ -130,20 +117,37 @@
     display: inline-block;
   }
 
+  /* 擬似画面遷移（モーダル）用のスタイル */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6); z-index: 2000;
+    justify-content: center; align-items: flex-end; /* 下からスライドさせるため */
+  }
+  .modal-content {
+    background: #fff; width: 100%; max-width: 500px;
+    max-height: 85vh; overflow-y: auto;
+    border-radius: 12px 12px 0 0; padding: 20px;
+    animation: slideUp 0.3s forwards;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .modal-close-btn {
+    display: block; width: 100%; padding: 12px; margin-top: 15px;
+    background: #ecf0f1; color: #2c3e50; font-weight: bold;
+    border: none; border-radius: 6px; cursor: pointer;
+  }
+
   .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ddd; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
   .calendar-day-header { background: #f4f7f6; text-align: center; font-size: 12px; padding: 6px 0; font-weight: bold; color: #555; }
   .calendar-cell { background: #fff; min-height: 65px; padding: 4px; cursor: pointer; position: relative; display: flex; flex-direction: column; transition: background-color 0.2s; }
-  .calendar-cell:hover { background: #e8f4f8; }
   .calendar-cell.active-day { outline: 2px solid #9b59b6; outline-offset: -2px; background: #f4e8f8; }
   .calendar-cell.other-month { background: #fafafa; cursor: default; }
-  .calendar-cell.other-month:hover { background: #fafafa; }
   .cal-date { font-weight: bold; margin-bottom: 2px; font-size: 13px; }
   .cal-val { font-size: 10px; margin-top: auto; word-break: break-all; line-height: 1.2; text-align: right; }
   .cal-val.plus { color: #2980b9; font-weight: bold; }
   .cal-val.minus { color: #c0392b; font-weight: bold; }
   .cal-val.ev { color: #27ae60; font-weight: bold; }
-  .cal-val.balls { color: #e67e22; font-weight: bold; }
 
   .result, .simulation { margin-top: 20px; padding: 15px; border-radius: 4px; }
   .result { background-color: #e8f4f8; border-left: 5px solid #3498db; }
@@ -167,67 +171,53 @@
     border-bottom: 1px dashed #ccc; padding: 6px 0; 
     display: flex; justify-content: space-between; align-items: center;
   }
-  .history-item:last-child { border-bottom: none; }
   .btn-delete-item {
     background: none; border: none; color: #e74c3c; cursor: pointer;
     font-size: 13px; font-weight: bold; padding: 4px 8px; border-radius: 4px;
   }
-  .btn-delete-item:hover { background-color: #fceceb; }
 
   .saved-item {
     background: #fdfdfd; border: 1px solid #ddd;
     border-radius: 6px; padding: 12px; margin-bottom: 10px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
   }
-  details summary { outline: none; }
   .saved-history-box {
     margin-top: 8px; padding: 8px; background-color: #f4f7f6;
-    border-left: 3px solid #ccc; font-size: 12px;
-    color: #555; max-height: 150px; overflow-y: auto;
+    border-left: 3px solid #ccc; font-size: 12px; max-height: 150px; overflow-y: auto;
   }
-  
   .group-box {
     background: #fdfdfd; border: 2px dashed #9b59b6;
-    border-radius: 6px; padding: 15px; margin-top: 15px;
-    text-align: center;
+    border-radius: 6px; padding: 15px; margin-top: 15px; text-align: center;
   }
-  
-  /* 入力者バッジ */
   .author-badge {
     background: #eee; padding: 2px 6px; border-radius: 4px;
     font-size: 11px; margin-left: 8px; color: #555; font-weight: normal;
   }
+
+  .btn-auth {
+    background-color: #4285F4; color: white; border: none; width: 100%;
+    padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-bottom: 10px;
+  }
+  .btn-auth.logout { background-color: #7f8c8d; }
 </style>
 </head>
 <body>
 
-<div id="auth-container">
-  <div id="user-info" style="font-size: 13px; font-weight: bold; color: #555;">ログインしていません</div>
-  <button id="login-btn" class="btn-auth" onclick="login()">Googleでログイン</button>
-  <button id="logout-btn" class="btn-auth logout" onclick="logout()" style="display:none;">ログアウト</button>
-</div>
-
-<!-- モード表示エリア -->
-<div id="mode-indicator-container">
-  <div id="mode-indicator" class="mode-badge mode-warning">⚠️ グループ未参加</div>
-</div>
-
 <!-- 辞書用サジェストリスト -->
 <datalist id="machineList"></datalist>
 
-<div class="tabs">
-  <button id="btn-tab1" class="tab-button" onclick="switchTab('tab1')">① 計測</button>
-  <button id="btn-tab2" class="tab-button" onclick="switchTab('tab2')">② 期待値</button>
-  <button id="btn-tab3" class="tab-button" onclick="switchTab('tab3')">③ 収支</button>
-  <button id="btn-tab4" class="tab-button active" onclick="switchTab('tab4')">④ データ・設定</button>
-</div>
+<!-- フッターナビゲーション -->
+<nav class="bottom-nav">
+  <button id="nav-tab1" onclick="switchTab('tab1')" style="display:none;"><span class="icon">⏱️</span>計測</button>
+  <button id="nav-tab2" onclick="switchTab('tab2')" style="display:none;"><span class="icon">🧮</span>期待値</button>
+  <button id="nav-tab3" onclick="switchTab('tab3')" style="display:none;"><span class="icon">📅</span>収支</button>
+  <button id="nav-tab4" class="active" onclick="switchTab('tab4')"><span class="icon">⚙️</span>設定</button>
+</nav>
 
 <div class="card">
-  <!-- ツール1：回転率（ベース）計測 -->
+  <!-- ================= ツール1：計測（1画面型） ================= -->
   <div id="tab1" class="tab-content">
-    <h2>新規計測</h2>
     <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-      <div style="flex: 1;"><label>日付</label><input type="date" id="recordDate" onchange="renderSavedRecords()"></div>
+      <div style="flex: 1;"><label>日付</label><input type="date" id="recordDate"></div>
       <div style="flex: 1.5;"><label>店舗名</label><input type="text" id="storeName" placeholder="例: マルハン"></div>
       <div style="flex: 1.5;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15" list="machineList"></div>
     </div>
@@ -270,76 +260,39 @@
       <div style="font-weight: bold; color: #d35400; margin-bottom: 8px; font-size:15px;" id="payoutTitle">大当たり獲得出玉を入力</div>
       <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">※枠内スワイプ対応</label>
       <input type="number" id="payoutAmount" class="swipe-input" step="10" value="" placeholder="例: 1500" style="border-color: #f39c12;">
-      
       <label style="font-size: 11px; color: #d35400; margin-top: 10px; margin-bottom: 4px;">備考 (任意)</label>
       <input type="text" id="payoutMemo" placeholder="例: 10連、右打ちスルー など" style="border-color: #f39c12;">
-
       <button class="action-btn" style="background-color: #e67e22; margin-top: 10px;" onclick="addPayout()">出玉を記録して次へ</button>
     </div>
-    
-    <div class="result" id="measurementResult" style="display: none; margin-top:20px;">
-      <p><span>250玉(千円)平均:</span> <span id="avg250" class="highlight"></span></p>
-      <p><span>持ち球比率:</span> <span id="dispMochiRatio" style="font-weight:bold; color:#e67e22;"></span></p>
-      <hr>
-      <p><span>自分で回した回転数:</span> <span id="totalMeasuredSpins"></span></p>
-      <p><span>現在の総回転数(データ機):</span> <span id="absoluteTotalSpins" style="font-weight:bold; color:#2c3e50;"></span></p>
-      <p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls"></span></p>
-      <div class="history-list" id="historyList"></div>
-      <button class="btn-save" id="btnSaveRecord" onclick="saveCurrentRecord()">この記録を保存</button>
-      <button class="btn-reset" onclick="resetMeasurement()">現在の入力をすべてリセット</button>
+
+    <!-- 画面遷移（モーダル）を呼び出すボタン -->
+    <div style="margin-top: 25px;">
+      <button id="btnOpenResultModal" class="action-btn" style="background-color: #34495e; padding: 16px; font-size:14px;" onclick="openResultModal()">
+        📊 入力データを確認 (未入力)
+      </button>
+      <button class="action-btn" style="background-color: #7f8c8d; padding: 12px; margin-top: 10px; font-size:13px;" onclick="openSavedModal()">
+        💾 同日の保存データを呼び出し・確認
+      </button>
     </div>
-    <div class="section-title" style="margin-top: 30px;">同日の保存された機種データ</div>
-    <div id="savedRecordsContainer"></div>
   </div>
 
-  <!-- ツール2：期待値＆分散シミュレーター -->
+  <!-- ================= ツール2：期待値 ================= -->
   <div id="tab2" class="tab-content">
     <h2>期待値計算＆シミュレーション</h2>
-    
     <div class="section-title">基本条件 <span class="hint-text">※枠内スワイプ対応</span></div>
-    
-    <!-- 辞書連携用 機種名 -->
     <div class="form-group" style="background: #e8f4f8; padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
       <label style="color: #2980b9;">機種名 (辞書からスペックを自動入力)</label>
       <input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="loadMachineSpec()">
     </div>
-
-    <div class="form-group">
-      <label>等価ボーダー (回/千円)</label>
-      <input type="number" id="border" class="swipe-input" step="0.1" value="" placeholder="例: 18.0" oninput="this.classList.remove('auto-filled')">
-    </div>
-    
-    <div class="form-group">
-      <label>現在の平均回転数 (回/千円)</label>
-      <input type="number" id="spinRate" class="swipe-input" step="0.1" value="" placeholder="例: 20.0" oninput="this.classList.remove('auto-filled')">
-    </div>
-    
-    <div class="form-group">
-      <label>交換率 (円/玉) ※等価4.0、28玉3.57</label>
-      <input type="number" id="exchangeRate" class="swipe-input" step="0.01" value="" placeholder="例: 3.57">
-    </div>
-    
-    <div class="form-group">
-      <label>持ち球比率 (%)</label>
-      <input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60" oninput="this.classList.remove('auto-filled')">
-    </div>
-    
-    <div class="form-group">
-      <label>総回転数 (回) ※トータル期待値・シミュレーション用</label>
-      <input type="number" id="totalSpins" class="swipe-input" step="10" value="" placeholder="例: 2000">
-    </div>
+    <div class="form-group"><label>等価ボーダー (回/千円)</label><input type="number" id="border" class="swipe-input" step="0.1" value="" placeholder="例: 18.0" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>現在の平均回転数 (回/千円)</label><input type="number" id="spinRate" class="swipe-input" step="0.1" value="" placeholder="例: 20.0" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>交換率 (円/玉) ※等価4.0、28玉3.57</label><input type="number" id="exchangeRate" class="swipe-input" step="0.01" value="" placeholder="例: 3.57"></div>
+    <div class="form-group"><label>持ち球比率 (%)</label><input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>総回転数 (回)</label><input type="number" id="totalSpins" class="swipe-input" step="10" value="" placeholder="例: 2000"></div>
 
     <div class="section-title">機種スペック（ブレの計算用） <span class="hint-text">※枠内スワイプ対応</span></div>
-    
-    <div class="form-group">
-      <label>大当たり確率 (1/〇〇)</label>
-      <input type="number" id="probDenom" class="swipe-input" step="0.1" value="" placeholder="例: 319.6" oninput="this.classList.remove('auto-filled')">
-    </div>
-    
-    <div class="form-group">
-      <label>初当たり平均獲得出玉 (玉)</label>
-      <input type="number" id="avgPayout" class="swipe-input" step="10" value="" placeholder="例: 4500" oninput="this.classList.remove('auto-filled')">
-    </div>
+    <div class="form-group"><label>大当たり確率 (1/〇〇)</label><input type="number" id="probDenom" class="swipe-input" step="0.1" value="" placeholder="例: 319.6" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>初当たり平均獲得出玉 (玉)</label><input type="number" id="avgPayout" class="swipe-input" step="10" value="" placeholder="例: 4500" oninput="this.classList.remove('auto-filled')"></div>
     
     <button class="action-btn" onclick="calculateAndSimulate()">期待値を計算＆シミュレート</button>
     <p style="font-size:11px; text-align:center; color:#7f8c8d; margin-top:5px;">※管理者のみ、計算時に入力したスペックが自動的に「辞書」に登録・上書きされます。</p>
@@ -355,20 +308,16 @@
           <input type="text" id="evSaveStore" placeholder="店舗名" style="flex: 1;">
           <input type="text" id="evSaveMachine" placeholder="機種名" style="flex: 1;">
         </div>
-        <button class="btn-small" style="width: 100%; background: #3498db; margin:0;" onclick="saveExpectedValueToCalendar()">自動計算してツール③に保存</button>
+        <button class="btn-small" style="width: 100%; background: #3498db; margin:0;" onclick="saveExpectedValueToCalendar()">自動計算して収支タブに保存</button>
       </div>
     </div>
 
     <div class="simulation" id="simArea" style="display: none;">
-      <!-- スランプグラフ表示エリア -->
       <div id="graphContainer" style="display: none; margin-bottom: 25px;">
         <div style="font-weight: bold; margin-bottom: 10px; color: #3498db;">実稼働の差玉推移グラフ</div>
-        <div style="position: relative; height: 250px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #ccc;">
-          <canvas id="slumpGraph"></canvas>
-        </div>
+        <div style="position: relative; height: 250px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #ccc;"><canvas id="slumpGraph"></canvas></div>
         <hr style="margin: 20px 0;">
       </div>
-
       <div style="font-weight: bold; margin-bottom: 10px; color: #d35400;">1万回シミュレーション結果（理論値のブレ）</div>
       <p><span>上位 5% (大上振れ):</span> <span id="simTop5" class="sim-value plus"></span></p>
       <p><span>上位 25% (やや上振れ):</span> <span id="simTop25" class="sim-value plus"></span></p>
@@ -378,18 +327,15 @@
     </div>
   </div>
 
-  <!-- ツール3：収支カレンダー -->
+  <!-- ================= ツール3：収支カレンダー ================= -->
   <div id="tab3" class="tab-content">
     <h2>収支カレンダー</h2>
-    
     <div class="calendar-header">
       <button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(-1)">◀ 前月</button>
       <div id="calendarMonthLabel" style="font-weight:bold; font-size:16px; color:#2c3e50;"></div>
       <button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(1)">次月 ▶</button>
     </div>
-    
     <div id="visualCalendar" class="calendar-grid" style="margin-bottom: 15px;"></div>
-    
     <div class="result summary-box" style="margin-top: 0;">
       <p><span>月間期待値:</span> <span id="monthlyEV" style="font-weight: bold; color: #27ae60;"></span></p>
       <p><span>月間実収支:</span> <span id="monthlyActual" style="font-weight: bold; color: #2980b9;"></span></p>
@@ -397,51 +343,48 @@
       <hr>
       <p><span>収支のブレ:</span> <span id="monthlyDiff" style="font-weight: bold;"></span></p>
     </div>
-
-    <!-- 選択した日付のみ表示するエリア -->
     <div class="section-title purple">選択した日付のデータ詳細 (<span id="selectedDateDisp">未選択</span>)</div>
     <div id="calendarList"></div>
     <input type="hidden" id="actualDate">
   </div>
 
-  <!-- ツール4：データ・設定（グループ、履歴、辞書） -->
+  <!-- ================= ツール4：設定・データ ================= -->
   <div id="tab4" class="tab-content active">
     
-    <!-- グループ管理（ノリ打ち） -->
-    <h2>グループ管理（ノリ打ち）</h2>
-    <p style="font-size:13px; color:#555; margin-bottom: 15px; line-height:1.5;">本ツールは必ずグループを作成または参加して使用します。</p>
+    <!-- ログイン管理エリア -->
+    <div style="background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
+      <p style="margin-top:0; font-weight:bold; color:#2c3e50; font-size:15px;">アカウント連携</p>
+      <p id="user-info" style="font-size: 13px; font-weight: bold; color: #e74c3c; margin-bottom:10px;">ログインしていません</p>
+      <button id="login-btn" class="btn-auth" onclick="login()">Googleでログイン</button>
+      <button id="logout-btn" class="btn-auth logout" onclick="logout()" style="display:none;">ログアウト</button>
+    </div>
 
     <!-- グループ未参加時 -->
-    <div id="group-none" class="group-box">
-      
-      <!-- ニックネーム設定 -->
+    <div id="group-none" class="group-box" style="margin-top:0;">
+      <p style="font-size:13px; color:#555; margin-bottom: 15px; line-height:1.5;">ツールを利用するにはグループを作成または参加してください。</p>
       <div class="form-group" style="text-align: left; background: #fff3cd; padding: 10px; border-radius: 6px; border: 1px solid #ffeeba; margin-bottom: 20px;">
         <label style="color: #d35400;">参加時のニックネーム (任意)</label>
-        <p style="font-size:11px; color:#7f8c8d; margin-top:0; margin-bottom:8px;">※未入力の場合はメールアドレスの先頭5文字が使われます。</p>
+        <p style="font-size:11px; color:#7f8c8d; margin-top:0; margin-bottom:8px;">※未入力の場合はメールの先頭5文字が使われます。</p>
         <input type="text" id="nicknameInput" placeholder="例: たろう">
       </div>
-
       <div style="margin-bottom: 20px;">
         <p style="font-size:14px; font-weight:bold; color:#2c3e50; margin-bottom:10px;">新しくグループを作る</p>
-        <p style="font-size:11px; color:#e74c3c; margin-bottom:10px;">※作成したあなたが「管理者」になり、データの更新・削除が可能になります。</p>
         <button class="action-btn" style="background-color: #9b59b6; margin-top:0;" onclick="createGroup()">グループを作成する</button>
       </div>
       <hr style="border-top:1px dashed #ccc; margin: 20px 0;">
       <div>
         <p style="font-size:14px; font-weight:bold; color:#2c3e50; margin-bottom:10px;">既存のグループに参加する</p>
-        <p style="font-size:11px; color:#e74c3c; margin-bottom:10px;">※参加者は「メンバー」になり、データの追加のみ可能です（削除・更新は不可）。</p>
         <input type="text" id="joinGroupId" placeholder="6桁のグループIDを入力" style="margin-bottom:10px; text-align:center; font-weight:bold; letter-spacing:2px; text-transform:uppercase;">
         <button class="btn-half" style="width:100%; background-color:#34495e;" onclick="joinGroup()">参加する</button>
       </div>
     </div>
 
     <!-- グループ参加中 -->
-    <div id="group-active" class="group-box" style="display: none; border-color:#27ae60; background:#f0fbf4;">
+    <div id="group-active" class="group-box" style="display: none; border-color:#27ae60; background:#f0fbf4; margin-top:0;">
       <p style="font-size:13px; color:#27ae60; font-weight:bold; margin-bottom:5px;">現在共有中のグループID</p>
       <div id="dispGroupId" style="font-size:32px; font-weight:bold; letter-spacing:4px; color:#2c3e50; margin-bottom:10px;"></div>
       <div id="dispUserRole" style="font-size:14px; font-weight:bold; margin-bottom:20px; color:#e67e22;"></div>
       
-      <!-- ニックネーム変更エリア -->
       <div style="background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;">
         <p style="font-size:12px; color:#555; margin-top:0; margin-bottom:5px;">現在のあなたのニックネーム: <span id="dispNickname" style="font-weight:bold; color:#2980b9; font-size:14px;"></span></p>
         <div style="display:flex; gap:5px;">
@@ -450,41 +393,84 @@
         </div>
       </div>
       
-      <p style="font-size:12px; color:#555; margin-bottom:20px;">このIDを友人に教えることで、同じデータを共有できます。</p>
-      
       <div style="background: #fff; border: 1px solid #e74c3c; border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;">
         <p style="font-size:14px; font-weight:bold; color:#e74c3c; margin-top:0; margin-bottom:8px;">⚠️ 個人データをグループに統合</p>
-        <p style="font-size:12px; color:#555; margin-bottom:10px; line-height:1.4;">あなたがこれまで個人モードで入力した過去の「履歴」「カレンダー」「辞書」のデータをすべてグループの共有スペースに合算・移行します。</p>
-        <button class="btn-small" style="width:100%; background-color:#e74c3c; padding:10px;" onclick="mergePersonalDataToGroup()">個人の過去データをすべて統合する</button>
+        <p style="font-size:12px; color:#555; margin-bottom:10px; line-height:1.4;">過去の「履歴」「カレンダー」「辞書」をすべてグループに合算・移行します。</p>
+        <button class="btn-small" style="width:100%; background-color:#e74c3c; padding:10px;" onclick="mergePersonalDataToGroup()">過去データをすべて統合する</button>
       </div>
 
       <button class="btn-reset" onclick="leaveGroup()">グループから退出する</button>
     </div>
 
-    <!-- 履歴・辞書表示エリア（グループ参加時のみ表示） -->
+    <!-- 履歴・辞書表示エリア -->
     <div id="history-and-dict-section" style="display: none;">
-      
-      <!-- 履歴 -->
       <h2 style="margin-top: 30px;">過去1年間の履歴</h2>
       <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-        <div style="flex: 1;">
-          <label>機種名で絞り込み</label>
-          <input type="text" id="historyMachineFilter" list="machineList" placeholder="例: エヴァ15" oninput="renderHistoryTab()">
-        </div>
+        <div style="flex: 1;"><input type="text" id="historyMachineFilter" list="machineList" placeholder="機種名で絞り込み" oninput="renderHistoryTab()"></div>
       </div>
       <div id="historyRecordsContainer"></div>
 
-      <!-- 辞書管理 -->
       <h2 style="margin-top: 30px;">機種辞書管理</h2>
-      <p style="font-size:13px; color:#555; margin-bottom: 15px; line-height:1.5;">ツール②で期待値を計算した際、入力した「ボーダー・確率・平均出玉」が機種名に紐付いてここに自動保存されます。<br>※更新・削除はグループの管理者のみ可能です。</p>
       <div id="dictContainer"></div>
-      
     </div>
-
   </div>
 </div>
 
+<!-- ================= モーダル（擬似画面遷移）エリア ================= -->
+<!-- 入力結果（青枠）モーダル -->
+<div id="resultModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 style="margin-top:0; border-bottom:2px solid #3498db; padding-bottom:8px;">計測結果の詳細</h3>
+    <div class="result" id="measurementResult" style="display: block; margin-top:10px; padding: 10px;">
+      <p><span>250玉(千円)平均:</span> <span id="avg250" class="highlight">0.00 回</span></p>
+      <p><span>持ち球比率:</span> <span id="dispMochiRatio" style="font-weight:bold; color:#e67e22;">0.0 %</span></p>
+      <hr>
+      <p><span>自分で回した回転数:</span> <span id="totalMeasuredSpins">0 回</span></p>
+      <p><span>現在の総回転数:</span> <span id="absoluteTotalSpins" style="font-weight:bold; color:#2c3e50;">0 回</span></p>
+      <p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls">0 玉</span></p>
+      <div class="history-list" id="historyList">入力履歴がここに表示されます。</div>
+    </div>
+    
+    <button class="btn-save" id="btnSaveRecord" onclick="saveCurrentRecord()" style="margin-top: 20px;">この記録を保存</button>
+    <button class="btn-reset" onclick="resetMeasurement()">現在の入力をすべてリセット</button>
+    <button class="modal-close-btn" onclick="closeResultModal()">元の画面に戻る</button>
+  </div>
+</div>
+
+<!-- 保存済みデータ モーダル -->
+<div id="savedModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 style="margin-top:0; border-bottom:2px solid #7f8c8d; padding-bottom:8px;">同日の保存データ</h3>
+    <div id="savedRecordsContainer"></div>
+    <button class="modal-close-btn" onclick="closeSavedModal()">元の画面に戻る</button>
+  </div>
+</div>
+
+
 <script>
+// ==========================================
+// モーダル管理（ツール①の表示切り替え）
+// ==========================================
+function openResultModal() {
+  document.getElementById('resultModal').style.display = 'flex';
+}
+function closeResultModal() {
+  document.getElementById('resultModal').style.display = 'none';
+}
+function openSavedModal() {
+  renderSavedRecords();
+  document.getElementById('savedModal').style.display = 'flex';
+}
+function closeSavedModal() {
+  document.getElementById('savedModal').style.display = 'none';
+}
+
+// モーダルの外側（黒い背景）をタップした時にも閉じる処理
+window.onclick = function(event) {
+  if (event.target == document.getElementById('resultModal')) closeResultModal();
+  if (event.target == document.getElementById('savedModal')) closeSavedModal();
+}
+
 // ==========================================
 // スワイプ機能設定
 // ==========================================
@@ -498,46 +484,35 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
   const onStart = (e) => {
     isDragging = true;
     startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    
     let def = typeof defaultVal === 'function' ? defaultVal() : defaultVal;
-    
     if (el.value === "") {
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
       el.value = Number(def).toFixed(decimals);
       el.classList.remove('auto-filled');
       if (el.oninput) el.oninput();
     }
-    
     startVal = parseFloat(el.value);
     if (isNaN(startVal)) startVal = def;
   };
-
   el.addEventListener('mousedown', onStart);
   el.addEventListener('touchstart', onStart, {passive: true});
-
   const onMove = (e) => {
     if (!isDragging) return;
     let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     let deltaX = clientX - startX;
-    
     let steps = Math.trunc(deltaX / 8); 
-    
     if (steps !== 0) {
       let newVal = startVal + (steps * step);
       if (newVal < min) newVal = min;
       if (newVal > max) newVal = max;
-      
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
       el.value = newVal.toFixed(decimals);
       el.classList.remove('auto-filled');
-      
       if (el.oninput) el.oninput();
     }
   };
-
   window.addEventListener('mousemove', onMove);
   window.addEventListener('touchmove', onMove, {passive: true});
-
   const onEnd = () => { isDragging = false; };
   window.addEventListener('mouseup', onEnd);
   window.addEventListener('touchend', onEnd);
@@ -547,12 +522,12 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -575,20 +550,12 @@ let slumpChartInstance = null;
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
 
-// ==========================================
-// ニックネーム管理関数
-// ==========================================
 function getNickname() {
   let name = localStorage.getItem('pachinko_nickname');
-  if (name && name.trim() !== "") {
-    return name.trim();
-  }
-  if (currentUser && currentUser.email) {
-    return currentUser.email.substring(0, 5);
-  }
+  if (name && name.trim() !== "") return name.trim();
+  if (currentUser && currentUser.email) return currentUser.email.substring(0, 5);
   return "名無し";
 }
-
 function updateNickname() {
   const newName = document.getElementById('updateNicknameInput').value.trim();
   if(newName) {
@@ -596,75 +563,54 @@ function updateNickname() {
     alert("ニックネームを更新しました！");
     document.getElementById('updateNicknameInput').value = '';
     updateModeIndicator();
-  } else {
-    alert("ニックネームを入力してください。");
-  }
+  } else { alert("ニックネームを入力してください。"); }
 }
-
 function saveNicknameFromInput() {
   const name = document.getElementById('nicknameInput').value.trim();
-  if (name) {
-    localStorage.setItem('pachinko_nickname', name);
-  } else {
-    localStorage.removeItem('pachinko_nickname'); // デフォルトを使用させる
-  }
+  if (name) localStorage.setItem('pachinko_nickname', name);
+  else localStorage.removeItem('pachinko_nickname');
 }
-
-
 function formatCurrency(num) {
   return (num > 0 ? "+" : "") + Math.round(num).toLocaleString() + " 円";
 }
 
 // ==========================================
-// タブ・モード表示管理
+// タブ・モード表示管理（フッターナビ連動）
 // ==========================================
 function updateModeIndicator() {
-  const t1 = document.getElementById('btn-tab1');
-  const t2 = document.getElementById('btn-tab2');
-  const t3 = document.getElementById('btn-tab3');
+  const n1 = document.getElementById('nav-tab1');
+  const n2 = document.getElementById('nav-tab2');
+  const n3 = document.getElementById('nav-tab3');
   const hdSection = document.getElementById('history-and-dict-section');
-  const ind = document.getElementById('mode-indicator');
 
   if (currentGroupId) {
-    t1.style.display = 'block'; t2.style.display = 'block'; t3.style.display = 'block';
+    n1.style.display = 'block'; n2.style.display = 'block'; n3.style.display = 'block';
     document.getElementById('group-none').style.display = 'none';
     document.getElementById('group-active').style.display = 'block';
     document.getElementById('dispGroupId').innerText = currentGroupId;
     document.getElementById('dispUserRole').innerText = isAdmin ? "👑 あなたの権限: 管理者 (更新・削除可能)" : "👤 あなたの権限: メンバー (追加・閲覧のみ)";
-    document.getElementById('dispNickname').innerText = getNickname(); // ニックネーム表示更新
+    document.getElementById('dispNickname').innerText = getNickname();
     hdSection.style.display = 'block';
-    
-    if (ind) {
-      ind.className = 'mode-badge mode-group';
-      ind.innerText = `👥 グループ共有中 (ID: ${currentGroupId})`;
-    }
   } else {
-    t1.style.display = 'none'; t2.style.display = 'none'; t3.style.display = 'none';
+    n1.style.display = 'none'; n2.style.display = 'none'; n3.style.display = 'none';
     document.getElementById('group-none').style.display = 'block';
     document.getElementById('group-active').style.display = 'none';
     hdSection.style.display = 'none';
-    
-    if (ind) {
-      ind.className = 'mode-badge mode-warning';
-      ind.innerText = `⚠️ グループ未参加 (作成・参加してください)`;
-    }
     switchTab('tab4');
   }
 }
 
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.bottom-nav button').forEach(el => el.classList.remove('active'));
+  
   document.getElementById(tabId).classList.add('active');
-  document.getElementById('btn-' + tabId).classList.add('active');
+  document.getElementById('nav-' + tabId).classList.add('active');
   
   if (currentGroupId) {
     if(tabId === 'tab1') renderSavedRecords();
     if(tabId === 'tab3') renderCalendar();
-    if(tabId === 'tab4') {
-        renderDictionary();
-        renderHistoryTab();
-    }
+    if(tabId === 'tab4') { renderDictionary(); renderHistoryTab(); }
   }
 }
 
@@ -674,58 +620,45 @@ async function getDbRef() {
 }
 
 // ==========================================
-// グループ管理（作成・参加）
+// グループ管理
 // ==========================================
 async function createGroup() {
   if (!currentUser || !db) return alert("Firebaseにログインしてください。");
-  
-  saveNicknameFromInput(); // ニックネーム保存
-
+  saveNicknameFromInput();
   const newId = Math.random().toString(36).substr(2, 6).toUpperCase(); 
   try {
     await db.collection('groups').doc(newId).set({ created: Date.now(), creator: currentUser.uid });
-    currentGroupId = newId;
-    isAdmin = true; 
+    currentGroupId = newId; isAdmin = true; 
     localStorage.setItem('pachinko_groupId', newId);
     updateModeIndicator();
-    alert(`グループを作成しました！\nID: ${newId}\n友人にこのIDを教えて参加してもらってください。`);
+    alert(`グループを作成しました！\nID: ${newId}`);
     renderSavedRecords(); renderCalendar(); renderHistoryTab(); renderDictionary();
-  } catch (error) {
-    console.error(error);
-    alert("グループの作成に失敗しました。");
-  }
+    switchTab('tab1'); // 作成後は計測タブへ
+  } catch (error) { alert("グループの作成に失敗しました。"); }
 }
 
 async function joinGroup() {
   if (!currentUser || !db) return alert("Firebaseにログインしてください。");
-  
-  saveNicknameFromInput(); // ニックネーム保存
-
+  saveNicknameFromInput();
   const idInput = document.getElementById('joinGroupId').value.trim().toUpperCase();
   if (idInput.length !== 6) return alert("6桁のグループIDを入力してください。");
   try {
     const doc = await db.collection('groups').doc(idInput).get();
     if (doc.exists) {
-      currentGroupId = idInput;
-      isAdmin = (doc.data().creator === currentUser.uid); 
+      currentGroupId = idInput; isAdmin = (doc.data().creator === currentUser.uid); 
       localStorage.setItem('pachinko_groupId', idInput);
       document.getElementById('joinGroupId').value = '';
       updateModeIndicator();
       alert(`グループに参加しました！（権限: ${isAdmin ? '管理者' : 'メンバー'}）`);
       renderSavedRecords(); renderCalendar(); renderHistoryTab(); renderDictionary();
-    } else {
-      alert("指定されたIDのグループが見つかりません。");
-    }
-  } catch (error) {
-    console.error(error);
-    alert("グループの参加に失敗しました。");
-  }
+      switchTab('tab1'); // 参加後は計測タブへ
+    } else { alert("指定されたIDのグループが見つかりません。"); }
+  } catch (error) { alert("グループの参加に失敗しました。"); }
 }
 
 function leaveGroup() {
   if(confirm("グループから退出しますか？\n（再度IDを入力すれば戻れます）")) {
-    currentGroupId = null;
-    isAdmin = false;
+    currentGroupId = null; isAdmin = false;
     localStorage.removeItem('pachinko_groupId');
     updateModeIndicator();
   }
@@ -733,56 +666,36 @@ function leaveGroup() {
 
 async function mergePersonalDataToGroup() {
   if (!currentGroupId || !currentUser || !db) return alert("ログインし、グループに参加した状態で実行してください。");
-  if (!confirm("あなたの個人の過去データ（履歴・カレンダー・辞書）をすべてグループに合算し、メンバー全員に共有します。\n\n※この操作は取り消せません。本当によろしいですか？")) return;
+  if (!confirm("あなたの個人の過去データ（履歴・カレンダー・辞書）をすべてグループに合算し共有します。\n※この操作は取り消せません。よろしいですか？")) return;
 
   try {
     const personalRef = db.collection('users').doc(currentUser.uid);
     const groupRef = db.collection('groups').doc(currentGroupId);
-
     const [pDoc, gDoc] = await Promise.all([personalRef.get(), groupRef.get()]);
     const pData = pDoc.exists ? pDoc.data() : {};
     const gData = gDoc.exists ? gDoc.data() : {};
 
-    const pRecords = pData.records || [];
-    const gRecords = gData.records || [];
-    const mergedRecords = [...gRecords, ...pRecords];
+    const mergedRecords = [...(gData.records || []), ...(pData.records || [])];
     const uniqueRecordsMap = new Map();
     mergedRecords.forEach(r => uniqueRecordsMap.set(r.id, r));
-    const finalRecords = Array.from(uniqueRecordsMap.values());
-
+    
     const pCal = pData.calendar || {};
-    const gCal = gData.calendar || {};
-    const finalCal = { ...gCal };
+    const finalCal = { ...(gData.calendar || {}) };
     for (let date in pCal) {
       if (finalCal[date]) {
         finalCal[date].ev = (finalCal[date].ev || 0) + (pCal[date].ev || 0);
         finalCal[date].actual = (finalCal[date].actual || 0) + (pCal[date].actual || 0);
         finalCal[date].actualBalls = (finalCal[date].actualBalls || 0) + (pCal[date].actualBalls || 0);
         finalCal[date].details = [...(finalCal[date].details || []), ...(pCal[date].details || [])];
-      } else {
-        finalCal[date] = pCal[date];
-      }
+      } else { finalCal[date] = pCal[date]; }
     }
 
-    const pDict = pData.dictionary || {};
-    const gDict = gData.dictionary || {};
-    const finalDict = { ...gDict, ...pDict };
+    const finalDict = { ...(gData.dictionary || {}), ...(pData.dictionary || {}) };
 
-    await groupRef.set({
-      records: finalRecords,
-      calendar: finalCal,
-      dictionary: finalDict
-    }, { merge: true });
-
+    await groupRef.set({ records: Array.from(uniqueRecordsMap.values()), calendar: finalCal, dictionary: finalDict }, { merge: true });
     alert("個人のデータをすべてグループに共有・統合しました！");
-    renderSavedRecords();
-    renderCalendar();
-    renderDictionary();
-    renderHistoryTab();
-  } catch(e) {
-    console.error(e);
-    alert("データの統合に失敗しました。");
-  }
+    renderSavedRecords(); renderCalendar(); renderDictionary(); renderHistoryTab();
+  } catch(e) { alert("データの統合に失敗しました。"); }
 }
 
 // ==========================================
@@ -792,7 +705,6 @@ window.onload = function() {
   const today = new Date();
   currentCalYear = today.getFullYear();
   currentCalMonth = today.getMonth();
-  
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, '0');
   const dd = String(today.getDate()).padStart(2, '0');
@@ -802,13 +714,11 @@ window.onload = function() {
   document.getElementById('evSaveDate').value = todayStr;
   document.getElementById('actualDate').value = todayStr;
   
-  // スワイプ機能の初期化（ツール①の measuredSpin は現在までの合計値から計算）
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
     const start = parseInt(document.getElementById('startSpin').value) || 0;
-    let soFar = 0;
-    historyData.forEach(d => { if (d.type === 'spin' || !d.type) soFar += d.spins; });
-    return start + soFar + 15; // 前回から +15 くらいをデフォルトにする
+    let soFar = 0; historyData.forEach(d => { if (d.type === 'spin' || !d.type) soFar += d.spins; });
+    return start + soFar + 15;
   });
   
   setupSwipeInput('payoutAmount', 10, 0, 100000, 1500); 
@@ -842,12 +752,10 @@ window.onload = function() {
               updateModeIndicator();
             }
           });
-        } else {
-          updateModeIndicator();
-        }
+        } else { updateModeIndicator(); }
       } else {
         currentUser = null; currentGroupId = null; isAdmin = false;
-        document.getElementById('user-info').innerText = 'ログイン必須';
+        document.getElementById('user-info').innerText = 'ログインしていません';
         document.getElementById('user-info').style.color = '#e74c3c';
         document.getElementById('login-btn').style.display = 'inline-block';
         document.getElementById('logout-btn').style.display = 'none';
@@ -861,16 +769,12 @@ function login() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
-  
-  auth.signInWithPopup(provider).catch(error => {
-    console.error("ログインエラー:", error);
-    alert("ログインに失敗しました。");
-  });
+  auth.signInWithPopup(provider).catch(error => { alert("ログインに失敗しました。"); });
 }
 function logout() { if(auth) auth.signOut(); }
 
 // ==========================================
-// データの取得と保存（グループのみ）
+// データ取得保存 ＆ 辞書 ＆ カレンダー
 // ==========================================
 async function getRecordsData() {
   const ref = await getDbRef();
@@ -881,7 +785,6 @@ async function saveRecordsData(records) {
   const ref = await getDbRef();
   if (ref) await ref.set({ records: records }, { merge: true });
 }
-
 async function getCalendarData() {
   const ref = await getDbRef();
   if (!ref) return {};
@@ -891,7 +794,6 @@ async function saveCalendarData(calendar) {
   const ref = await getDbRef();
   if (ref) await ref.set({ calendar: calendar }, { merge: true });
 }
-
 async function getDictionaryData() {
   const ref = await getDbRef();
   if (!ref) return {};
@@ -902,32 +804,17 @@ async function saveDictionaryData(dict) {
   if (ref) await ref.set({ dictionary: dict }, { merge: true });
 }
 
-// ==========================================
-// ツール④：辞書UIのレンダリング（権限管理適用）
-// ==========================================
 async function renderDictionary() {
   const dict = await getDictionaryData();
   const listEl = document.getElementById('machineList');
-  let optionsHtml = '';
-  for(let m in dict) { optionsHtml += `<option value="${m}"></option>`; }
+  let optionsHtml = ''; for(let m in dict) { optionsHtml += `<option value="${m}"></option>`; }
   listEl.innerHTML = optionsHtml;
-
   const container = document.getElementById('dictContainer');
   let html = '';
   for(let m in dict) {
     const spec = dict[m];
-    
-    let adminButtons = '';
-    if (isAdmin) {
-      adminButtons = `
-      <div style="display:flex; justify-content:flex-end; gap:5px;">
-        <button class="btn-small" style="background:#3498db;" onclick="updateDictItem('${m}')">更新</button>
-        <button class="btn-small" style="background:#e74c3c;" onclick="deleteDictItem('${m}')">削除</button>
-      </div>`;
-    }
-
-    html += `
-    <div class="saved-item" style="border-left: 4px solid #1abc9c;">
+    let adminButtons = isAdmin ? `<div style="display:flex; justify-content:flex-end; gap:5px;"><button class="btn-small" style="background:#3498db;" onclick="updateDictItem('${m}')">更新</button><button class="btn-small" style="background:#e74c3c;" onclick="deleteDictItem('${m}')">削除</button></div>` : '';
+    html += `<div class="saved-item" style="border-left: 4px solid #1abc9c;">
       <div style="font-weight:bold; color:#2c3e50; margin-bottom:8px;">${m}</div>
       <div style="display:flex; gap:5px; margin-bottom:5px;">
         <div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">ボーダー</label><input type="number" id="dict_border_${m}" value="${spec.border || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div>
@@ -935,8 +822,7 @@ async function renderDictionary() {
         <div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">出玉(玉)</label><input type="number" id="dict_payout_${m}" value="${spec.avgPayout || ''}" step="10" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div>
       </div>
       ${adminButtons}
-    </div>
-    `;
+    </div>`;
   }
   if(html === '') html = '<p style="font-size:13px; color:#777;">登録されている機種スペックはありません。</p>';
   container.innerHTML = html;
@@ -947,31 +833,21 @@ async function updateDictItem(machine) {
   const b = parseFloat(document.getElementById(`dict_border_${machine}`).value);
   const p = parseFloat(document.getElementById(`dict_prob_${machine}`).value);
   const a = parseFloat(document.getElementById(`dict_payout_${machine}`).value);
-  
   const dict = await getDictionaryData();
   if(!dict[machine]) dict[machine] = {};
   if(!isNaN(b)) dict[machine].border = b;
   if(!isNaN(p)) dict[machine].probDenom = p;
   if(!isNaN(a)) dict[machine].avgPayout = a;
-  
-  await saveDictionaryData(dict);
-  alert(`[${machine}] の辞書を更新しました。`);
-  renderDictionary();
+  await saveDictionaryData(dict); alert(`[${machine}] の辞書を更新しました。`); renderDictionary();
 }
 
 async function deleteDictItem(machine) {
   if (!isAdmin) return alert("権限がありません。");
   if(confirm(`[${machine}] を辞書から削除しますか？`)) {
-    const dict = await getDictionaryData();
-    delete dict[machine];
-    await saveDictionaryData(dict);
-    renderDictionary();
+    const dict = await getDictionaryData(); delete dict[machine]; await saveDictionaryData(dict); renderDictionary();
   }
 }
 
-// ==========================================
-// レコードのHTML作成用共通関数（権限管理適用）
-// ==========================================
 function createRecordItemHtml(r) {
   let historyHtml = '';
   if (r.history && r.history.length > 0) {
@@ -995,20 +871,13 @@ function createRecordItemHtml(r) {
   let dispRatio = (r.mochidamaRatio || 0).toFixed(1);
   let startDisp = (r.startSpins !== undefined && r.startSpins >= 0) ? ` <span style="color:#7f8c8d; font-size:11px;">(開始${r.startSpins}G → 終了${r.startSpins + r.totalSpins}G)</span>` : '';
   let storeDisp = r.store ? `<span style="color:#7f8c8d; font-size:12px; margin-right:6px;">[${r.store}]</span>` : '';
-  
   let authorDisp = r.author ? `<span class="author-badge">👤 ${r.author}</span>` : '';
   
   const safeStr = encodeURIComponent(JSON.stringify(r.hitHistory || []));
   const safeHist = encodeURIComponent(JSON.stringify(r.history || []));
   const btnCall = `useRecordForCalc('${r.date}', ${r.avg250}, '${r.machine}', ${r.mochidamaRatio || 0}, '${r.store || ''}', ${r.totalCashBalls || 0}, ${r.totalMochiBalls || 0}, ${r.totalPayout || 0}, '${safeStr}', '${safeHist}')`;
 
-  let adminButtons = '';
-  if (isAdmin) {
-    adminButtons = `
-      <button class="btn-small" style="background:#f39c12;" onclick="resumeRecord(${r.id})">続きを計測</button>
-      <button class="btn-small" style="background:#95a5a6;" onclick="deleteRecord(${r.id})">削除</button>
-    `;
-  }
+  let adminButtons = isAdmin ? `<button class="btn-small" style="background:#f39c12;" onclick="resumeRecord(${r.id})">続きを計測</button><button class="btn-small" style="background:#95a5a6;" onclick="deleteRecord(${r.id})">削除</button>` : '';
 
   return `<div class="saved-item">
     <div style="font-weight:bold; color:#2c3e50; font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}${authorDisp}</div>
@@ -1025,34 +894,24 @@ function createRecordItemHtml(r) {
 }
 
 // ==========================================
-// ツール①関連（計測・保存）
+// ツール①：計測ロジックとモーダル表示連動
 // ==========================================
 function addMeasurement(balls) {
   const spinInput = document.getElementById('measuredSpin');
   const currentMachineSpin = parseFloat(spinInput.value);
-  
   if (isNaN(currentMachineSpin) || currentMachineSpin < 0) return alert("現在のデータ機回転数を正しく入力してください。");
   
   const startSpin = parseInt(document.getElementById('startSpin').value) || 0;
-  let totalSpinsSoFar = 0;
-  historyData.forEach(d => { 
-    if (d.type === 'spin' || !d.type) totalSpinsSoFar += d.spins; 
-  });
-  
+  let totalSpinsSoFar = 0; historyData.forEach(d => { if (d.type === 'spin' || !d.type) totalSpinsSoFar += d.spins; });
   const lastSpin = startSpin + totalSpinsSoFar;
   const spins = currentMachineSpin - lastSpin;
 
-  if (spins <= 0) {
-    return alert(`現在の回転数は、前回の回転数 (${lastSpin}回) より大きい数値を入力してください。`);
-  }
+  if (spins <= 0) return alert(`現在の回転数は、前回の回転数 (${lastSpin}回) より大きい数値を入力してください。`);
   
   const isMochi = document.getElementById('isMochidama').checked;
   const hitNormal = document.getElementById('hitNormal').checked;
   const hitRush = document.getElementById('hitRush').checked;
-  
-  let hitType = null;
-  if (hitNormal) hitType = '通常';
-  if (hitRush) hitType = 'ラッシュ';
+  let hitType = hitNormal ? '通常' : (hitRush ? 'ラッシュ' : null);
 
   historyData.push({ type: 'spin', balls: balls, spins: spins, isMochidama: isMochi, hitType: hitType });
   spinInput.value = ''; spinInput.focus();
@@ -1062,10 +921,7 @@ function addMeasurement(balls) {
     document.getElementById('payoutAmount').value = '';
     document.getElementById('payoutMemo').value = '';
     document.getElementById('payoutInputArea').style.display = 'block';
-  } else {
-    document.getElementById('payoutInputArea').style.display = 'none';
-  }
-  
+  } else { document.getElementById('payoutInputArea').style.display = 'none'; }
   updateMeasurementDisplay();
 }
 
@@ -1075,20 +931,15 @@ function addPayout() {
   if (isNaN(amount) || amount < 0) return alert("正しい出玉を入力してください。");
   
   const memoInput = document.getElementById('payoutMemo');
-  const memo = memoInput.value.trim();
-
   const hitNormal = document.getElementById('hitNormal').checked;
   const hitRush = document.getElementById('hitRush').checked;
   let hitType = hitNormal ? '通常' : (hitRush ? 'ラッシュ' : '不明');
   
-  historyData.push({ type: 'payout', amount: amount, hitType: hitType, memo: memo });
+  historyData.push({ type: 'payout', amount: amount, hitType: hitType, memo: memoInput.value.trim() });
   
-  document.getElementById('hitNormal').checked = false;
-  document.getElementById('hitRush').checked = false;
-  amountInput.value = '';
-  memoInput.value = '';
+  document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
+  amountInput.value = ''; memoInput.value = '';
   document.getElementById('payoutInputArea').style.display = 'none';
-  
   updateMeasurementDisplay();
 }
 
@@ -1098,42 +949,36 @@ function deleteHistoryItem(index) {
 }
 
 function updateMeasurementDisplay() {
-  if (historyData.length === 0) { document.getElementById('measurementResult').style.display = 'none'; return; }
+  const btnModal = document.getElementById('btnOpenResultModal');
+
+  if (historyData.length === 0) { 
+    btnModal.innerText = "📊 入力データを確認 (未入力)";
+    document.getElementById('avg250').innerText = "0.00 回";
+    document.getElementById('historyList').innerHTML = "入力履歴がここに表示されます。";
+    return; 
+  }
   
-  let totalBalls = 0, totalSpins = 0, mochidamaBalls = 0;
-  let historyHtml = '';
-  let spinCount = 0;
+  let totalBalls = 0, totalSpins = 0, mochidamaBalls = 0, historyHtml = '', spinCount = 0;
   
   for (let i = 0; i < historyData.length; i++) {
-    let item = historyData[i];
-    let itemHtml = '';
-    
+    let item = historyData[i]; let itemHtml = '';
     if (item.type === 'spin' || !item.type) {
-      spinCount++;
-      totalBalls += item.balls; 
-      totalSpins += item.spins;
+      spinCount++; totalBalls += item.balls; totalSpins += item.spins;
       if (item.isMochidama) mochidamaBalls += item.balls;
-      
-      let cvt = item.balls === 125 ? `<span style="font-size: 11px; color: #7f8c8d; margin-left: 6px;">(250玉換算: ${item.spins * 2}回)</span>` : "";
+      let cvt = item.balls === 125 ? `<span style="font-size:11px; color:#7f8c8d; margin-left:6px;">(250玉換算: ${item.spins * 2}回)</span>` : "";
       let typeLabel = item.isMochidama ? `<span style="color:#e67e22; font-size:11px; margin-left:4px;">[持球]</span>` : `<span style="color:#27ae60; font-size:11px; margin-left:4px;">[現金]</span>`;
       let hitLabel = item.hitType ? `<span style="color:#d35400; font-size:11px; margin-left:4px; font-weight:bold;">[${item.hitType}当たり!]</span>` : "";
-      
       itemHtml = `<div class="history-item"><span>${spinCount}回目: ${item.balls}玉で <strong>${item.spins}回</strong>${typeLabel}${hitLabel}${cvt}</span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
     } else if (item.type === 'payout') {
       let memoHtml = item.memo ? `<span style="font-size:11px; color:#7f8c8d; margin-left:6px;">(${item.memo})</span>` : "";
-      itemHtml = `<div class="history-item" style="background-color:#fff3cd; padding:4px 8px; border-radius:4px; margin-top:2px; margin-bottom:2px;">
-        <span style="color:#d35400; font-weight:bold; font-size:13px;">🎉 ${item.hitType}獲得: ${item.amount}玉${memoHtml}</span>
-        <button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button>
-      </div>`;
+      itemHtml = `<div class="history-item" style="background-color:#fff3cd; padding:4px 8px; border-radius:4px; margin-top:2px; margin-bottom:2px;"><span style="color:#d35400; font-weight:bold; font-size:13px;">🎉 ${item.hitType}獲得: ${item.amount}玉${memoHtml}</span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
     }
     historyHtml = itemHtml + historyHtml; 
   }
-  
   historyHtml = '<strong>入力履歴:</strong><br>' + historyHtml;
   
   const avg250 = totalBalls > 0 ? (totalSpins / totalBalls) * 250 : 0;
   const mochiRatio = totalBalls > 0 ? (mochidamaBalls / totalBalls * 100) : 0;
-  
   const startSpin = parseInt(document.getElementById('startSpin').value) || 0;
   const absoluteTotalSpins = startSpin + totalSpins;
   
@@ -1143,8 +988,10 @@ function updateMeasurementDisplay() {
   document.getElementById('absoluteTotalSpins').innerText = absoluteTotalSpins + " 回";
   document.getElementById('totalMeasuredBalls').innerText = totalBalls + " 玉";
   document.getElementById('historyList').innerHTML = historyHtml;
-  document.getElementById('measurementResult').style.display = 'block';
   
+  // ボタントキストをリアルタイム更新
+  btnModal.innerText = `📊 データ確認 (投資:${totalBalls}玉 / 平均:${avg250.toFixed(1)}回)`;
+
   if (editingRecordId && isAdmin) {
     document.getElementById('btnSaveRecord').innerText = "この記録を上書き保存";
     document.getElementById('btnSaveRecord').style.backgroundColor = "#d35400";
@@ -1156,15 +1003,14 @@ function updateMeasurementDisplay() {
 
 function resetMeasurement() {
   if(confirm("現在の入力データをすべてクリアしますか？")) { 
-    historyData = []; 
-    editingRecordId = null;
+    historyData = []; editingRecordId = null;
     document.getElementById('startSpin').value = '';
     document.getElementById('hitNormal').checked = false;
     document.getElementById('hitRush').checked = false;
     document.getElementById('payoutAmount').value = '';
     document.getElementById('payoutMemo').value = '';
     document.getElementById('payoutInputArea').style.display = 'none';
-    updateMeasurementDisplay(); 
+    updateMeasurementDisplay(); closeResultModal();
   }
 }
 
@@ -1180,13 +1026,10 @@ async function saveCurrentRecord() {
   
   historyData.forEach(d => { 
     if (d.type === 'spin' || !d.type) {
-      totalBalls += d.balls; 
-      totalSpins += d.spins; 
-      if(d.isMochidama) mochidamaBalls += d.balls;
-      else cashBalls += d.balls;
+      totalBalls += d.balls; totalSpins += d.spins; 
+      if(d.isMochidama) mochidamaBalls += d.balls; else cashBalls += d.balls;
     } else if (d.type === 'payout') {
-      totalPayout += d.amount;
-      hitHistory.push(d);
+      totalPayout += d.amount; hitHistory.push(d);
     }
   });
   
@@ -1198,57 +1041,43 @@ async function saveCurrentRecord() {
     const dict = await getDictionaryData();
     if (!dict[machine]) {
       dict[machine] = { border: "", probDenom: "", avgPayout: "" };
-      await saveDictionaryData(dict);
-      renderDictionary();
+      await saveDictionaryData(dict); renderDictionary();
     }
   }
   
   const records = await getRecordsData();
   const newRecord = { 
     id: (isAdmin && editingRecordId) ? editingRecordId : Date.now(), 
-    date: date, store: store, machine: machine, 
-    author: getNickname(), 
+    date: date, store: store, machine: machine, author: getNickname(), 
     totalBalls: totalBalls, totalSpins: totalSpins, startSpins: startSpin,
     totalCashBalls: cashBalls, totalMochiBalls: mochidamaBalls, totalPayout: totalPayout,
-    avg250: avg250, mochidamaRatio: mochiRatio, 
-    history: [...historyData], hitHistory: hitHistory
+    avg250: avg250, mochidamaRatio: mochiRatio, history: [...historyData], hitHistory: hitHistory
   };
   
   if (isAdmin && editingRecordId) {
     const idx = records.findIndex(rec => rec.id === editingRecordId);
-    if(idx !== -1) records[idx] = newRecord;
-    else records.push(newRecord);
+    if(idx !== -1) records[idx] = newRecord; else records.push(newRecord);
     editingRecordId = null; 
-  } else {
-    records.push(newRecord);
-  }
+  } else { records.push(newRecord); }
   
   await saveRecordsData(records);
   alert(`${machine} のデータを保存しました。`);
   
-  historyData = []; 
-  document.getElementById('machineName').value = ''; 
+  historyData = []; document.getElementById('machineName').value = ''; 
   document.getElementById('startSpin').value = '';
-  document.getElementById('hitNormal').checked = false;
-  document.getElementById('hitRush').checked = false;
-  document.getElementById('payoutAmount').value = '';
-  document.getElementById('payoutMemo').value = '';
+  document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
+  document.getElementById('payoutAmount').value = ''; document.getElementById('payoutMemo').value = '';
   document.getElementById('payoutInputArea').style.display = 'none';
   
-  updateMeasurementDisplay(); 
-  renderSavedRecords();
-  renderHistoryTab();
+  updateMeasurementDisplay(); renderSavedRecords(); renderHistoryTab();
+  closeResultModal();
 }
 
 async function resumeRecord(id) {
   if (!isAdmin) return alert("権限がありません。");
-  const records = await getRecordsData();
-  const r = records.find(rec => rec.id === id);
+  const records = await getRecordsData(); const r = records.find(rec => rec.id === id);
   if(!r) return;
-  
-  if (historyData.length > 0) {
-    if(!confirm("現在入力中のデータは破棄され、上書きされます。よろしいですか？")) return;
-  }
+  if (historyData.length > 0) { if(!confirm("現在入力中のデータは破棄され、上書きされます。よろしいですか？")) return; }
   
   document.getElementById('recordDate').value = r.date || '';
   document.getElementById('storeName').value = r.store || '';
@@ -1257,162 +1086,85 @@ async function resumeRecord(id) {
   
   historyData = JSON.parse(JSON.stringify(r.history || []));
   editingRecordId = r.id; 
-  
-  document.getElementById('hitNormal').checked = false;
-  document.getElementById('hitRush').checked = false;
-  document.getElementById('payoutAmount').value = '';
-  document.getElementById('payoutMemo').value = '';
+  document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
+  document.getElementById('payoutAmount').value = ''; document.getElementById('payoutMemo').value = '';
   document.getElementById('payoutInputArea').style.display = 'none';
   
-  updateMeasurementDisplay();
-  switchTab('tab1');
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  updateMeasurementDisplay(); closeSavedModal(); window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 async function renderSavedRecords() {
   const records = await getRecordsData();
   const container = document.getElementById('savedRecordsContainer');
   const targetDate = document.getElementById('recordDate').value;
-  
-  if (!targetDate) {
-      container.innerHTML = '<p style="font-size:13px; color:#777;">日付を選択してください。</p>';
-      return;
-  }
-
+  if (!targetDate) return container.innerHTML = '<p style="font-size:13px; color:#777;">日付を選択してください。</p>';
   const filtered = records.filter(r => r.date === targetDate);
-  if (filtered.length === 0) {
-    container.innerHTML = '<p style="font-size:13px; color:#777;">この日付に保存されたデータはありません。</p>';
-    return;
-  }
+  if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:#777;">この日付に保存されたデータはありません。</p>';
   
   filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-  let html = '';
-  filtered.forEach(r => {
-    html += createRecordItemHtml(r);
-  });
+  let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); });
   container.innerHTML = html;
 }
 
 async function deleteRecord(id) {
   if (!isAdmin) return alert("権限がありません。");
   if(confirm("このデータを削除しますか？")) {
-    let records = await getRecordsData();
-    await saveRecordsData(records.filter(r => r.id !== id));
-    renderSavedRecords();
-    renderHistoryTab();
+    let records = await getRecordsData(); await saveRecordsData(records.filter(r => r.id !== id));
+    renderSavedRecords(); renderHistoryTab();
   }
 }
 
 // ==========================================
-// ツール②：辞書からの呼び出し・期待値計算
+// ツール②：期待値計算
 // ==========================================
 async function loadMachineSpec() {
   const machine = document.getElementById('calcMachineName').value.trim();
   document.getElementById('evSaveMachine').value = machine; 
-  
   if(!machine) return;
   const dict = await getDictionaryData();
   if(dict[machine]) {
     const spec = dict[machine];
-    if(spec.border) { 
-      document.getElementById('border').value = spec.border; 
-      document.getElementById('border').classList.add('auto-filled'); 
-    }
-    if(spec.probDenom) { 
-      document.getElementById('probDenom').value = spec.probDenom; 
-      document.getElementById('probDenom').classList.add('auto-filled'); 
-    }
-    if(spec.avgPayout) { 
-      document.getElementById('avgPayout').value = spec.avgPayout; 
-      document.getElementById('avgPayout').classList.add('auto-filled'); 
-    }
+    if(spec.border) { document.getElementById('border').value = spec.border; document.getElementById('border').classList.add('auto-filled'); }
+    if(spec.probDenom) { document.getElementById('probDenom').value = spec.probDenom; document.getElementById('probDenom').classList.add('auto-filled'); }
+    if(spec.avgPayout) { document.getElementById('avgPayout').value = spec.avgPayout; document.getElementById('avgPayout').classList.add('auto-filled'); }
   }
 }
 
 async function useRecordForCalc(recordDate, avg, machineName, mochidamaRatio, storeName, cashBalls, mochiBalls, payout, hitHistoryStr, historyStr) {
   currentPassData = {
-    cashBalls: cashBalls || 0,
-    mochiBalls: mochiBalls || 0,
-    payout: payout || 0,
+    cashBalls: cashBalls || 0, mochiBalls: mochiBalls || 0, payout: payout || 0,
     hitHistory: hitHistoryStr ? JSON.parse(decodeURIComponent(hitHistoryStr)) : [],
     history: historyStr ? JSON.parse(decodeURIComponent(historyStr)) : []
   };
-
   document.getElementById('calcMachineName').value = machineName || ""; 
   await loadMachineSpec(); 
-
-  const spinInput = document.getElementById('spinRate');
-  spinInput.value = avg.toFixed(2);
-  spinInput.classList.add('auto-filled');
-  
-  if (mochidamaRatio !== undefined) {
-    const ratioInput = document.getElementById('ballRatio');
-    ratioInput.value = Math.round(mochidamaRatio);
-    ratioInput.classList.add('auto-filled');
-  }
-  
+  document.getElementById('spinRate').value = avg.toFixed(2); document.getElementById('spinRate').classList.add('auto-filled');
+  if (mochidamaRatio !== undefined) { document.getElementById('ballRatio').value = Math.round(mochidamaRatio); document.getElementById('ballRatio').classList.add('auto-filled'); }
   if (recordDate) document.getElementById('evSaveDate').value = recordDate;
   document.getElementById('evSaveStore').value = storeName || ""; 
   
+  closeSavedModal(); // モーダルから呼ばれた時のため
   switchTab('tab2');
 }
 
 function drawSlumpGraph() {
-  const ctx = document.getElementById('slumpGraph');
-  if (!ctx) return;
-  
+  const ctx = document.getElementById('slumpGraph'); if (!ctx) return;
   let targetHistory = historyData.length > 0 ? historyData : (currentPassData ? currentPassData.history : []);
-  if (!targetHistory || targetHistory.length === 0) {
-    document.getElementById('graphContainer').style.display = 'none';
-    return;
-  }
+  if (!targetHistory || targetHistory.length === 0) return document.getElementById('graphContainer').style.display = 'none';
   document.getElementById('graphContainer').style.display = 'block';
 
-  let chartData = [{ x: 0, y: 0 }];
-  let currentInvest = 0;
-  let currentPayout = 0;
-
+  let chartData = [{ x: 0, y: 0 }]; let currentInvest = 0, currentPayout = 0;
   targetHistory.forEach(item => {
-    if (item.type === 'spin' || !item.type) {
-      currentInvest += item.balls;
-    } else if (item.type === 'payout') {
-      currentPayout += item.amount;
-    }
+    if (item.type === 'spin' || !item.type) currentInvest += item.balls;
+    else if (item.type === 'payout') currentPayout += item.amount;
     chartData.push({ x: currentInvest, y: currentPayout - currentInvest });
   });
 
   if (slumpChartInstance) slumpChartInstance.destroy();
-
   slumpChartInstance = new Chart(ctx, {
     type: 'line',
-    data: {
-      datasets: [{
-        label: '差玉 (玉)',
-        data: chartData,
-        borderColor: '#3498db',
-        backgroundColor: 'rgba(52, 152, 219, 0.1)',
-        borderWidth: 2,
-        pointRadius: 2,
-        pointBackgroundColor: '#e67e22',
-        fill: true,
-        stepped: false
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: {
-          type: 'linear',
-          title: { display: true, text: '累積投資玉数 (玉)', font: {size: 11} },
-          min: 0
-        },
-        y: {
-          title: { display: true, text: '差玉 (玉)', font: {size: 11} }
-        }
-      },
-      plugins: { legend: { display: false } }
-    }
+    data: { datasets: [{ label: '差玉 (玉)', data: chartData, borderColor: '#3498db', backgroundColor: 'rgba(52, 152, 219, 0.1)', borderWidth: 2, pointRadius: 2, pointBackgroundColor: '#e67e22', fill: true, stepped: false }] },
+    options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', title: { display: true, text: '累積投資玉数 (玉)', font: {size: 11} }, min: 0 }, y: { title: { display: true, text: '差玉 (玉)', font: {size: 11} } } }, plugins: { legend: { display: false } } }
   });
 }
 
@@ -1428,26 +1180,18 @@ function calculateAndSimulate() {
     { id: 'totalSpins', name: '総回転数' }, { id: 'probDenom', name: '大当たり確率' },
     { id: 'avgPayout', name: '初当たり平均獲得出玉' }
   ];
-  
-  let missing = [];
-  inputs.forEach(item => { if (!document.getElementById(item.id).value) missing.push(item.name); });
+  let missing = []; inputs.forEach(item => { if (!document.getElementById(item.id).value) missing.push(item.name); });
   if (missing.length > 0) return alert("以下の項目が未入力です：\n・" + missing.join("\n・"));
 
-  const B = parseFloat(document.getElementById('border').value);
-  const R = parseFloat(document.getElementById('spinRate').value);
-  const E = parseFloat(document.getElementById('exchangeRate').value);
-  const M = parseFloat(document.getElementById('ballRatio').value) / 100;
-  const totalSpins = parseFloat(document.getElementById('totalSpins').value);
-  const probDenom = parseFloat(document.getElementById('probDenom').value);
-  const avgPayout = parseFloat(document.getElementById('avgPayout').value);
+  const B = parseFloat(document.getElementById('border').value), R = parseFloat(document.getElementById('spinRate').value);
+  const E = parseFloat(document.getElementById('exchangeRate').value), M = parseFloat(document.getElementById('ballRatio').value) / 100;
+  const totalSpins = parseFloat(document.getElementById('totalSpins').value), probDenom = parseFloat(document.getElementById('probDenom').value), avgPayout = parseFloat(document.getElementById('avgPayout').value);
 
   const calcMachine = document.getElementById('calcMachineName').value.trim();
   if(calcMachine && isAdmin) {
     getDictionaryData().then(dict => {
       if(!dict[calcMachine]) dict[calcMachine] = {};
-      dict[calcMachine].border = B;
-      dict[calcMachine].probDenom = probDenom;
-      dict[calcMachine].avgPayout = avgPayout;
+      dict[calcMachine].border = B; dict[calcMachine].probDenom = probDenom; dict[calcMachine].avgPayout = avgPayout;
       saveDictionaryData(dict).then(() => { renderDictionary(); });
     });
   }
@@ -1455,16 +1199,13 @@ function calculateAndSimulate() {
   const expectedReturn = (250 * E) / B;
   const actualCost = ((250 * E * M) / R) + ((1000 * (1 - M)) / R);
   const evSpin = expectedReturn - actualCost;
-  
   lastCalculatedEV = evSpin * totalSpins; 
 
   document.getElementById('resSpin').innerText = evSpin.toFixed(2) + " 円";
   document.getElementById('resTotal').innerText = formatCurrency(Math.ceil(lastCalculatedEV));
   document.getElementById('resultArea').style.display = 'block';
 
-  const hitProb = 1 / probDenom;
-  const meanHits = totalSpins * hitProb;
-  const stdDevHits = Math.sqrt(totalSpins * hitProb * (1 - hitProb));
+  const hitProb = 1 / probDenom, meanHits = totalSpins * hitProb, stdDevHits = Math.sqrt(totalSpins * hitProb * (1 - hitProb));
   let results = [];
   for (let i = 0; i < 10000; i++) {
     let simulatedHits = Math.max(0, getNormalRandom(meanHits, stdDevHits));
@@ -1482,32 +1223,19 @@ function calculateAndSimulate() {
 }
 
 async function saveExpectedValueToCalendar() {
-  const date = document.getElementById('evSaveDate').value;
-  const store = document.getElementById('evSaveStore').value || "店舗不明";
-  const machine = document.getElementById('evSaveMachine').value || "機種不明";
+  const date = document.getElementById('evSaveDate').value, store = document.getElementById('evSaveStore').value || "店舗不明", machine = document.getElementById('evSaveMachine').value || "機種不明";
   if(!date) return alert("日付を入力してください");
   if(lastCalculatedEV === 0) return alert("期待値が計算されていません。先に「期待値を計算」ボタンを押してください。");
   
   const exchangeRate = parseFloat(document.getElementById('exchangeRate').value);
   if(isNaN(exchangeRate)) return alert("交換率が入力されていません。");
 
-  let actualAmt = 0;
-  let diffBalls = 0;
-  let hitText = "";
-
+  let actualAmt = 0, diffBalls = 0, hitText = "";
   if (currentPassData) {
-      const cashInvest = currentPassData.cashBalls;
-      const mochiInvest = currentPassData.mochiBalls;
-      const payout = currentPassData.payout;
-      
-      diffBalls = payout - (cashInvest + mochiInvest);
-      actualAmt = (payout - mochiInvest) * exchangeRate - (cashInvest * 4);
-      
+      const cashInvest = currentPassData.cashBalls, mochiInvest = currentPassData.mochiBalls, payout = currentPassData.payout;
+      diffBalls = payout - (cashInvest + mochiInvest); actualAmt = (payout - mochiInvest) * exchangeRate - (cashInvest * 4);
       if(currentPassData.hitHistory && currentPassData.hitHistory.length > 0){
-          currentPassData.hitHistory.forEach(h => {
-              let memo = h.memo ? ` (${h.memo})` : '';
-              hitText += `<br><span style="color:#7f8c8d; font-size:12px;"> └ ${h.hitType}: ${h.amount}玉${memo}</span>`;
-          });
+          currentPassData.hitHistory.forEach(h => { let memo = h.memo ? ` (${h.memo})` : ''; hitText += `<br><span style="color:#7f8c8d; font-size:12px;"> └ ${h.hitType}: ${h.amount}玉${memo}</span>`; });
       }
   }
 
@@ -1515,47 +1243,25 @@ async function saveExpectedValueToCalendar() {
   if(!cal[date]) cal[date] = { ev: 0, actual: 0, actualBalls: 0, details: [] };
   
   cal[date].ev = (cal[date].ev || 0) + lastCalculatedEV; 
-  cal[date].actual = (cal[date].actual || 0) + actualAmt;
-  cal[date].actualBalls = (cal[date].actualBalls || 0) + diffBalls;
-  
+  cal[date].actual = (cal[date].actual || 0) + actualAmt; cal[date].actualBalls = (cal[date].actualBalls || 0) + diffBalls;
   cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:#7f8c8d;">👤 ${getNickname()}</span>${hitText}`);
   
-  await saveCalendarData(cal);
-  alert(`${date} のカレンダーにデータを保存しました。`);
-  renderCalendar();
+  await saveCalendarData(cal); alert(`${date} の収支にデータを保存しました。`); renderCalendar();
 
-  document.getElementById('calcMachineName').value = '';
-  document.getElementById('border').value = '';
-  document.getElementById('spinRate').value = '';
-  document.getElementById('exchangeRate').value = '';
-  document.getElementById('ballRatio').value = '';
-  document.getElementById('totalSpins').value = '';
-  document.getElementById('probDenom').value = '';
-  document.getElementById('avgPayout').value = '';
+  document.getElementById('calcMachineName').value = ''; document.getElementById('border').value = '';
+  document.getElementById('spinRate').value = ''; document.getElementById('exchangeRate').value = '';
+  document.getElementById('ballRatio').value = ''; document.getElementById('totalSpins').value = '';
+  document.getElementById('probDenom').value = ''; document.getElementById('avgPayout').value = '';
+  document.getElementById('evSaveStore').value = ''; document.getElementById('evSaveMachine').value = '';
   
-  document.getElementById('evSaveStore').value = '';
-  document.getElementById('evSaveMachine').value = '';
-  
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
+  const today = new Date(), yyyy = today.getFullYear(), mm = String(today.getMonth() + 1).padStart(2, '0'), dd = String(today.getDate()).padStart(2, '0');
   document.getElementById('evSaveDate').value = `${yyyy}-${mm}-${dd}`;
-
-  document.getElementById('resultArea').style.display = 'none';
-  document.getElementById('simArea').style.display = 'none';
+  document.getElementById('resultArea').style.display = 'none'; document.getElementById('simArea').style.display = 'none';
   if(document.getElementById('graphContainer')) document.getElementById('graphContainer').style.display = 'none';
 
-  ['border', 'spinRate', 'ballRatio', 'probDenom', 'avgPayout'].forEach(id => {
-      const el = document.getElementById(id);
-      if(el) el.classList.remove('auto-filled');
-  });
-
-  lastCalculatedEV = 0;
-  currentPassData = null;
+  ['border', 'spinRate', 'ballRatio', 'probDenom', 'avgPayout'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.remove('auto-filled'); });
+  lastCalculatedEV = 0; currentPassData = null;
 }
-
-function removeAutoFillHighlight() { document.getElementById('spinRate').classList.remove('auto-filled'); }
 
 // ==========================================
 // ツール③：カレンダー機能
@@ -1566,162 +1272,81 @@ function changeMonth(diff) {
   if(currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; }
   renderCalendar();
 }
-
-function selectDate(dateStr) {
-  document.getElementById('actualDate').value = dateStr;
-  renderCalendar(); 
-}
+function selectDate(dateStr) { document.getElementById('actualDate').value = dateStr; renderCalendar(); }
 
 async function renderCalendar() {
   const cal = await getCalendarData();
-  const year = currentCalYear;
-  const month = currentCalMonth;
-  
+  const year = currentCalYear, month = currentCalMonth;
   document.getElementById('calendarMonthLabel').innerText = `${year}年 ${month + 1}月`;
-  
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  
-  let html = `
-    <div class="calendar-day-header" style="color:#e74c3c;">日</div>
-    <div class="calendar-day-header">月</div>
-    <div class="calendar-day-header">火</div>
-    <div class="calendar-day-header">水</div>
-    <div class="calendar-day-header">木</div>
-    <div class="calendar-day-header">金</div>
-    <div class="calendar-day-header" style="color:#2980b9;">土</div>
-  `;
-              
+  const firstDay = new Date(year, month, 1).getDay(), daysInMonth = new Date(year, month + 1, 0).getDate();
+  let html = `<div class="calendar-day-header" style="color:#e74c3c;">日</div><div class="calendar-day-header">月</div><div class="calendar-day-header">火</div><div class="calendar-day-header">水</div><div class="calendar-day-header">木</div><div class="calendar-day-header">金</div><div class="calendar-day-header" style="color:#2980b9;">土</div>`;
   for(let i=0; i<firstDay; i++){ html += `<div class="calendar-cell other-month"></div>`; }
   
-  let monthlyEV = 0;
-  let monthlyActual = 0;
-  let monthlyBalls = 0;
+  let monthlyEV = 0, monthlyActual = 0, monthlyBalls = 0;
   const monthStr = `${year}-${String(month+1).padStart(2,'0')}`;
   const selectedDateVal = document.getElementById('actualDate').value;
 
   for(let day=1; day<=daysInMonth; day++){
-    const dateStr = `${monthStr}-${String(day).padStart(2,'0')}`;
-    const dayData = cal[dateStr];
-    
-    const currentDayOfWeek = (firstDay + day - 1) % 7;
-    let dateColor = '#333';
-    if(currentDayOfWeek === 0) dateColor = '#e74c3c';
-    if(currentDayOfWeek === 6) dateColor = '#2980b9';
-
+    const dateStr = `${monthStr}-${String(day).padStart(2,'0')}`, dayData = cal[dateStr], currentDayOfWeek = (firstDay + day - 1) % 7;
+    let dateColor = currentDayOfWeek === 0 ? '#e74c3c' : (currentDayOfWeek === 6 ? '#2980b9' : '#333');
     let cellContent = `<div class="cal-date" style="color:${dateColor};">${day}</div>`;
     
     if(dayData) {
-      const ceiledEV = Math.ceil(dayData.ev || 0); 
-      const actualVal = dayData.actual || 0;
-      const actualBallsVal = dayData.actualBalls || 0;
-      
-      monthlyEV += ceiledEV;
-      monthlyActual += actualVal;
-      monthlyBalls += actualBallsVal;
-      
+      const ceiledEV = Math.ceil(dayData.ev || 0), actualVal = dayData.actual || 0, actualBallsVal = dayData.actualBalls || 0;
+      monthlyEV += ceiledEV; monthlyActual += actualVal; monthlyBalls += actualBallsVal;
       if(dayData.ev) cellContent += `<div class="cal-val ev">期:${ceiledEV.toLocaleString()}</div>`;
-      if(dayData.actual) {
-        const aClass = actualVal >= 0 ? 'plus' : 'minus';
-        cellContent += `<div class="cal-val ${aClass}">実:${actualVal.toLocaleString()}</div>`;
-      }
+      if(dayData.actual) { const aClass = actualVal >= 0 ? 'plus' : 'minus'; cellContent += `<div class="cal-val ${aClass}">実:${actualVal.toLocaleString()}</div>`; }
     }
-    
     const activeClass = (selectedDateVal === dateStr) ? 'active-day' : '';
     html += `<div class="calendar-cell ${activeClass}" onclick="selectDate('${dateStr}')">${cellContent}</div>`;
   }
-  
-  const totalCells = firstDay + daysInMonth;
-  const remainingCells = (7 - (totalCells % 7)) % 7;
+  const remainingCells = (7 - ((firstDay + daysInMonth) % 7)) % 7;
   for(let i=0; i<remainingCells; i++) { html += `<div class="calendar-cell other-month"></div>`; }
   
   document.getElementById('visualCalendar').innerHTML = html;
-
   document.getElementById('monthlyEV').innerText = formatCurrency(monthlyEV);
   document.getElementById('monthlyActual').innerText = formatCurrency(monthlyActual);
   document.getElementById('monthlyBalls').innerText = monthlyBalls > 0 ? "+" + monthlyBalls.toLocaleString() + " 玉" : monthlyBalls.toLocaleString() + " 玉";
-  
-  const mDiff = monthlyActual - monthlyEV;
-  const mDiffEl = document.getElementById('monthlyDiff');
-  mDiffEl.innerText = formatCurrency(mDiff);
-  mDiffEl.className = mDiff > 0 ? 'plus' : (mDiff < 0 ? 'minus' : '');
+  const mDiff = monthlyActual - monthlyEV, mDiffEl = document.getElementById('monthlyDiff');
+  mDiffEl.innerText = formatCurrency(mDiff); mDiffEl.className = mDiff > 0 ? 'plus' : (mDiff < 0 ? 'minus' : '');
 
   document.getElementById('selectedDateDisp').innerText = selectedDateVal || '未選択';
-  let listHtml = '';
   const dayData = cal[selectedDateVal];
-
   if (dayData) {
-    const ceiledEV = Math.ceil(dayData.ev || 0); 
-    const actualVal = dayData.actual || 0;
-    const actualBallsVal = dayData.actualBalls || 0;
-    const diff = actualVal - ceiledEV; 
-    const diffColor = diff > 0 ? 'plus' : (diff < 0 ? 'minus' : '');
-    
+    const ceiledEV = Math.ceil(dayData.ev || 0), actualVal = dayData.actual || 0, actualBallsVal = dayData.actualBalls || 0;
+    const diff = actualVal - ceiledEV, diffColor = diff > 0 ? 'plus' : (diff < 0 ? 'minus' : '');
     let adminBtn = isAdmin ? `<button class="btn-small" style="background:#e74c3c; margin-top:10px;" onclick="deleteCalendarDay('${selectedDateVal}')">この日の記録を全削除</button>` : '';
 
-    listHtml = `
+    document.getElementById('calendarList').innerHTML = `
     <div class="saved-item" style="border-left: 4px solid #9b59b6;">
       <div style="font-weight:bold; color:#2c3e50;">${selectedDateVal}</div>
-      <div style="font-size: 13px; margin: 6px 0; display: flex; justify-content: space-between;">
-        <span>期待値: <span style="color:#27ae60; font-weight:bold;">${formatCurrency(ceiledEV)}</span></span>
-        <span>実収支: <span style="color:#2980b9; font-weight:bold;">${formatCurrency(actualVal)}</span></span>
-      </div>
-      <div style="font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between;">
-        <span>獲得差玉: <span style="color:#e67e22; font-weight:bold;">${actualBallsVal > 0 ? '+' : ''}${actualBallsVal.toLocaleString()} 玉</span></span>
-        <span>ブレ: <span class="${diffColor}">${formatCurrency(diff)}</span></span>
-      </div>
-      <div style="font-size: 13px; color: #555; background: #f9f9f9; padding: 6px; border-radius: 4px; line-height: 1.4;">
-        ${dayData.details && dayData.details.length > 0 ? dayData.details.join('<br><hr style="margin:6px 0; border-top:1px dashed #ccc;">') : '稼働記録なし'}
-      </div>
+      <div style="font-size: 13px; margin: 6px 0; display: flex; justify-content: space-between;"><span>期待値: <span style="color:#27ae60; font-weight:bold;">${formatCurrency(ceiledEV)}</span></span><span>実収支: <span style="color:#2980b9; font-weight:bold;">${formatCurrency(actualVal)}</span></span></div>
+      <div style="font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between;"><span>獲得差玉: <span style="color:#e67e22; font-weight:bold;">${actualBallsVal > 0 ? '+' : ''}${actualBallsVal.toLocaleString()} 玉</span></span><span>ブレ: <span class="${diffColor}">${formatCurrency(diff)}</span></span></div>
+      <div style="font-size: 13px; color: #555; background: #f9f9f9; padding: 6px; border-radius: 4px; line-height: 1.4;">${dayData.details && dayData.details.length > 0 ? dayData.details.join('<br><hr style="margin:6px 0; border-top:1px dashed #ccc;">') : '稼働記録なし'}</div>
       ${adminBtn}
     </div>`;
-  } else {
-    listHtml = '<p style="font-size:13px; color:#777;">選択した日付のデータはありません。</p>';
-  }
-  document.getElementById('calendarList').innerHTML = listHtml;
+  } else { document.getElementById('calendarList').innerHTML = '<p style="font-size:13px; color:#777;">選択した日付のデータはありません。</p>'; }
 }
 
 async function deleteCalendarDay(date) {
   if (!isAdmin) return alert("権限がありません。");
   if(confirm(`${date} の記録をすべて削除しますか？`)) {
-    const cal = await getCalendarData();
-    delete cal[date];
-    await saveCalendarData(cal);
-    renderCalendar();
+    const cal = await getCalendarData(); delete cal[date]; await saveCalendarData(cal); renderCalendar();
   }
 }
 
-// ==========================================
-// ツール⑤：履歴タブ用描画関数
-// ==========================================
 async function renderHistoryTab() {
-  const records = await getRecordsData();
-  const container = document.getElementById('historyRecordsContainer');
-  const filterText = document.getElementById('historyMachineFilter').value.trim();
-  
-  const today = new Date();
-  const oneYearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
-  
+  const records = await getRecordsData(), container = document.getElementById('historyRecordsContainer'), filterText = document.getElementById('historyMachineFilter').value.trim();
+  const today = new Date(), oneYearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
   let filtered = records.filter(r => {
     if (!r.date) return false;
-    const rDate = new Date(r.date);
-    if (rDate < oneYearAgo) return false;
-    if (filterText && r.machine) {
-      if (!r.machine.includes(filterText)) return false;
-    }
+    if (new Date(r.date) < oneYearAgo) return false;
+    if (filterText && r.machine && !r.machine.includes(filterText)) return false;
     return true;
   });
-  
-  if (filtered.length === 0) {
-    container.innerHTML = '<p style="font-size:13px; color:#777;">条件に一致する過去1年間のデータはありません。</p>';
-    return;
-  }
-  
+  if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:#777;">条件に一致する過去1年間のデータはありません。</p>';
   filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-  let html = '';
-  filtered.forEach(r => {
-    html += createRecordItemHtml(r);
-  });
+  let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); });
   container.innerHTML = html;
 }
 </script>
