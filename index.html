@@ -11,6 +11,11 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+  /* iPhone特有の画面端のバウンド（ゴムひも現象）を防止 */
+  html, body {
+    overscroll-behavior-y: none; 
+  }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     padding: 15px 15px 80px 15px; /* フッターナビの分、下部に余白を確保 */
@@ -76,7 +81,8 @@
   input::placeholder { color: #aaa; }
   .auto-filled { background-color: #fff3cd !important; border-color: #ffeeba; }
   
-  .swipe-input { cursor: ew-resize; touch-action: pan-y; }
+  /* スワイプ中のブラウザのネイティブスクロールを完全に無効化 */
+  .swipe-input { cursor: ew-resize; touch-action: none; }
   .swipe-input:focus { cursor: text; }
 
   .section-title {
@@ -198,6 +204,20 @@
     padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-bottom: 10px;
   }
   .btn-auth.logout { background-color: #7f8c8d; }
+  
+  /* モード表示バッジ */
+  #mode-indicator-container { margin-bottom: 15px; text-align: center; }
+  .mode-badge {
+    display: inline-block; padding: 6px 12px; border-radius: 20px;
+    font-size: 13px; font-weight: bold; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  .mode-warning { background-color: #e67e22; }
+  .mode-group { background-color: #9b59b6; animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(155, 89, 182, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0); }
+  }
 </style>
 </head>
 <body>
@@ -351,6 +371,11 @@
   <!-- ================= ツール4：設定・データ ================= -->
   <div id="tab4" class="tab-content active">
     
+    <!-- モード表示エリア（ログイン状態など） -->
+    <div id="mode-indicator-container">
+      <div id="mode-indicator" class="mode-badge mode-warning">⚠️ グループ未参加</div>
+    </div>
+
     <!-- ログイン管理エリア -->
     <div style="background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
       <p style="margin-top:0; font-weight:bold; color:#2c3e50; font-size:15px;">アカウント連携</p>
@@ -478,7 +503,7 @@ savedModal.addEventListener('click', function(e) {
 
 
 // ==========================================
-// スワイプ機能設定
+// スワイプ機能設定（★画面ロック・バウンド防止強化）
 // ==========================================
 function setupSwipeInput(id, step, min, max, defaultVal) {
   const el = document.getElementById(id);
@@ -500,10 +525,18 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
     startVal = parseFloat(el.value);
     if (isNaN(startVal)) startVal = def;
   };
+  
   el.addEventListener('mousedown', onStart);
   el.addEventListener('touchstart', onStart, {passive: true});
+  
   const onMove = (e) => {
     if (!isDragging) return;
+    
+    // ★スワイプ中は画面のネイティブスクロールを完全にブロックする
+    if (e.cancelable) {
+      e.preventDefault(); 
+    }
+    
     let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     let deltaX = clientX - startX;
     let steps = Math.trunc(deltaX / 8); 
@@ -517,8 +550,11 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
       if (el.oninput) el.oninput();
     }
   };
+  
   window.addEventListener('mousemove', onMove);
-  window.addEventListener('touchmove', onMove, {passive: true});
+  // ★passive: false にすることで preventDefault が効くように設定
+  window.addEventListener('touchmove', onMove, {passive: false});
+  
   const onEnd = () => { isDragging = false; };
   window.addEventListener('mouseup', onEnd);
   window.addEventListener('touchend', onEnd);
@@ -528,12 +564,12 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
