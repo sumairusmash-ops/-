@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<!-- ★ダブルタップ時に画面がズーム拡大されるのを防ぐ設定を追加 -->
+<!-- ダブルタップ時に画面がズーム拡大されるのを防ぐ設定 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>パチンコ総合計算ツール</title>
 <!-- Firebase SDK & Chart.js の読み込み -->
@@ -12,224 +12,167 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-  /* iPhone特有の画面端のバウンド（ゴムひも現象）を防止 */
-  html, body {
-    overscroll-behavior-y: none; 
+  /* ==========================================
+     ダークモード対応 変数定義
+  ========================================== */
+  :root {
+    --bg-main: #f4f7f6;
+    --text-main: #333;
+    --text-sub: #555;
+    --text-muted: #7f8c8d;
+    --card-bg: #fff;
+    --border-color: #ccc;
+    --input-bg: #fff;
+    --nav-bg: #fff;
+    --box-blue-bg: #e8f4f8;
+    --box-orange-bg: #fdf2e9;
+    --box-purple-bg: #f4e8f8;
+    --box-yellow-bg: #fff3cd;
+    --shadow: rgba(0,0,0,0.1);
   }
+  
+  [data-theme="dark"] {
+    --bg-main: #121212;
+    --text-main: #e0e0e0;
+    --text-sub: #bbb;
+    --text-muted: #999;
+    --card-bg: #1e1e1e;
+    --border-color: #444;
+    --input-bg: #2c2c2c;
+    --nav-bg: #1e1e1e;
+    --box-blue-bg: #112836;
+    --box-orange-bg: #362211;
+    --box-purple-bg: #2b1736;
+    --box-yellow-bg: #362f11;
+    --shadow: rgba(0,0,0,0.5);
+  }
+
+  /* iPhone特有の画面端のバウンド（ゴムひも現象）を防止 */
+  html, body { overscroll-behavior-y: none; }
 
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    /* ★ヘッダーナビの分、上部に余白を確保 */
-    padding: 80px 15px 20px 15px; 
-    max-width: 500px;
-    margin: 0 auto;
-    background-color: #f4f7f6;
-    color: #333;
+    padding: 80px 15px 20px 15px; /* ヘッダーナビの分、上部に余白を確保 */
+    max-width: 500px; margin: 0 auto;
+    background-color: var(--bg-main); color: var(--text-main);
+    transition: background-color 0.3s, color 0.3s;
   }
   
   /* スマホ風ヘッダーナビゲーション（上部固定） */
   .top-nav {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    background-color: #fff;
-    display: flex;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    z-index: 1000;
+    position: fixed; top: 0; left: 0; right: 0;
+    background-color: var(--nav-bg); display: flex;
+    box-shadow: 0 2px 10px var(--shadow); z-index: 1000;
     padding-top: env(safe-area-inset-top); /* iPhoneのノッチ対応 */
+    transition: background-color 0.3s;
   }
   .top-nav button {
-    flex: 1;
-    background: none;
-    border: none;
-    padding: 10px 0;
-    font-size: 11px;
-    font-weight: bold;
-    color: #7f8c8d;
-    cursor: pointer;
-    transition: color 0.2s;
+    flex: 1; background: none; border: none; padding: 10px 0;
+    font-size: 11px; font-weight: bold; color: var(--text-muted);
+    cursor: pointer; transition: color 0.2s;
   }
-  .top-nav button span.icon {
-    display: block;
-    font-size: 20px;
-    margin-bottom: 4px;
-  }
-  .top-nav button.active {
-    color: #3498db;
-  }
+  .top-nav button span.icon { display: block; font-size: 20px; margin-bottom: 4px; }
+  .top-nav button.active { color: #3498db; }
 
   .card {
-    background: #fff; padding: 20px;
-    border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    background: var(--card-bg); padding: 20px;
+    border-radius: 8px; box-shadow: 0 4px 6px var(--shadow);
+    transition: background-color 0.3s;
   }
   .tab-content { display: none; }
   .tab-content.active { display: block; animation: fadeIn 0.3s; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-  h2 {
-    margin-top: 0; font-size: 18px; color: #2c3e50;
-    border-bottom: 2px solid #3498db; padding-bottom: 10px;
-  }
+  h2 { margin-top: 0; font-size: 18px; color: #3498db; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
   .form-group { margin-bottom: 15px; }
-  label {
-    display: block; font-size: 13px; font-weight: bold;
-    margin-bottom: 6px; color: #555;
-  }
+  label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 6px; color: var(--text-sub); }
+  
   input[type="number"], input[type="text"], input[type="date"] {
-    width: 100%; padding: 10px; border: 1px solid #ccc;
+    width: 100%; padding: 10px; border: 1px solid var(--border-color);
     border-radius: 4px; box-sizing: border-box; font-size: 16px;
-    transition: background-color 0.3s;
-    background: #fff;
+    background: var(--input-bg); color: var(--text-main); transition: 0.3s;
   }
   input::placeholder { color: #aaa; }
-  .auto-filled { background-color: #fff3cd !important; border-color: #ffeeba; }
+  .auto-filled { background-color: var(--box-yellow-bg) !important; border-color: #ffeeba; }
   
-  /* スワイプ中のブラウザのネイティブスクロールを完全に無効化 */
+  /* スワイプ中スクロール無効化 ＆ Wタップ専用入力欄のスタイル */
   .swipe-input { cursor: ew-resize; touch-action: none; }
-  
-  /* ★ダブルタップ専用になった入力欄のスタイル（グレーになるのを防ぐ） */
-  input[readonly] { background-color: #fff; cursor: pointer; }
-  input[readonly]:focus { outline: none; border-color: #ccc; }
-
-  .section-title {
-    margin-top: 20px; margin-bottom: 10px; font-size: 15px;
-    font-weight: bold; color: #e67e22; border-left: 4px solid #e67e22;
-    padding-left: 8px;
+  input[readonly] { 
+    background-color: var(--input-bg); cursor: pointer; 
+    opacity: 1; -webkit-text-fill-color: var(--text-main); /* iOS強制色戻し */
   }
+  input[readonly]:focus { outline: none; }
+
+  .section-title { margin-top: 20px; margin-bottom: 10px; font-size: 15px; font-weight: bold; color: #e67e22; border-left: 4px solid #e67e22; padding-left: 8px; }
   .section-title.purple { color: #9b59b6; border-left-color: #9b59b6; }
-  .hint-text { font-size: 11px; color: #7f8c8d; font-weight: normal; margin-left: 4px; }
+  .hint-text { font-size: 11px; color: var(--text-muted); font-weight: normal; margin-left: 4px; }
   
-  button.action-btn {
-    margin-top: 10px; width: 100%; padding: 14px;
-    background-color: #3498db; color: white; border: none;
-    border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer;
-  }
+  button.action-btn { margin-top: 10px; width: 100%; padding: 14px; background-color: #3498db; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; }
   button.action-btn:hover { background-color: #2980b9; }
-  .btn-half {
-    width: 48%; display: inline-block; padding: 14px 0;
-    color: white; border: none; border-radius: 4px;
-    font-weight: bold; font-size: 14px; cursor: pointer;
-  }
-  .btn-reset {
-    background-color: #95a5a6; margin-top: 10px; width: 100%;
-    padding: 10px; color: white; border: none; border-radius: 4px;
-    font-weight: bold; cursor: pointer;
-  }
-  .btn-save {
-    background-color: #e67e22; margin-top: 15px; width: 100%;
-    padding: 12px; color: white; border: none; border-radius: 4px;
-    font-weight: bold; font-size: 15px; cursor: pointer;
-  }
-  .btn-save:hover { background-color: #d35400; }
-  .btn-container { display: flex; justify-content: space-between; margin-top: 10px; }
-  .btn-small {
-    padding: 6px 12px; font-size: 12px; font-weight: bold;
-    color: white; border: none; border-radius: 4px; cursor: pointer;
-    margin-right: 5px; margin-top: 8px;
-    display: inline-block;
-  }
+  .btn-half { width: 48%; display: inline-block; padding: 14px 0; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; }
+  .btn-reset { background-color: #95a5a6; margin-top: 10px; width: 100%; padding: 10px; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+  .btn-save { background-color: #e67e22; margin-top: 15px; width: 100%; padding: 12px; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 15px; cursor: pointer; }
+  .btn-small { padding: 6px 12px; font-size: 12px; font-weight: bold; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; margin-top: 8px; display: inline-block; }
 
-  /* ★上から降りてくるモーダルのスタイルに変更 */
-  .modal-overlay {
-    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.6); z-index: 2000;
-    justify-content: center; align-items: flex-start; /* 上寄せに */
-  }
-  .modal-content {
-    background: #fff; width: 100%; max-width: 500px;
-    max-height: 85vh; overflow-y: auto;
-    border-radius: 0 0 12px 12px; /* 下側の角を丸くする */
-    padding: 20px;
-    animation: slideDown 0.3s forwards; /* スライドアニメーション変更 */
-    padding-top: calc(20px + env(safe-area-inset-top)); /* ノッチ対応 */
-  }
+  /* モーダル（上からスライド） */
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: flex-start; }
+  .modal-content { background: var(--card-bg); width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; border-radius: 0 0 12px 12px; padding: 20px; animation: slideDown 0.3s forwards; padding-top: calc(20px + env(safe-area-inset-top)); }
   @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
-  
-  .modal-close-btn {
-    display: block; width: 100%; padding: 12px; margin-top: 15px;
-    background: #ecf0f1; color: #2c3e50; font-weight: bold;
-    border: none; border-radius: 6px; cursor: pointer;
-  }
+  .modal-close-btn { display: block; width: 100%; padding: 12px; margin-top: 15px; background: #ecf0f1; color: #2c3e50; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; }
 
   .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #ddd; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
-  .calendar-day-header { background: #f4f7f6; text-align: center; font-size: 12px; padding: 6px 0; font-weight: bold; color: #555; }
-  .calendar-cell { background: #fff; min-height: 65px; padding: 4px; cursor: pointer; position: relative; display: flex; flex-direction: column; transition: background-color 0.2s; }
-  .calendar-cell.active-day { outline: 2px solid #9b59b6; outline-offset: -2px; background: #f4e8f8; }
-  .calendar-cell.other-month { background: #fafafa; cursor: default; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border-color); border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; }
+  .calendar-day-header { background: var(--bg-main); text-align: center; font-size: 12px; padding: 6px 0; font-weight: bold; color: var(--text-sub); }
+  .calendar-cell { background: var(--card-bg); min-height: 65px; padding: 4px; cursor: pointer; position: relative; display: flex; flex-direction: column; transition: 0.2s; }
+  .calendar-cell.active-day { outline: 2px solid #9b59b6; outline-offset: -2px; background: var(--box-purple-bg); }
+  .calendar-cell.other-month { background: var(--bg-main); cursor: default; }
   .cal-date { font-weight: bold; margin-bottom: 2px; font-size: 13px; }
   .cal-val { font-size: 10px; margin-top: auto; word-break: break-all; line-height: 1.2; text-align: right; }
   .cal-val.plus { color: #2980b9; font-weight: bold; }
-  .cal-val.minus { color: #c0392b; font-weight: bold; }
+  .cal-val.minus { color: #e74c3c; font-weight: bold; }
   .cal-val.ev { color: #27ae60; font-weight: bold; }
 
   .result, .simulation { margin-top: 20px; padding: 15px; border-radius: 4px; }
-  .result { background-color: #e8f4f8; border-left: 5px solid #3498db; }
-  .simulation { background-color: #fdf2e9; border-left: 5px solid #e67e22; }
-  .summary-box { background-color: #f4e8f8; border-left: 5px solid #9b59b6; }
+  .result { background-color: var(--box-blue-bg); border-left: 5px solid #3498db; }
+  .simulation { background-color: var(--box-orange-bg); border-left: 5px solid #e67e22; }
+  .summary-box { background-color: var(--box-purple-bg); border-left: 5px solid #9b59b6; }
   .result p, .simulation p, .summary-box p { margin: 8px 0; font-size: 15px; display: flex; justify-content: space-between; }
   
   .highlight { font-weight: bold; color: #e74c3c; font-size: 18px; }
   .total { font-size: 18px; font-weight: bold; color: #27ae60; }
-  .sim-value { font-weight: bold; color: #333; }
-  .minus { color: #c0392b; font-weight: bold; }
+  .sim-value { font-weight: bold; color: var(--text-main); }
+  .minus { color: #e74c3c; font-weight: bold; }
   .plus { color: #2980b9; font-weight: bold; }
-  hr { border: 0; height: 1px; background: #ccc; margin: 15px 0; }
+  hr { border: 0; height: 1px; background: var(--border-color); margin: 15px 0; }
   
-  .history-list {
-    margin-top: 10px; font-size: 13px; color: #555;
-    max-height: 200px; overflow-y: auto; background: #f9f9f9;
-    padding: 10px; border: 1px solid #eee; border-radius: 4px;
-  }
-  .history-item { 
-    border-bottom: 1px dashed #ccc; padding: 6px 0; 
-    display: flex; justify-content: space-between; align-items: center;
-  }
-  .btn-delete-item {
-    background: none; border: none; color: #e74c3c; cursor: pointer;
-    font-size: 13px; font-weight: bold; padding: 4px 8px; border-radius: 4px;
-  }
+  .history-list { margin-top: 10px; font-size: 13px; color: var(--text-sub); max-height: 200px; overflow-y: auto; background: var(--bg-main); padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; }
+  .history-item { border-bottom: 1px dashed var(--border-color); padding: 6px 0; display: flex; justify-content: space-between; align-items: center; }
+  .btn-delete-item { background: none; border: none; color: #e74c3c; cursor: pointer; font-size: 13px; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
 
-  .saved-item {
-    background: #fdfdfd; border: 1px solid #ddd;
-    border-radius: 6px; padding: 12px; margin-bottom: 10px;
-  }
-  .saved-history-box {
-    margin-top: 8px; padding: 8px; background-color: #f4f7f6;
-    border-left: 3px solid #ccc; font-size: 12px; max-height: 150px; overflow-y: auto;
-  }
-  .group-box {
-    background: #fdfdfd; border: 2px dashed #9b59b6;
-    border-radius: 6px; padding: 15px; margin-top: 15px; text-align: center;
-  }
-  .author-badge {
-    background: #eee; padding: 2px 6px; border-radius: 4px;
-    font-size: 11px; margin-left: 8px; color: #555; font-weight: normal;
-  }
+  .saved-item { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 12px; margin-bottom: 10px; }
+  .saved-history-box { margin-top: 8px; padding: 8px; background-color: var(--bg-main); border-left: 3px solid var(--border-color); font-size: 12px; max-height: 150px; overflow-y: auto; color: var(--text-sub); }
+  .group-box { background: var(--card-bg); border: 2px dashed #9b59b6; border-radius: 6px; padding: 15px; margin-top: 15px; text-align: center; }
+  .author-badge { background: var(--bg-main); padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-left: 8px; color: var(--text-sub); font-weight: normal; border: 1px solid var(--border-color); }
 
-  .btn-auth {
-    background-color: #4285F4; color: white; border: none; width: 100%;
-    padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-bottom: 10px;
-  }
+  .btn-auth { background-color: #4285F4; color: white; border: none; width: 100%; padding: 12px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
   .btn-auth.logout { background-color: #7f8c8d; }
-  
-  /* モード表示バッジ */
   #mode-indicator-container { margin-bottom: 15px; text-align: center; }
-  .mode-badge {
-    display: inline-block; padding: 6px 12px; border-radius: 20px;
-    font-size: 13px; font-weight: bold; color: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  }
+  .mode-badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; color: white; }
   .mode-warning { background-color: #e67e22; }
   .mode-group { background-color: #9b59b6; animation: pulse 2s infinite; }
-  @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(155, 89, 182, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0); }
-  }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(155, 89, 182, 0); } 100% { box-shadow: 0 0 0 0 rgba(155, 89, 182, 0); } }
+
+  /* ダークモードトグルスイッチ */
+  .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 34px; }
+  .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+  input:checked + .slider { background-color: #2980b9; }
+  input:checked + .slider:before { transform: translateX(24px); }
 </style>
 </head>
 <body>
 
-<!-- 辞書用サジェストリスト -->
 <datalist id="machineList"></datalist>
 
 <!-- ヘッダーナビゲーション -->
@@ -241,7 +184,7 @@
 </nav>
 
 <div class="card">
-  <!-- ================= ツール1：計測（1画面型） ================= -->
+  <!-- ================= ツール1：計測 ================= -->
   <div id="tab1" class="tab-content">
     <div style="display: flex; gap: 8px; margin-bottom: 12px;">
       <div style="flex: 1;"><label>日付</label><input type="date" id="recordDate"></div>
@@ -250,12 +193,12 @@
     </div>
 
     <div class="form-group" style="margin-top: 15px;">
-      <label>スタート時点の回転数 <span class="hint-text">※スワイプ、またはWタップで手入力</span></label>
+      <label>スタート時点の回転数 <span class="hint-text">※スワイプ/Wタップで手入力</span></label>
       <input type="number" id="startSpin" class="swipe-input" step="10" value="" placeholder="例: 150" oninput="updateMeasurementDisplay()">
     </div>
     
-    <div class="form-group" style="margin-top: 15px; background: #fdfdfd; padding: 10px; border-radius: 6px; border: 1px solid #e1e1e1;">
-      <label>現在のデータ機回転数を入力 <span class="hint-text">※スワイプ、またはWタップで手入力</span></label>
+    <div class="form-group" style="margin-top: 15px; background: var(--bg-main); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+      <label>現在のデータ機回転数 <span class="hint-text">※スワイプ/Wタップで手入力</span></label>
       <input type="number" id="measuredSpin" class="swipe-input" step="1" value="" placeholder="例: 160">
       
       <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
@@ -263,8 +206,7 @@
           <input type="checkbox" id="isMochidama" style="width: 20px; height: 20px; cursor: pointer; margin: 0;">
           <label for="isMochidama" style="margin: 0; font-size: 14px; cursor: pointer; display: inline-block;">持ち球で追加</label>
         </div>
-        
-        <div style="padding-top: 8px; border-top: 1px dashed #ccc; display: flex; align-items: center; gap: 15px;">
+        <div style="padding-top: 8px; border-top: 1px dashed var(--border-color); display: flex; align-items: center; gap: 15px;">
           <div style="display: flex; align-items: center; gap: 4px;">
             <input type="checkbox" id="hitNormal" style="width:18px; height:18px; cursor:pointer;" onchange="if(this.checked) document.getElementById('hitRush').checked = false;">
             <label for="hitNormal" style="margin:0; font-size:13px; cursor:pointer; color:#d35400; font-weight:bold;">当たり(通常)</label>
@@ -281,9 +223,14 @@
       <button class="btn-half" onclick="addMeasurement(125)" style="background-color: #1abc9c;">125玉(500円)追加</button>
       <button class="btn-half" onclick="addMeasurement(250)" style="background-color: #16a085;">250玉(1000円)追加</button>
     </div>
+    
+    <!-- ★取り消しボタン追加 -->
+    <div style="text-align: right; margin-top: 8px;">
+      <button class="btn-small" style="background-color:#e74c3c; margin:0;" onclick="undoLastInput()">↩️ 入力取り消し</button>
+    </div>
 
     <!-- 当たり出玉入力エリア -->
-    <div id="payoutInputArea" style="display: none; margin-top: 15px; padding: 15px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 6px;">
+    <div id="payoutInputArea" style="display: none; margin-top: 15px; padding: 15px; background: var(--box-yellow-bg); border: 1px solid #ffeeba; border-radius: 6px;">
       <div style="font-weight: bold; color: #d35400; margin-bottom: 8px; font-size:15px;" id="payoutTitle">大当たり獲得出玉を入力</div>
       <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">※スワイプ、またはWタップで手入力</label>
       <input type="number" id="payoutAmount" class="swipe-input" step="10" value="" placeholder="例: 1500" style="border-color: #f39c12;">
@@ -292,7 +239,7 @@
       <button class="action-btn" style="background-color: #e67e22; margin-top: 10px;" onclick="addPayout()">出玉を記録して次へ</button>
     </div>
 
-    <!-- 画面遷移（モーダル）を呼び出すボタン -->
+    <!-- モーダル呼び出しボタン -->
     <div style="margin-top: 25px;">
       <button id="btnOpenResultModal" class="action-btn" style="background-color: #34495e; padding: 16px; font-size:14px;" onclick="openResultModal()">
         📊 入力データを確認 (未入力)
@@ -307,28 +254,28 @@
   <div id="tab2" class="tab-content">
     <h2>期待値計算＆シミュレーション</h2>
     <div class="section-title">基本条件</div>
-    <div class="form-group" style="background: #e8f4f8; padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
-      <label style="color: #2980b9;">機種名 (辞書からスペックを自動入力)</label>
+    <div class="form-group" style="background: var(--box-blue-bg); padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
+      <label style="color: #2980b9;">機種名 (辞書から自動入力)</label>
       <input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="loadMachineSpec()">
     </div>
-    <div class="form-group"><label>等価ボーダー (回/千円) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="border" class="swipe-input" step="0.1" value="" placeholder="例: 18.0" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>現在の平均回転数 (回/千円) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="spinRate" class="swipe-input" step="0.1" value="" placeholder="例: 20.0" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>等価ボーダー (回/千円) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="border" class="swipe-input" step="0.1" value="" placeholder="例: 18.0" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>現在の平均回転数 (回/千円) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="spinRate" class="swipe-input" step="0.1" value="" placeholder="例: 20.0" oninput="this.classList.remove('auto-filled')"></div>
     <div class="form-group"><label>交換率 (円/玉) ※等価4.0、28玉3.57 <span class="hint-text">※Wタップ</span></label><input type="number" id="exchangeRate" class="swipe-input" step="0.01" value="" placeholder="例: 3.57"></div>
-    <div class="form-group"><label>持ち球比率 (%) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>総回転数 (回) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="totalSpins" class="swipe-input" step="10" value="" placeholder="例: 2000"></div>
+    <div class="form-group"><label>持ち球比率 (%) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>総回転数 (回) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="totalSpins" class="swipe-input" step="10" value="" placeholder="例: 2000"></div>
 
     <div class="section-title">機種スペック（ブレの計算用）</div>
-    <div class="form-group"><label>大当たり確率 (1/〇〇) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="probDenom" class="swipe-input" step="0.1" value="" placeholder="例: 319.6" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>初当たり平均獲得出玉 (玉) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="avgPayout" class="swipe-input" step="10" value="" placeholder="例: 4500" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>大当たり確率 (1/〇〇) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="probDenom" class="swipe-input" step="0.1" value="" placeholder="例: 319.6" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>初当たり平均獲得出玉 (玉) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="avgPayout" class="swipe-input" step="10" value="" placeholder="例: 4500" oninput="this.classList.remove('auto-filled')"></div>
     
     <button class="action-btn" onclick="calculateAndSimulate()">期待値を計算＆シミュレート</button>
-    <p style="font-size:11px; text-align:center; color:#7f8c8d; margin-top:5px;">※管理者のみ、計算時に入力したスペックが自動的に「辞書」に登録・上書きされます。</p>
+    <p style="font-size:11px; text-align:center; color:var(--text-muted); margin-top:5px;">※管理者のみ、計算時に入力したスペックが自動的に「辞書」に登録・上書きされます。</p>
 
     <div class="result" id="resultArea" style="display: none;">
       <p><span>1回転あたり:</span> <span id="resSpin" style="font-weight: bold;"></span></p>
       <hr>
       <p><span>トータル理論期待値:</span> <span id="resTotal" class="total"></span></p>
-      <div style="margin-top: 15px; background: #fff; padding: 15px; border-radius: 4px; border: 1px solid #3498db;">
+      <div style="margin-top: 15px; background: var(--card-bg); padding: 15px; border-radius: 4px; border: 1px solid #3498db;">
         <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #2980b9;">この結果から実収支を自動計算しカレンダーへ</div>
         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
           <input type="date" id="evSaveDate" style="flex: 1;">
@@ -383,9 +330,21 @@
       <div id="mode-indicator" class="mode-badge mode-warning">⚠️ グループ未参加</div>
     </div>
 
+    <!-- ダークモードトグル -->
+    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px; display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <span style="font-weight:bold; font-size:15px; color:var(--text-main);">🌙 ダークモード</span>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">目とバッテリーに優しい配色</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+        <span class="slider round"></span>
+      </label>
+    </div>
+
     <!-- ログイン管理エリア -->
-    <div style="background: #fff; border: 1px solid #ccc; border-radius: 8px; padding: 15px; margin-bottom: 25px;">
-      <p style="margin-top:0; font-weight:bold; color:#2c3e50; font-size:15px;">アカウント連携</p>
+    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 25px;">
+      <p style="margin-top:0; font-weight:bold; color:var(--text-main); font-size:15px;">アカウント連携</p>
       <p id="user-info" style="font-size: 13px; font-weight: bold; color: #e74c3c; margin-bottom:10px;">ログインしていません</p>
       <button id="login-btn" class="btn-auth" onclick="login()">Googleでログイン</button>
       <button id="logout-btn" class="btn-auth logout" onclick="logout()" style="display:none;">ログアウト</button>
@@ -393,41 +352,41 @@
 
     <!-- グループ未参加時 -->
     <div id="group-none" class="group-box" style="margin-top:0;">
-      <p style="font-size:13px; color:#555; margin-bottom: 15px; line-height:1.5;">ツールを利用するにはグループを作成または参加してください。</p>
-      <div class="form-group" style="text-align: left; background: #fff3cd; padding: 10px; border-radius: 6px; border: 1px solid #ffeeba; margin-bottom: 20px;">
+      <p style="font-size:13px; color:var(--text-sub); margin-bottom: 15px; line-height:1.5;">ツールを利用するにはグループを作成または参加してください。</p>
+      <div class="form-group" style="text-align: left; background: var(--box-yellow-bg); padding: 10px; border-radius: 6px; border: 1px solid #ffeeba; margin-bottom: 20px;">
         <label style="color: #d35400;">参加時のニックネーム (任意)</label>
-        <p style="font-size:11px; color:#7f8c8d; margin-top:0; margin-bottom:8px;">※未入力の場合はメールの先頭5文字が使われます。</p>
+        <p style="font-size:11px; color:var(--text-muted); margin-top:0; margin-bottom:8px;">※未入力の場合はメールの先頭5文字が使われます。</p>
         <input type="text" id="nicknameInput" placeholder="例: たろう">
       </div>
       <div style="margin-bottom: 20px;">
-        <p style="font-size:14px; font-weight:bold; color:#2c3e50; margin-bottom:10px;">新しくグループを作る</p>
+        <p style="font-size:14px; font-weight:bold; color:var(--text-main); margin-bottom:10px;">新しくグループを作る</p>
         <button class="action-btn" style="background-color: #9b59b6; margin-top:0;" onclick="createGroup()">グループを作成する</button>
       </div>
-      <hr style="border-top:1px dashed #ccc; margin: 20px 0;">
+      <hr style="border-top:1px dashed var(--border-color); margin: 20px 0;">
       <div>
-        <p style="font-size:14px; font-weight:bold; color:#2c3e50; margin-bottom:10px;">既存のグループに参加する</p>
+        <p style="font-size:14px; font-weight:bold; color:var(--text-main); margin-bottom:10px;">既存のグループに参加する</p>
         <input type="text" id="joinGroupId" placeholder="6桁のグループIDを入力" style="margin-bottom:10px; text-align:center; font-weight:bold; letter-spacing:2px; text-transform:uppercase;">
         <button class="btn-half" style="width:100%; background-color:#34495e;" onclick="joinGroup()">参加する</button>
       </div>
     </div>
 
     <!-- グループ参加中 -->
-    <div id="group-active" class="group-box" style="display: none; border-color:#27ae60; background:#f0fbf4; margin-top:0;">
+    <div id="group-active" class="group-box" style="display: none; border-color:#27ae60; background:var(--bg-main); margin-top:0;">
       <p style="font-size:13px; color:#27ae60; font-weight:bold; margin-bottom:5px;">現在共有中のグループID</p>
-      <div id="dispGroupId" style="font-size:32px; font-weight:bold; letter-spacing:4px; color:#2c3e50; margin-bottom:10px;"></div>
+      <div id="dispGroupId" style="font-size:32px; font-weight:bold; letter-spacing:4px; color:var(--text-main); margin-bottom:10px;"></div>
       <div id="dispUserRole" style="font-size:14px; font-weight:bold; margin-bottom:20px; color:#e67e22;"></div>
       
-      <div style="background: #fff; border: 1px solid #ccc; border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;">
-        <p style="font-size:12px; color:#555; margin-top:0; margin-bottom:5px;">現在のあなたのニックネーム: <span id="dispNickname" style="font-weight:bold; color:#2980b9; font-size:14px;"></span></p>
+      <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;">
+        <p style="font-size:12px; color:var(--text-sub); margin-top:0; margin-bottom:5px;">現在のあなたのニックネーム: <span id="dispNickname" style="font-weight:bold; color:#2980b9; font-size:14px;"></span></p>
         <div style="display:flex; gap:5px;">
           <input type="text" id="updateNicknameInput" placeholder="新しいニックネーム" style="flex:1; padding:6px; font-size:14px;">
           <button class="btn-small" style="background-color:#3498db; margin:0;" onclick="updateNickname()">変更</button>
         </div>
       </div>
       
-      <div style="background: #fff; border: 1px solid #e74c3c; border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;">
+      <div style="background: var(--card-bg); border: 1px solid #e74c3c; border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;">
         <p style="font-size:14px; font-weight:bold; color:#e74c3c; margin-top:0; margin-bottom:8px;">⚠️ 個人データをグループに統合</p>
-        <p style="font-size:12px; color:#555; margin-bottom:10px; line-height:1.4;">過去の「履歴」「カレンダー」「辞書」をすべてグループに合算・移行します。</p>
+        <p style="font-size:12px; color:var(--text-sub); margin-bottom:10px; line-height:1.4;">過去の「履歴」「カレンダー」「辞書」をすべてグループに合算・移行します。</p>
         <button class="btn-small" style="width:100%; background-color:#e74c3c; padding:10px;" onclick="mergePersonalDataToGroup()">過去データをすべて統合する</button>
       </div>
 
@@ -452,13 +411,13 @@
 <!-- 入力結果（青枠）モーダル -->
 <div id="resultModal" class="modal-overlay">
   <div class="modal-content">
-    <h3 style="margin-top:0; border-bottom:2px solid #3498db; padding-bottom:8px;">計測結果の詳細</h3>
+    <h3 style="margin-top:0; border-bottom:2px solid #3498db; padding-bottom:8px; color:var(--text-main);">計測結果の詳細</h3>
     <div class="result" id="measurementResult" style="display: block; margin-top:10px; padding: 10px;">
       <p><span>250玉(千円)平均:</span> <span id="avg250" class="highlight">0.00 回</span></p>
       <p><span>持ち球比率:</span> <span id="dispMochiRatio" style="font-weight:bold; color:#e67e22;">0.0 %</span></p>
       <hr>
       <p><span>自分で回した回転数:</span> <span id="totalMeasuredSpins">0 回</span></p>
-      <p><span>現在の総回転数:</span> <span id="absoluteTotalSpins" style="font-weight:bold; color:#2c3e50;">0 回</span></p>
+      <p><span>現在の総回転数:</span> <span id="absoluteTotalSpins" style="font-weight:bold; color:var(--text-main);">0 回</span></p>
       <p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls">0 玉</span></p>
       <div class="history-list" id="historyList">入力履歴がここに表示されます。</div>
     </div>
@@ -472,14 +431,39 @@
 <!-- 保存済みデータ モーダル -->
 <div id="savedModal" class="modal-overlay">
   <div class="modal-content">
-    <h3 style="margin-top:0; border-bottom:2px solid #7f8c8d; padding-bottom:8px;">同日の保存データ</h3>
+    <h3 style="margin-top:0; border-bottom:2px solid #7f8c8d; padding-bottom:8px; color:var(--text-main);">同日の保存データ</h3>
     <div id="savedRecordsContainer"></div>
     <button class="modal-close-btn" onclick="closeSavedModal()">元の画面に戻る</button>
   </div>
 </div>
 
-
 <script>
+// ==========================================
+// ダークモード管理
+// ==========================================
+function toggleDarkMode() {
+  const isDark = document.getElementById('darkModeToggle').checked;
+  if (isDark) {
+    document.body.setAttribute('data-theme', 'dark');
+    localStorage.setItem('pachinko_theme', 'dark');
+  } else {
+    document.body.removeAttribute('data-theme');
+    localStorage.setItem('pachinko_theme', 'light');
+  }
+}
+
+// 画面読み込み時にテーマを反映
+if (localStorage.getItem('pachinko_theme') === 'dark') {
+  document.body.setAttribute('data-theme', 'dark');
+}
+
+// ==========================================
+// 📳 触覚フィードバック関数
+// ==========================================
+function vibrate(ms = 40) {
+  if (navigator.vibrate) navigator.vibrate(ms);
+}
+
 // ==========================================
 // モーダル管理（ツール①の表示切り替え）
 // ==========================================
@@ -497,33 +481,23 @@ function closeSavedModal() {
   document.getElementById('savedModal').style.display = 'none';
 }
 
-// ★モーダルの外側（黒い背景）をタップした時にも閉じる処理
+// モーダルの外側（背景）をタップした時に閉じる処理
 const resultModal = document.getElementById('resultModal');
 const savedModal = document.getElementById('savedModal');
-
-resultModal.addEventListener('click', function(e) {
-  if (e.target === resultModal) closeResultModal();
-});
-savedModal.addEventListener('click', function(e) {
-  if (e.target === savedModal) closeSavedModal();
-});
-
+resultModal.addEventListener('click', function(e) { if (e.target === resultModal) closeResultModal(); });
+savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
 
 // ==========================================
 // ★ダブルタップ手入力機能（キーボード誤表示防止）
 // ==========================================
 function applyDoubleTapToInputs() {
-  // すべてのテキスト・数値入力欄を取得（※カレンダー用等のdateは除外）
   const inputs = document.querySelectorAll('input[type="number"], input[type="text"]');
-  
   inputs.forEach(input => {
     if (input.hasAttribute('data-dbltap-init')) return;
     input.setAttribute('data-dbltap-init', 'true');
     
     // 初期状態を読み取り専用にしてキーボードをブロック
-    if(!input.disabled) {
-      input.setAttribute('readonly', 'readonly');
-    }
+    if(!input.disabled) input.setAttribute('readonly', 'readonly');
     
     let lastTap = 0;
     
@@ -532,12 +506,11 @@ function applyDoubleTapToInputs() {
       let currentTime = new Date().getTime();
       let tapLength = currentTime - lastTap;
       
-      // 400ミリ秒以内の連続タップならダブルタップと判定
-      if (tapLength < 400 && tapLength > 0) {
+      if (tapLength < 400 && tapLength > 0) { // Wタップ判定
         if(!input.disabled) {
-          input.removeAttribute('readonly'); // ロック解除
-          input.focus(); // キーボード表示
-          e.preventDefault(); // デフォルトのズーム機能を防止
+          input.removeAttribute('readonly'); 
+          input.focus();
+          e.preventDefault(); 
         }
       }
       lastTap = currentTime;
@@ -545,30 +518,23 @@ function applyDoubleTapToInputs() {
     
     // マウスデバイス用（PC）
     input.addEventListener('dblclick', function(e) {
-      if(!input.disabled) {
-        input.removeAttribute('readonly');
-        input.focus();
-      }
+      if(!input.disabled) { input.removeAttribute('readonly'); input.focus(); }
     });
     
-    // 入力欄からフォーカスが外れたら再びロック
+    // フォーカスが外れたら再びロック
     input.addEventListener('blur', function() {
-      if(!input.disabled) {
-        input.setAttribute('readonly', 'readonly');
-      }
+      if(!input.disabled) input.setAttribute('readonly', 'readonly');
     });
   });
 }
 
 // ==========================================
-// スワイプ機能設定（★画面ロック・バウンド防止強化）
+// スワイプ機能設定（画面ロック・バウンド防止強化）
 // ==========================================
 function setupSwipeInput(id, step, min, max, defaultVal) {
   const el = document.getElementById(id);
   if (!el) return;
-  let isDragging = false;
-  let startX = 0;
-  let startVal = 0;
+  let isDragging = false; let startX = 0; let startVal = 0;
 
   const onStart = (e) => {
     isDragging = true;
@@ -576,62 +542,48 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
     let def = typeof defaultVal === 'function' ? defaultVal() : defaultVal;
     if (el.value === "") {
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
-      el.value = Number(def).toFixed(decimals);
-      el.classList.remove('auto-filled');
-      if (el.oninput) el.oninput();
+      el.value = Number(def).toFixed(decimals); el.classList.remove('auto-filled'); if (el.oninput) el.oninput();
     }
-    startVal = parseFloat(el.value);
-    if (isNaN(startVal)) startVal = def;
+    startVal = parseFloat(el.value); if (isNaN(startVal)) startVal = def;
   };
   
-  el.addEventListener('mousedown', onStart);
-  el.addEventListener('touchstart', onStart, {passive: true});
+  el.addEventListener('mousedown', onStart); el.addEventListener('touchstart', onStart, {passive: true});
   
   const onMove = (e) => {
     if (!isDragging) return;
-    
-    // ★スワイプ中は画面のネイティブスクロールを完全にブロック
-    if (e.cancelable) {
-      e.preventDefault(); 
-    }
+    if (e.cancelable) e.preventDefault(); // スワイプ中は画面のネイティブスクロールをブロック
     
     let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    let deltaX = clientX - startX;
-    let steps = Math.trunc(deltaX / 8); 
+    let deltaX = clientX - startX; let steps = Math.trunc(deltaX / 8); 
     if (steps !== 0) {
       let newVal = startVal + (steps * step);
-      if (newVal < min) newVal = min;
-      if (newVal > max) newVal = max;
+      if (newVal < min) newVal = min; if (newVal > max) newVal = max;
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
-      el.value = newVal.toFixed(decimals);
-      el.classList.remove('auto-filled');
+      el.value = newVal.toFixed(decimals); el.classList.remove('auto-filled');
       if (el.oninput) el.oninput();
     }
   };
   
   window.addEventListener('mousemove', onMove);
-  window.addEventListener('touchmove', onMove, {passive: false}); // passive: false で preventDefault を有効化
+  window.addEventListener('touchmove', onMove, {passive: false}); // passive: false で preventDefault 有効化
   
   const onEnd = () => { isDragging = false; };
-  window.addEventListener('mouseup', onEnd);
-  window.addEventListener('touchend', onEnd);
+  window.addEventListener('mouseup', onEnd); window.addEventListener('touchend', onEnd);
 }
 
 // ==========================================
-// Firebase設定
+// Firebase設定 ＆ 変数
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
-if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
-  firebase.initializeApp(firebaseConfig);
-}
+if(firebaseConfig.apiKey !== "YOUR_API_KEY") { firebase.initializeApp(firebaseConfig); }
 
 const auth = firebase.apps.length ? firebase.auth() : null;
 const db = firebase.apps.length ? firebase.firestore() : null;
@@ -649,6 +601,15 @@ let slumpChartInstance = null;
 let currentCalYear = new Date().getFullYear();
 let currentCalMonth = new Date().getMonth();
 
+// ⚡ リアルタイム同期用のキャッシュ変数
+let unsubscribeGroup = null;
+let globalGroupData = { records: [], calendar: {}, dictionary: {} };
+
+let measurementStartTime = null; // ⏱️ 時速計算用の開始時間
+
+// ==========================================
+// ユーティリティ関数
+// ==========================================
 function getNickname() {
   let name = localStorage.getItem('pachinko_nickname');
   if (name && name.trim() !== "") return name.trim();
@@ -658,64 +619,74 @@ function getNickname() {
 function updateNickname() {
   const newName = document.getElementById('updateNicknameInput').value.trim();
   if(newName) {
-    localStorage.setItem('pachinko_nickname', newName);
-    alert("ニックネームを更新しました！");
-    document.getElementById('updateNicknameInput').value = '';
-    updateModeIndicator();
+    localStorage.setItem('pachinko_nickname', newName); alert("ニックネームを更新しました！");
+    document.getElementById('updateNicknameInput').value = ''; updateModeIndicator();
   } else { alert("ニックネームを入力してください。"); }
 }
 function saveNicknameFromInput() {
   const name = document.getElementById('nicknameInput').value.trim();
-  if (name) localStorage.setItem('pachinko_nickname', name);
-  else localStorage.removeItem('pachinko_nickname');
+  if (name) localStorage.setItem('pachinko_nickname', name); else localStorage.removeItem('pachinko_nickname');
 }
-function formatCurrency(num) {
-  return (num > 0 ? "+" : "") + Math.round(num).toLocaleString() + " 円";
-}
+function formatCurrency(num) { return (num > 0 ? "+" : "") + Math.round(num).toLocaleString() + " 円"; }
 
 // ==========================================
 // タブ・モード表示管理（ヘッダーナビ連動）
 // ==========================================
 function updateModeIndicator() {
-  const n1 = document.getElementById('nav-tab1');
-  const n2 = document.getElementById('nav-tab2');
-  const n3 = document.getElementById('nav-tab3');
-  const hdSection = document.getElementById('history-and-dict-section');
+  const n1 = document.getElementById('nav-tab1'), n2 = document.getElementById('nav-tab2');
+  const n3 = document.getElementById('nav-tab3'), hdSection = document.getElementById('history-and-dict-section');
 
   if (currentGroupId) {
     n1.style.display = 'block'; n2.style.display = 'block'; n3.style.display = 'block';
-    document.getElementById('group-none').style.display = 'none';
-    document.getElementById('group-active').style.display = 'block';
+    document.getElementById('group-none').style.display = 'none'; document.getElementById('group-active').style.display = 'block';
     document.getElementById('dispGroupId').innerText = currentGroupId;
     document.getElementById('dispUserRole').innerText = isAdmin ? "👑 あなたの権限: 管理者 (更新・削除可能)" : "👤 あなたの権限: メンバー (追加・閲覧のみ)";
-    document.getElementById('dispNickname').innerText = getNickname();
-    hdSection.style.display = 'block';
+    document.getElementById('dispNickname').innerText = getNickname(); hdSection.style.display = 'block';
   } else {
     n1.style.display = 'none'; n2.style.display = 'none'; n3.style.display = 'none';
-    document.getElementById('group-none').style.display = 'block';
-    document.getElementById('group-active').style.display = 'none';
-    hdSection.style.display = 'none';
-    switchTab('tab4');
+    document.getElementById('group-none').style.display = 'block'; document.getElementById('group-active').style.display = 'none';
+    hdSection.style.display = 'none'; switchTab('tab4');
   }
 }
 
 function switchTab(tabId) {
+  vibrate(30); // 📳 タブ切り替え時のフィードバック
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.top-nav button').forEach(el => el.classList.remove('active'));
-  
-  document.getElementById(tabId).classList.add('active');
-  document.getElementById('nav-' + tabId).classList.add('active');
-  
-  if (currentGroupId) {
-    if(tabId === 'tab1') renderSavedRecords();
-    if(tabId === 'tab3') renderCalendar();
-    if(tabId === 'tab4') { renderDictionary(); renderHistoryTab(); }
-  }
+  document.getElementById(tabId).classList.add('active'); document.getElementById('nav-' + tabId).classList.add('active');
+  refreshActiveTabUI();
 }
 
-async function getDbRef() {
-  if (!currentUser || !currentGroupId || !db) return null;
-  return db.collection('groups').doc(currentGroupId);
+// ⚡ 現在表示中のタブの情報を最新化
+function refreshActiveTabUI() {
+  const activeTabBtn = document.querySelector('.top-nav button.active');
+  if(!activeTabBtn) return;
+  const tabId = activeTabBtn.id.replace('nav-', '');
+  if(tabId === 'tab1') renderSavedRecords();
+  if(tabId === 'tab3') renderCalendar();
+  if(tabId === 'tab4') { renderDictionary(); renderHistoryTab(); }
+}
+
+// ⚡ リアルタイムリスナーのセットアップ
+function attachGroupListener(groupId) {
+  if (unsubscribeGroup) unsubscribeGroup();
+  if (!db || !groupId) return;
+  
+  unsubscribeGroup = db.collection('groups').doc(groupId).onSnapshot(doc => {
+    if (doc.exists) {
+      globalGroupData = doc.data();
+      if(!globalGroupData.records) globalGroupData.records = [];
+      if(!globalGroupData.calendar) globalGroupData.calendar = {};
+      if(!globalGroupData.dictionary) globalGroupData.dictionary = {};
+      isAdmin = (globalGroupData.creator === currentUser.uid);
+      updateModeIndicator();
+      refreshActiveTabUI(); // 変更があったら現在開いているタブを自動更新
+    } else {
+      currentGroupId = null; isAdmin = false; localStorage.removeItem('pachinko_groupId');
+      if(unsubscribeGroup) unsubscribeGroup();
+      updateModeIndicator();
+    }
+  }, error => { console.error("Firebase sync error:", error); });
 }
 
 // ==========================================
@@ -727,12 +698,9 @@ async function createGroup() {
   const newId = Math.random().toString(36).substr(2, 6).toUpperCase(); 
   try {
     await db.collection('groups').doc(newId).set({ created: Date.now(), creator: currentUser.uid });
-    currentGroupId = newId; isAdmin = true; 
-    localStorage.setItem('pachinko_groupId', newId);
-    updateModeIndicator();
+    currentGroupId = newId; localStorage.setItem('pachinko_groupId', newId);
     alert(`グループを作成しました！\nID: ${newId}`);
-    renderSavedRecords(); renderCalendar(); renderHistoryTab(); renderDictionary();
-    switchTab('tab1');
+    attachGroupListener(newId); switchTab('tab1');
   } catch (error) { alert("グループの作成に失敗しました。"); }
 }
 
@@ -744,74 +712,33 @@ async function joinGroup() {
   try {
     const doc = await db.collection('groups').doc(idInput).get();
     if (doc.exists) {
-      currentGroupId = idInput; isAdmin = (doc.data().creator === currentUser.uid); 
-      localStorage.setItem('pachinko_groupId', idInput);
+      currentGroupId = idInput; localStorage.setItem('pachinko_groupId', idInput);
       document.getElementById('joinGroupId').value = '';
-      updateModeIndicator();
-      alert(`グループに参加しました！（権限: ${isAdmin ? '管理者' : 'メンバー'}）`);
-      renderSavedRecords(); renderCalendar(); renderHistoryTab(); renderDictionary();
-      switchTab('tab1');
+      alert("参加しました！");
+      attachGroupListener(idInput); switchTab('tab1');
     } else { alert("指定されたIDのグループが見つかりません。"); }
   } catch (error) { alert("グループの参加に失敗しました。"); }
 }
 
 function leaveGroup() {
   if(confirm("グループから退出しますか？\n（再度IDを入力すれば戻れます）")) {
-    currentGroupId = null; isAdmin = false;
-    localStorage.removeItem('pachinko_groupId');
+    currentGroupId = null; isAdmin = false; localStorage.removeItem('pachinko_groupId');
+    if(unsubscribeGroup) unsubscribeGroup();
     updateModeIndicator();
   }
-}
-
-async function mergePersonalDataToGroup() {
-  if (!currentGroupId || !currentUser || !db) return alert("ログインし、グループに参加した状態で実行してください。");
-  if (!confirm("あなたの個人の過去データ（履歴・カレンダー・辞書）をすべてグループに合算し共有します。\n※この操作は取り消せません。よろしいですか？")) return;
-
-  try {
-    const personalRef = db.collection('users').doc(currentUser.uid);
-    const groupRef = db.collection('groups').doc(currentGroupId);
-    const [pDoc, gDoc] = await Promise.all([personalRef.get(), groupRef.get()]);
-    const pData = pDoc.exists ? pDoc.data() : {};
-    const gData = gDoc.exists ? gDoc.data() : {};
-
-    const mergedRecords = [...(gData.records || []), ...(pData.records || [])];
-    const uniqueRecordsMap = new Map();
-    mergedRecords.forEach(r => uniqueRecordsMap.set(r.id, r));
-    
-    const pCal = pData.calendar || {};
-    const finalCal = { ...(gData.calendar || {}) };
-    for (let date in pCal) {
-      if (finalCal[date]) {
-        finalCal[date].ev = (finalCal[date].ev || 0) + (pCal[date].ev || 0);
-        finalCal[date].actual = (finalCal[date].actual || 0) + (pCal[date].actual || 0);
-        finalCal[date].actualBalls = (finalCal[date].actualBalls || 0) + (pCal[date].actualBalls || 0);
-        finalCal[date].details = [...(finalCal[date].details || []), ...(pCal[date].details || [])];
-      } else { finalCal[date] = pCal[date]; }
-    }
-
-    const finalDict = { ...(gData.dictionary || {}), ...(pData.dictionary || {}) };
-
-    await groupRef.set({ records: Array.from(uniqueRecordsMap.values()), calendar: finalCal, dictionary: finalDict }, { merge: true });
-    alert("個人のデータをすべてグループに共有・統合しました！");
-    renderSavedRecords(); renderCalendar(); renderDictionary(); renderHistoryTab();
-  } catch(e) { alert("データの統合に失敗しました。"); }
 }
 
 // ==========================================
 // 初期化・認証
 // ==========================================
 window.onload = function() {
-  const today = new Date();
-  currentCalYear = today.getFullYear();
-  currentCalMonth = today.getMonth();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
+  if (localStorage.getItem('pachinko_theme') === 'dark') document.getElementById('darkModeToggle').checked = true;
+
+  const today = new Date(); currentCalYear = today.getFullYear(); currentCalMonth = today.getMonth();
+  const yyyy = today.getFullYear(), mm = String(today.getMonth() + 1).padStart(2, '0'), dd = String(today.getDate()).padStart(2, '0');
   const todayStr = `${yyyy}-${mm}-${dd}`;
   
-  document.getElementById('recordDate').value = todayStr;
-  document.getElementById('evSaveDate').value = todayStr;
-  document.getElementById('actualDate').value = todayStr;
+  document.getElementById('recordDate').value = todayStr; document.getElementById('evSaveDate').value = todayStr; document.getElementById('actualDate').value = todayStr;
   
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
@@ -829,9 +756,7 @@ window.onload = function() {
   setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6);
   setupSwipeInput('avgPayout', 10, 100, 10500, 4500);
 
-  // ★画面読み込み時に、全ての入力欄にダブルタップ機能を適用
-  applyDoubleTapToInputs();
-
+  applyDoubleTapToInputs(); // ★Wタップ機能適用
   updateModeIndicator();
 
   if (auth) {
@@ -840,27 +765,16 @@ window.onload = function() {
         currentUser = user;
         document.getElementById('user-info').innerText = `ログイン中: ${user.email}`;
         document.getElementById('user-info').style.color = '#27ae60';
-        document.getElementById('login-btn').style.display = 'none';
-        document.getElementById('logout-btn').style.display = 'inline-block';
+        document.getElementById('login-btn').style.display = 'none'; document.getElementById('logout-btn').style.display = 'inline-block';
         
-        if (currentGroupId && db) {
-          db.collection('groups').doc(currentGroupId).get().then(doc => {
-            if (doc.exists) {
-              isAdmin = (doc.data().creator === currentUser.uid);
-              updateModeIndicator();
-              renderSavedRecords(); renderCalendar(); renderDictionary(); renderHistoryTab();
-            } else {
-              currentGroupId = null; isAdmin = false;
-              updateModeIndicator();
-            }
-          });
-        } else { updateModeIndicator(); }
+        if (currentGroupId && db) { attachGroupListener(currentGroupId); } 
+        else { updateModeIndicator(); }
       } else {
         currentUser = null; currentGroupId = null; isAdmin = false;
+        if(unsubscribeGroup) unsubscribeGroup();
         document.getElementById('user-info').innerText = 'ログインしていません';
         document.getElementById('user-info').style.color = '#e74c3c';
-        document.getElementById('login-btn').style.display = 'inline-block';
-        document.getElementById('logout-btn').style.display = 'none';
+        document.getElementById('login-btn').style.display = 'inline-block'; document.getElementById('logout-btn').style.display = 'none';
         updateModeIndicator();
       }
     });
@@ -869,55 +783,38 @@ window.onload = function() {
 
 function login() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
-  const provider = new firebase.auth.GoogleAuthProvider();
-  provider.setCustomParameters({ prompt: 'select_account' });
+  const provider = new firebase.auth.GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' });
   auth.signInWithPopup(provider).catch(error => { alert("ログインに失敗しました。"); });
 }
 function logout() { if(auth) auth.signOut(); }
 
 // ==========================================
-// データ取得保存 ＆ 辞書 ＆ カレンダー
+// データ取得保存 ＆ 辞書 ＆ カレンダー (リアルタイム対応)
 // ==========================================
-async function getRecordsData() {
-  const ref = await getDbRef();
-  if (!ref) return [];
-  try { const doc = await ref.get(); return doc.exists ? (doc.data().records || []) : []; } catch(e) { return []; }
-}
+async function getRecordsData() { return globalGroupData.records || []; }
+async function getCalendarData() { return globalGroupData.calendar || {}; }
+async function getDictionaryData() { return globalGroupData.dictionary || {}; }
+
 async function saveRecordsData(records) {
-  const ref = await getDbRef();
-  if (ref) await ref.set({ records: records }, { merge: true });
-}
-async function getCalendarData() {
-  const ref = await getDbRef();
-  if (!ref) return {};
-  try { const doc = await ref.get(); return doc.exists ? (doc.data().calendar || {}) : {}; } catch(e) { return {}; }
+  if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ records: records }, { merge: true });
 }
 async function saveCalendarData(calendar) {
-  const ref = await getDbRef();
-  if (ref) await ref.set({ calendar: calendar }, { merge: true });
-}
-async function getDictionaryData() {
-  const ref = await getDbRef();
-  if (!ref) return {};
-  try { const doc = await ref.get(); return doc.exists ? (doc.data().dictionary || {}) : {}; } catch(e) { return {}; }
+  if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ calendar: calendar }, { merge: true });
 }
 async function saveDictionaryData(dict) {
-  const ref = await getDbRef();
-  if (ref) await ref.set({ dictionary: dict }, { merge: true });
+  if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ dictionary: dict }, { merge: true });
 }
 
 async function renderDictionary() {
   const dict = await getDictionaryData();
-  const listEl = document.getElementById('machineList');
-  let optionsHtml = ''; for(let m in dict) { optionsHtml += `<option value="${m}"></option>`; }
+  const listEl = document.getElementById('machineList'); let optionsHtml = ''; for(let m in dict) { optionsHtml += `<option value="${m}"></option>`; }
   listEl.innerHTML = optionsHtml;
-  const container = document.getElementById('dictContainer');
-  let html = '';
+  const container = document.getElementById('dictContainer'); let html = '';
   for(let m in dict) {
     const spec = dict[m];
     let adminButtons = isAdmin ? `<div style="display:flex; justify-content:flex-end; gap:5px;"><button class="btn-small" style="background:#3498db;" onclick="updateDictItem('${m}')">更新</button><button class="btn-small" style="background:#e74c3c;" onclick="deleteDictItem('${m}')">削除</button></div>` : '';
     html += `<div class="saved-item" style="border-left: 4px solid #1abc9c;">
-      <div style="font-weight:bold; color:#2c3e50; margin-bottom:8px;">${m}</div>
+      <div style="font-weight:bold; color:var(--text-main); margin-bottom:8px;">${m}</div>
       <div style="display:flex; gap:5px; margin-bottom:5px;">
         <div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">ボーダー</label><input type="number" id="dict_border_${m}" value="${spec.border || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div>
         <div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">確率(1/〇)</label><input type="number" id="dict_prob_${m}" value="${spec.probDenom || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div>
@@ -926,30 +823,23 @@ async function renderDictionary() {
       ${adminButtons}
     </div>`;
   }
-  if(html === '') html = '<p style="font-size:13px; color:#777;">登録されている機種スペックはありません。</p>';
+  if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されている機種スペックはありません。</p>';
   container.innerHTML = html;
-  
-  // ★動的に生成された辞書の入力欄にもダブルタップ機能を適用
-  applyDoubleTapToInputs();
+  applyDoubleTapToInputs(); // ★動的生成部分にもWタップ適用
 }
 
 async function updateDictItem(machine) {
   if (!isAdmin) return alert("権限がありません。");
-  const b = parseFloat(document.getElementById(`dict_border_${machine}`).value);
-  const p = parseFloat(document.getElementById(`dict_prob_${machine}`).value);
-  const a = parseFloat(document.getElementById(`dict_payout_${machine}`).value);
+  const b = parseFloat(document.getElementById(`dict_border_${machine}`).value), p = parseFloat(document.getElementById(`dict_prob_${machine}`).value), a = parseFloat(document.getElementById(`dict_payout_${machine}`).value);
   const dict = await getDictionaryData();
   if(!dict[machine]) dict[machine] = {};
-  if(!isNaN(b)) dict[machine].border = b;
-  if(!isNaN(p)) dict[machine].probDenom = p;
-  if(!isNaN(a)) dict[machine].avgPayout = a;
-  await saveDictionaryData(dict); alert(`[${machine}] の辞書を更新しました。`); renderDictionary();
+  if(!isNaN(b)) dict[machine].border = b; if(!isNaN(p)) dict[machine].probDenom = p; if(!isNaN(a)) dict[machine].avgPayout = a;
+  await saveDictionaryData(dict); alert(`[${machine}] の辞書を更新しました。`); // リアルタイム反映される
 }
-
 async function deleteDictItem(machine) {
   if (!isAdmin) return alert("権限がありません。");
   if(confirm(`[${machine}] を辞書から削除しますか？`)) {
-    const dict = await getDictionaryData(); delete dict[machine]; await saveDictionaryData(dict); renderDictionary();
+    const dict = await getDictionaryData(); delete dict[machine]; await saveDictionaryData(dict); 
   }
 }
 
@@ -961,34 +851,33 @@ function createRecordItemHtml(r) {
     r.history.forEach((h) => { 
       if (h.type === 'spin' || !h.type) {
         spinCount++;
-        let cvt = h.balls === 125 ? `<span style="font-size: 11px; color: #7f8c8d; margin-left: 6px;">(250玉換算: ${h.spins * 2}回)</span>` : "";
+        let cvt = h.balls === 125 ? `<span style="font-size: 11px; color: var(--text-muted); margin-left: 6px;">(250玉換算: ${h.spins * 2}回)</span>` : "";
         let typeLabel = h.isMochidama ? `<span style="color:#e67e22; font-size:11px; margin-left:4px;">[持球]</span>` : `<span style="color:#27ae60; font-size:11px; margin-left:4px;">[現金]</span>`;
         let hitLabel = h.hitType ? `<span style="color:#d35400; font-size:11px; margin-left:4px; font-weight:bold;">[${h.hitType}]</span>` : "";
-        historyHtml += `<div style="margin-bottom: 4px; border-bottom: 1px dashed #ddd; padding-bottom: 2px;">${spinCount}回目: ${h.balls}玉 で <strong>${h.spins}回</strong>${typeLabel}${hitLabel}${cvt}</div>`; 
+        historyHtml += `<div style="margin-bottom: 4px; border-bottom: 1px dashed var(--border-color); padding-bottom: 2px;">${spinCount}回目: ${h.balls}玉 で <strong>${h.spins}回</strong>${typeLabel}${hitLabel}${cvt}</div>`; 
       } else if (h.type === 'payout') {
-        let memoHtml = h.memo ? `<span style="font-size:11px; color:#7f8c8d; margin-left:6px;">(${h.memo})</span>` : "";
-        historyHtml += `<div style="margin-bottom: 4px; background-color:#fff3cd; padding: 2px 4px; border-radius:2px; font-size:11px;"><span style="color:#d35400; font-weight:bold;">🎉 ${h.hitType}獲得: ${h.amount}玉${memoHtml}</span></div>`;
+        let memoHtml = h.memo ? `<span style="font-size:11px; color: var(--text-muted); margin-left:6px;">(${h.memo})</span>` : "";
+        historyHtml += `<div style="margin-bottom: 4px; background-color:var(--box-yellow-bg); padding: 2px 4px; border-radius:2px; font-size:11px;"><span style="color:#d35400; font-weight:bold;">🎉 ${h.hitType}獲得: ${h.amount}玉${memoHtml}</span></div>`;
       }
     });
     historyHtml += `</div></details>`;
   }
   
   let dispRatio = (r.mochidamaRatio || 0).toFixed(1);
-  let startDisp = (r.startSpins !== undefined && r.startSpins >= 0) ? ` <span style="color:#7f8c8d; font-size:11px;">(開始${r.startSpins}G → 終了${r.startSpins + r.totalSpins}G)</span>` : '';
-  let storeDisp = r.store ? `<span style="color:#7f8c8d; font-size:12px; margin-right:6px;">[${r.store}]</span>` : '';
+  let startDisp = (r.startSpins !== undefined && r.startSpins >= 0) ? ` <span style="color:var(--text-muted); font-size:11px;">(開始${r.startSpins}G → 終了${r.startSpins + r.totalSpins}G)</span>` : '';
+  let storeDisp = r.store ? `<span style="color:var(--text-muted); font-size:12px; margin-right:6px;">[${r.store}]</span>` : '';
   let authorDisp = r.author ? `<span class="author-badge">👤 ${r.author}</span>` : '';
   
   const safeStr = encodeURIComponent(JSON.stringify(r.hitHistory || []));
   const safeHist = encodeURIComponent(JSON.stringify(r.history || []));
   const btnCall = `useRecordForCalc('${r.date}', ${r.avg250}, '${r.machine}', ${r.mochidamaRatio || 0}, '${r.store || ''}', ${r.totalCashBalls || 0}, ${r.totalMochiBalls || 0}, ${r.totalPayout || 0}, '${safeStr}', '${safeHist}')`;
 
-  // ★「続きを計測」ボタンは全メンバーに表示
   let resumeButton = `<button class="btn-small" style="background:#f39c12;" onclick="resumeRecord(${r.id})">続きを計測</button>`;
   let adminButtons = isAdmin ? `<button class="btn-small" style="background:#95a5a6;" onclick="deleteRecord(${r.id})">削除</button>` : '';
 
   return `<div class="saved-item">
-    <div style="font-weight:bold; color:#2c3e50; font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}${authorDisp}</div>
-    <div style="font-size:13px; margin:6px 0; color:#555;">総投資: ${r.totalBalls}玉 / 自力回転: ${r.totalSpins}回${startDisp}<br>
+    <div style="font-weight:bold; color:var(--text-main); font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}${authorDisp}</div>
+    <div style="font-size:13px; margin:6px 0; color:var(--text-sub);">総投資: ${r.totalBalls}玉 / 自力回転: ${r.totalSpins}回${startDisp}<br>
     <span style="color:#e74c3c; font-weight:bold; font-size:14px;">250玉平均: ${r.avg250.toFixed(2)} 回</span>
     <span style="color:#e67e22; font-weight:bold; font-size:13px; margin-left:10px;">持球比率: ${dispRatio}%</span>
     </div>
@@ -1002,9 +891,10 @@ function createRecordItemHtml(r) {
 }
 
 // ==========================================
-// ツール①：計測ロジックとモーダル表示連動
+// ツール①：計測ロジック
 // ==========================================
 function addMeasurement(balls) {
+  vibrate(); // 📳
   const spinInput = document.getElementById('measuredSpin');
   const currentMachineSpin = parseFloat(spinInput.value);
   if (isNaN(currentMachineSpin) || currentMachineSpin < 0) return alert("現在のデータ機回転数を正しく入力してください。");
@@ -1017,46 +907,49 @@ function addMeasurement(balls) {
   if (spins <= 0) return alert(`現在の回転数は、前回の回転数 (${lastSpin}回) より大きい数値を入力してください。`);
   
   const isMochi = document.getElementById('isMochidama').checked;
-  const hitNormal = document.getElementById('hitNormal').checked;
-  const hitRush = document.getElementById('hitRush').checked;
+  const hitNormal = document.getElementById('hitNormal').checked, hitRush = document.getElementById('hitRush').checked;
   let hitType = hitNormal ? '通常' : (hitRush ? 'ラッシュ' : null);
 
   historyData.push({ type: 'spin', balls: balls, spins: spins, isMochidama: isMochi, hitType: hitType });
-  
-  // Wタップのreadonly仕様により、focus()でのキーボード呼び出しを防ぐため外す
   spinInput.value = ''; 
-  // spinInput.focus(); 
+  if (!measurementStartTime) measurementStartTime = Date.now(); // ⏱️ 時速計算開始
   
   if (hitType) {
     document.getElementById('payoutTitle').innerText = `${hitType}当たり 獲得出玉を入力`;
-    document.getElementById('payoutAmount').value = '';
-    document.getElementById('payoutMemo').value = '';
+    document.getElementById('payoutAmount').value = ''; document.getElementById('payoutMemo').value = '';
     document.getElementById('payoutInputArea').style.display = 'block';
   } else { document.getElementById('payoutInputArea').style.display = 'none'; }
   updateMeasurementDisplay();
 }
 
 function addPayout() {
-  const amountInput = document.getElementById('payoutAmount');
-  const amount = parseFloat(amountInput.value);
+  vibrate(); // 📳
+  const amountInput = document.getElementById('payoutAmount'), amount = parseFloat(amountInput.value);
   if (isNaN(amount) || amount < 0) return alert("正しい出玉を入力してください。");
   
-  const memoInput = document.getElementById('payoutMemo');
-  const hitNormal = document.getElementById('hitNormal').checked;
-  const hitRush = document.getElementById('hitRush').checked;
-  let hitType = hitNormal ? '通常' : (hitRush ? 'ラッシュ' : '不明');
-  
-  historyData.push({ type: 'payout', amount: amount, hitType: hitType, memo: memoInput.value.trim() });
+  const hitNormal = document.getElementById('hitNormal').checked, hitRush = document.getElementById('hitRush').checked;
+  historyData.push({ type: 'payout', amount: amount, hitType: hitNormal ? '通常' : (hitRush ? 'ラッシュ' : '不明'), memo: document.getElementById('payoutMemo').value.trim() });
   
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
-  amountInput.value = ''; memoInput.value = '';
+  amountInput.value = ''; document.getElementById('payoutMemo').value = '';
   document.getElementById('payoutInputArea').style.display = 'none';
+  if (!measurementStartTime) measurementStartTime = Date.now(); // ⏱️
+  updateMeasurementDisplay();
+}
+
+// ↩️ 入力取り消し（Undo）機能
+function undoLastInput() {
+  if (historyData.length === 0) return alert("取り消す入力がありません。");
+  if (!confirm("直前の入力を取り消しますか？\n※この操作は元に戻せません。")) return;
+  
+  vibrate(40); // 📳
+  historyData.pop();
+  if (historyData.length === 0) measurementStartTime = null; // 全て消えたら時間リセット
   updateMeasurementDisplay();
 }
 
 function deleteHistoryItem(index) {
-  historyData.splice(index, 1);
-  updateMeasurementDisplay();
+  historyData.splice(index, 1); updateMeasurementDisplay();
 }
 
 function updateMeasurementDisplay() {
@@ -1076,13 +969,13 @@ function updateMeasurementDisplay() {
     if (item.type === 'spin' || !item.type) {
       spinCount++; totalBalls += item.balls; totalSpins += item.spins;
       if (item.isMochidama) mochidamaBalls += item.balls;
-      let cvt = item.balls === 125 ? `<span style="font-size:11px; color:#7f8c8d; margin-left:6px;">(250玉換算: ${item.spins * 2}回)</span>` : "";
+      let cvt = item.balls === 125 ? `<span style="font-size:11px; color:var(--text-muted); margin-left:6px;">(250玉換算: ${item.spins * 2}回)</span>` : "";
       let typeLabel = item.isMochidama ? `<span style="color:#e67e22; font-size:11px; margin-left:4px;">[持球]</span>` : `<span style="color:#27ae60; font-size:11px; margin-left:4px;">[現金]</span>`;
       let hitLabel = item.hitType ? `<span style="color:#d35400; font-size:11px; margin-left:4px; font-weight:bold;">[${item.hitType}当たり!]</span>` : "";
       itemHtml = `<div class="history-item"><span>${spinCount}回目: ${item.balls}玉で <strong>${item.spins}回</strong>${typeLabel}${hitLabel}${cvt}</span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
     } else if (item.type === 'payout') {
-      let memoHtml = item.memo ? `<span style="font-size:11px; color:#7f8c8d; margin-left:6px;">(${item.memo})</span>` : "";
-      itemHtml = `<div class="history-item" style="background-color:#fff3cd; padding:4px 8px; border-radius:4px; margin-top:2px; margin-bottom:2px;"><span style="color:#d35400; font-weight:bold; font-size:13px;">🎉 ${item.hitType}獲得: ${item.amount}玉${memoHtml}</span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
+      let memoHtml = item.memo ? `<span style="font-size:11px; color:var(--text-muted); margin-left:6px;">(${item.memo})</span>` : "";
+      itemHtml = `<div class="history-item" style="background-color:var(--box-yellow-bg); padding:4px 8px; border-radius:4px; margin-top:2px; margin-bottom:2px;"><span style="color:#d35400; font-weight:bold; font-size:13px;">🎉 ${item.hitType}獲得: ${item.amount}玉${memoHtml}</span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
     }
     historyHtml = itemHtml + historyHtml; 
   }
@@ -1100,9 +993,18 @@ function updateMeasurementDisplay() {
   document.getElementById('totalMeasuredBalls').innerText = totalBalls + " 玉";
   document.getElementById('historyList').innerHTML = historyHtml;
   
-  btnModal.innerText = `📊 データ確認 (投資:${totalBalls}玉 / 平均:${avg250.toFixed(1)}回)`;
+  // ⏱️ 時速計算ロジック（3分以上経過で表示）
+  let speedHtml = "";
+  if (measurementStartTime && totalSpins > 0) {
+    const elapsedMinutes = (Date.now() - measurementStartTime) / 60000;
+    if (elapsedMinutes > 3) {
+      const spinsPerHour = Math.round(totalSpins / (elapsedMinutes / 60));
+      speedHtml = ` / 時速:${spinsPerHour}回`;
+    }
+  }
+  
+  btnModal.innerText = `📊 データ確認 (投資:${totalBalls}玉 / 平均:${avg250.toFixed(1)}回${speedHtml})`;
 
-  // ★メンバー（管理者以外）でも編集時は上書き保存ボタンになるように修正
   if (editingRecordId) {
     document.getElementById('btnSaveRecord').innerText = "この記録を上書き保存";
     document.getElementById('btnSaveRecord').style.backgroundColor = "#d35400";
@@ -1114,46 +1016,32 @@ function updateMeasurementDisplay() {
 
 function resetMeasurement() {
   if(confirm("現在の入力データをすべてクリアしますか？")) { 
-    historyData = []; editingRecordId = null;
+    historyData = []; editingRecordId = null; measurementStartTime = null;
     document.getElementById('startSpin').value = '';
-    document.getElementById('hitNormal').checked = false;
-    document.getElementById('hitRush').checked = false;
-    document.getElementById('payoutAmount').value = '';
-    document.getElementById('payoutMemo').value = '';
+    document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
+    document.getElementById('payoutAmount').value = ''; document.getElementById('payoutMemo').value = '';
     document.getElementById('payoutInputArea').style.display = 'none';
     updateMeasurementDisplay(); closeResultModal();
   }
 }
 
 async function saveCurrentRecord() {
-  const date = document.getElementById('recordDate').value;
-  const store = document.getElementById('storeName').value.trim();
-  const machine = document.getElementById('machineName').value.trim();
+  vibrate(50); // 📳
+  const date = document.getElementById('recordDate').value, store = document.getElementById('storeName').value.trim(), machine = document.getElementById('machineName').value.trim();
   if (!date || !machine) return alert("日付と機種名を入力してください。");
   if (historyData.length === 0) return alert("回転数の履歴がありません。");
   
-  let totalBalls = 0, totalSpins = 0, mochidamaBalls = 0, cashBalls = 0, totalPayout = 0;
-  let hitHistory = [];
-  
+  let totalBalls = 0, totalSpins = 0, mochidamaBalls = 0, cashBalls = 0, totalPayout = 0, hitHistory = [];
   historyData.forEach(d => { 
-    if (d.type === 'spin' || !d.type) {
-      totalBalls += d.balls; totalSpins += d.spins; 
-      if(d.isMochidama) mochidamaBalls += d.balls; else cashBalls += d.balls;
-    } else if (d.type === 'payout') {
-      totalPayout += d.amount; hitHistory.push(d);
-    }
+    if (d.type === 'spin' || !d.type) { totalBalls += d.balls; totalSpins += d.spins; if(d.isMochidama) mochidamaBalls += d.balls; else cashBalls += d.balls; } 
+    else if (d.type === 'payout') { totalPayout += d.amount; hitHistory.push(d); }
   });
   
-  const startSpin = parseInt(document.getElementById('startSpin').value) || 0;
-  const avg250 = (totalSpins / totalBalls) * 250;
-  const mochiRatio = totalBalls > 0 ? (mochidamaBalls / totalBalls * 100) : 0;
+  const startSpin = parseInt(document.getElementById('startSpin').value) || 0, avg250 = (totalSpins / totalBalls) * 250, mochiRatio = totalBalls > 0 ? (mochidamaBalls / totalBalls * 100) : 0;
   
   if (isAdmin) {
     const dict = await getDictionaryData();
-    if (!dict[machine]) {
-      dict[machine] = { border: "", probDenom: "", avgPayout: "" };
-      await saveDictionaryData(dict); renderDictionary();
-    }
+    if (!dict[machine]) { dict[machine] = { border: "", probDenom: "", avgPayout: "" }; await saveDictionaryData(dict); }
   }
   
   const records = await getRecordsData();
@@ -1165,28 +1053,24 @@ async function saveCurrentRecord() {
     avg250: avg250, mochidamaRatio: mochiRatio, history: [...historyData], hitHistory: hitHistory
   };
   
-  // ★メンバー（管理者以外）でも編集時は上書き保存ができるように修正
   if (editingRecordId) {
     const idx = records.findIndex(rec => rec.id === editingRecordId);
     if(idx !== -1) records[idx] = newRecord; else records.push(newRecord);
     editingRecordId = null; 
   } else { records.push(newRecord); }
   
-  await saveRecordsData(records);
-  alert(`${machine} のデータを保存しました。`);
+  await saveRecordsData(records); alert(`${machine} のデータを保存しました。`);
   
-  historyData = []; document.getElementById('machineName').value = ''; 
-  document.getElementById('startSpin').value = '';
+  historyData = []; measurementStartTime = null;
+  document.getElementById('machineName').value = ''; document.getElementById('startSpin').value = '';
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
   document.getElementById('payoutAmount').value = ''; document.getElementById('payoutMemo').value = '';
   document.getElementById('payoutInputArea').style.display = 'none';
   
-  updateMeasurementDisplay(); renderSavedRecords(); renderHistoryTab();
-  closeResultModal();
+  updateMeasurementDisplay(); closeResultModal(); // FirebaseリスナーがUIを自動更新する
 }
 
 async function resumeRecord(id) {
-  // ★確認メッセージの追加（全権限共通）
   if(!confirm("このデータの続きを計測しますか？\n※現在入力中のデータがある場合、破棄されて上書きされます。")) return;
 
   const records = await getRecordsData(); const r = records.find(rec => rec.id === id);
@@ -1198,7 +1082,7 @@ async function resumeRecord(id) {
   document.getElementById('startSpin').value = r.startSpins || 0;
   
   historyData = JSON.parse(JSON.stringify(r.history || []));
-  editingRecordId = r.id; 
+  editingRecordId = r.id; measurementStartTime = Date.now(); // 再開時から時速計算を開始
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
   document.getElementById('payoutAmount').value = ''; document.getElementById('payoutMemo').value = '';
   document.getElementById('payoutInputArea').style.display = 'none';
@@ -1207,23 +1091,19 @@ async function resumeRecord(id) {
 }
 
 async function renderSavedRecords() {
-  const records = await getRecordsData();
-  const container = document.getElementById('savedRecordsContainer');
-  const targetDate = document.getElementById('recordDate').value;
-  if (!targetDate) return container.innerHTML = '<p style="font-size:13px; color:#777;">日付を選択してください。</p>';
+  const records = await getRecordsData(), container = document.getElementById('savedRecordsContainer'), targetDate = document.getElementById('recordDate').value;
+  if (!targetDate) return container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">日付を選択してください。</p>';
   const filtered = records.filter(r => r.date === targetDate);
-  if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:#777;">この日付に保存されたデータはありません。</p>';
+  if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">この日付に保存されたデータはありません。</p>';
   
   filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-  let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); });
-  container.innerHTML = html;
+  let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); }); container.innerHTML = html;
 }
 
 async function deleteRecord(id) {
   if (!isAdmin) return alert("権限がありません。");
   if(confirm("このデータを削除しますか？")) {
     let records = await getRecordsData(); await saveRecordsData(records.filter(r => r.id !== id));
-    renderSavedRecords(); renderHistoryTab();
   }
 }
 
@@ -1256,8 +1136,7 @@ async function useRecordForCalc(recordDate, avg, machineName, mochidamaRatio, st
   if (recordDate) document.getElementById('evSaveDate').value = recordDate;
   document.getElementById('evSaveStore').value = storeName || ""; 
   
-  closeSavedModal(); // モーダルから呼ばれた時のため
-  switchTab('tab2');
+  closeSavedModal(); switchTab('tab2');
 }
 
 function drawSlumpGraph() {
@@ -1268,11 +1147,8 @@ function drawSlumpGraph() {
 
   let chartData = [{ x: 0, y: 0 }]; let currentInvest = 0, currentPayout = 0;
   targetHistory.forEach(item => {
-    if (item.type === 'spin' || !item.type) {
-      currentInvest += item.balls;
-    } else if (item.type === 'payout') {
-      currentPayout += item.amount;
-    }
+    if (item.type === 'spin' || !item.type) currentInvest += item.balls;
+    else if (item.type === 'payout') currentPayout += item.amount;
     chartData.push({ x: currentInvest, y: currentPayout - currentInvest });
   });
 
@@ -1290,6 +1166,7 @@ function getNormalRandom(mean, stdDev) {
 }
 
 function calculateAndSimulate() {
+  vibrate(); // 📳
   const inputs = [
     { id: 'border', name: '等価ボーダー' }, { id: 'spinRate', name: '現在の平均回転数' },
     { id: 'exchangeRate', name: '交換率' }, { id: 'ballRatio', name: '持ち球比率' },
@@ -1308,14 +1185,12 @@ function calculateAndSimulate() {
     getDictionaryData().then(dict => {
       if(!dict[calcMachine]) dict[calcMachine] = {};
       dict[calcMachine].border = B; dict[calcMachine].probDenom = probDenom; dict[calcMachine].avgPayout = avgPayout;
-      saveDictionaryData(dict).then(() => { renderDictionary(); });
+      saveDictionaryData(dict); 
     });
   }
 
-  const expectedReturn = (250 * E) / B;
-  const actualCost = ((250 * E * M) / R) + ((1000 * (1 - M)) / R);
-  const evSpin = expectedReturn - actualCost;
-  lastCalculatedEV = evSpin * totalSpins; 
+  const expectedReturn = (250 * E) / B, actualCost = ((250 * E * M) / R) + ((1000 * (1 - M)) / R);
+  const evSpin = expectedReturn - actualCost; lastCalculatedEV = evSpin * totalSpins; 
 
   document.getElementById('resSpin').innerText = evSpin.toFixed(2) + " 円";
   document.getElementById('resTotal').innerText = formatCurrency(Math.ceil(lastCalculatedEV));
@@ -1328,17 +1203,14 @@ function calculateAndSimulate() {
     results.push((simulatedHits * avgPayout * E) - (actualCost * totalSpins));
   }
   results.sort((a, b) => a - b);
-  document.getElementById('simBot5').innerText = formatCurrency(results[500]);
-  document.getElementById('simBot25').innerText = formatCurrency(results[2500]);
-  document.getElementById('simMedian').innerText = formatCurrency(results[5000]);
-  document.getElementById('simTop25').innerText = formatCurrency(results[7500]);
-  document.getElementById('simTop5').innerText = formatCurrency(results[9500]);
+  document.getElementById('simBot5').innerText = formatCurrency(results[500]); document.getElementById('simBot25').innerText = formatCurrency(results[2500]);
+  document.getElementById('simMedian').innerText = formatCurrency(results[5000]); document.getElementById('simTop25').innerText = formatCurrency(results[7500]); document.getElementById('simTop5').innerText = formatCurrency(results[9500]);
   
-  document.getElementById('simArea').style.display = 'block';
-  drawSlumpGraph();
+  document.getElementById('simArea').style.display = 'block'; drawSlumpGraph();
 }
 
 async function saveExpectedValueToCalendar() {
+  vibrate(50); // 📳
   const date = document.getElementById('evSaveDate').value, store = document.getElementById('evSaveStore').value || "店舗不明", machine = document.getElementById('evSaveMachine').value || "機種不明";
   if(!date) return alert("日付を入力してください");
   if(lastCalculatedEV === 0) return alert("期待値が計算されていません。先に「期待値を計算」ボタンを押してください。");
@@ -1351,7 +1223,7 @@ async function saveExpectedValueToCalendar() {
       const cashInvest = currentPassData.cashBalls, mochiInvest = currentPassData.mochiBalls, payout = currentPassData.payout;
       diffBalls = payout - (cashInvest + mochiInvest); actualAmt = (payout - mochiInvest) * exchangeRate - (cashInvest * 4);
       if(currentPassData.hitHistory && currentPassData.hitHistory.length > 0){
-          currentPassData.hitHistory.forEach(h => { let memo = h.memo ? ` (${h.memo})` : ''; hitText += `<br><span style="color:#7f8c8d; font-size:12px;"> └ ${h.hitType}: ${h.amount}玉${memo}</span>`; });
+          currentPassData.hitHistory.forEach(h => { let memo = h.memo ? ` (${h.memo})` : ''; hitText += `<br><span style="color:var(--text-muted); font-size:12px;"> └ ${h.hitType}: ${h.amount}玉${memo}</span>`; });
       }
   }
 
@@ -1360,9 +1232,9 @@ async function saveExpectedValueToCalendar() {
   
   cal[date].ev = (cal[date].ev || 0) + lastCalculatedEV; 
   cal[date].actual = (cal[date].actual || 0) + actualAmt; cal[date].actualBalls = (cal[date].actualBalls || 0) + diffBalls;
-  cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:#7f8c8d;">👤 ${getNickname()}</span>${hitText}`);
+  cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:var(--text-muted);">👤 ${getNickname()}</span>${hitText}`);
   
-  await saveCalendarData(cal); alert(`${date} の収支にデータを保存しました。`); renderCalendar();
+  await saveCalendarData(cal); alert(`${date} の収支にデータを保存しました。`);
 
   document.getElementById('calcMachineName').value = ''; document.getElementById('border').value = '';
   document.getElementById('spinRate').value = ''; document.getElementById('exchangeRate').value = '';
@@ -1404,7 +1276,7 @@ async function renderCalendar() {
 
   for(let day=1; day<=daysInMonth; day++){
     const dateStr = `${monthStr}-${String(day).padStart(2,'0')}`, dayData = cal[dateStr], currentDayOfWeek = (firstDay + day - 1) % 7;
-    let dateColor = currentDayOfWeek === 0 ? '#e74c3c' : (currentDayOfWeek === 6 ? '#2980b9' : '#333');
+    let dateColor = currentDayOfWeek === 0 ? '#e74c3c' : (currentDayOfWeek === 6 ? '#2980b9' : 'var(--text-main)');
     let cellContent = `<div class="cal-date" style="color:${dateColor};">${day}</div>`;
     
     if(dayData) {
@@ -1435,19 +1307,19 @@ async function renderCalendar() {
 
     document.getElementById('calendarList').innerHTML = `
     <div class="saved-item" style="border-left: 4px solid #9b59b6;">
-      <div style="font-weight:bold; color:#2c3e50;">${selectedDateVal}</div>
+      <div style="font-weight:bold; color:var(--text-main);">${selectedDateVal}</div>
       <div style="font-size: 13px; margin: 6px 0; display: flex; justify-content: space-between;"><span>期待値: <span style="color:#27ae60; font-weight:bold;">${formatCurrency(ceiledEV)}</span></span><span>実収支: <span style="color:#2980b9; font-weight:bold;">${formatCurrency(actualVal)}</span></span></div>
       <div style="font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between;"><span>獲得差玉: <span style="color:#e67e22; font-weight:bold;">${actualBallsVal > 0 ? '+' : ''}${actualBallsVal.toLocaleString()} 玉</span></span><span>ブレ: <span class="${diffColor}">${formatCurrency(diff)}</span></span></div>
-      <div style="font-size: 13px; color: #555; background: #f9f9f9; padding: 6px; border-radius: 4px; line-height: 1.4;">${dayData.details && dayData.details.length > 0 ? dayData.details.join('<br><hr style="margin:6px 0; border-top:1px dashed #ccc;">') : '稼働記録なし'}</div>
+      <div style="font-size: 13px; color: var(--text-sub); background: var(--bg-main); padding: 6px; border-radius: 4px; line-height: 1.4;">${dayData.details && dayData.details.length > 0 ? dayData.details.join('<br><hr style="margin:6px 0; border-top:1px dashed var(--border-color);">') : '稼働記録なし'}</div>
       ${adminBtn}
     </div>`;
-  } else { document.getElementById('calendarList').innerHTML = '<p style="font-size:13px; color:#777;">選択した日付のデータはありません。</p>'; }
+  } else { document.getElementById('calendarList').innerHTML = '<p style="font-size:13px; color:var(--text-muted);">選択した日付のデータはありません。</p>'; }
 }
 
 async function deleteCalendarDay(date) {
   if (!isAdmin) return alert("権限がありません。");
   if(confirm(`${date} の記録をすべて削除しますか？`)) {
-    const cal = await getCalendarData(); delete cal[date]; await saveCalendarData(cal); renderCalendar();
+    const cal = await getCalendarData(); delete cal[date]; await saveCalendarData(cal);
   }
 }
 
@@ -1460,7 +1332,7 @@ async function renderHistoryTab() {
     if (filterText && r.machine && !r.machine.includes(filterText)) return false;
     return true;
   });
-  if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:#777;">条件に一致する過去1年間のデータはありません。</p>';
+  if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">条件に一致する過去1年間のデータはありません。</p>';
   filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
   let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); });
   container.innerHTML = html;
