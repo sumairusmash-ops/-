@@ -41,10 +41,7 @@
   input[type="number"], input[type="text"], input[type="date"] { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; font-size: 16px; background: var(--input-bg); color: var(--text-main); transition: 0.3s; }
   input::placeholder { color: #aaa; }
   .auto-filled { background-color: var(--box-yellow-bg) !important; border-color: #ffeeba; }
-  
-  /* スワイプ入力（縦スクロールを邪魔しないようにpan-yを設定） */
   .swipe-input { cursor: ew-resize; touch-action: pan-y; }
-  
   .section-title { margin-top: 20px; margin-bottom: 10px; font-size: 15px; font-weight: bold; color: #e67e22; border-left: 4px solid #e67e22; padding-left: 8px; }
   .section-title.purple { color: #9b59b6; border-left-color: #9b59b6; }
   .hint-text { font-size: 11px; color: var(--text-muted); font-weight: normal; margin-left: 4px; }
@@ -104,8 +101,6 @@
   input:checked + .slider:before { transform: translateX(24px); }
   .rule-check-label { display: flex; align-items: center; gap: 4px; font-weight: normal; font-size: 13px; color: var(--text-main); background: var(--bg-main); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; }
   .rule-check-label input { width: auto; margin: 0; }
-  
-  /* グレーアウト時のスタイル補正 */
   input:disabled { opacity: 0.7; cursor: not-allowed; }
 </style>
 </head>
@@ -129,11 +124,11 @@
       <div style="flex: 1.5;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15" list="machineList" onchange="syncMachineSpec()"></div>
     </div>
     <div class="form-group" style="margin-top: 15px;">
-      <label>スタート時点の回転数 <span class="hint-text">※スワイプ、またはタップ</span></label>
+      <label>スタート時点の回転数 <span class="hint-text">※スワイプ/タップで手入力</span></label>
       <input type="number" id="startSpin" class="swipe-input" step="10" value="" placeholder="例: 150" oninput="updateMeasurementDisplay()">
     </div>
     <div class="form-group" style="margin-top: 15px; background: var(--bg-main); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
-      <label>現在のデータ機回転数 <span class="hint-text">※スワイプ、またはタップ</span></label>
+      <label>現在のデータ機回転数 <span class="hint-text">※スワイプ/タップで手入力</span></label>
       <input type="number" id="measuredSpin" class="swipe-input" step="1" value="" placeholder="例: 160">
       <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
         <div style="display: flex; align-items: center; gap: 6px;">
@@ -185,7 +180,15 @@
     </div>
     <div style="display:flex; gap:10px;">
       <div class="form-group" style="flex:1;"><label>初当確率</label><input type="number" id="probDenom" class="swipe-input" step="0.1" placeholder="例: 319" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
-      <div class="form-group" style="flex:1;"><label>平均R</label><input type="number" id="avgRounds" class="swipe-input" step="0.1" placeholder="例: 32.2" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
+      
+      <!-- ★ここに平均ラウンド逆算用の小さなボタンを配置 -->
+      <div class="form-group" style="flex:1;">
+        <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          平均R <button class="btn-small" style="padding:2px 6px; margin:0; font-size:10px; background-color:#9b59b6;" onclick="openAvgRCalcModal()">逆算</button>
+        </label>
+        <input type="number" id="avgRounds" class="swipe-input" step="0.1" placeholder="例: 32.2" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();">
+      </div>
+      
       <div class="form-group" style="flex:1;"><label>1R出玉(玉)</label><input type="number" id="payoutPerR" class="swipe-input" step="1" placeholder="例: 140" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
     </div>
     <div class="form-group"><label>【自動計算】等価ボーダー (回/千円)</label><input type="text" id="border" readonly style="background:var(--bg-main); color:var(--text-muted); border-style:dashed;"></div>
@@ -255,7 +258,7 @@
       <button class="btn-reset" onclick="leaveGroup()">グループから退出する</button>
     </div>
 
-    <!-- ★ ホール管理・特定日検索エリア -->
+    <!-- ホール管理・特定日検索エリア -->
     <div id="hall-management-section" style="display: none;">
       <h2 style="margin-top: 30px;">📅 特定日検索＆過去分析</h2>
       <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px;">
@@ -313,6 +316,36 @@
 
 <div id="savedModal" class="modal-overlay">
   <div class="modal-content"><h3 style="margin-top:0; border-bottom:2px solid #7f8c8d; padding-bottom:8px; color:var(--text-main);">同日の保存データ</h3><div id="savedRecordsContainer"></div><button class="modal-close-btn" onclick="closeSavedModal()">元の画面に戻る</button></div>
+</div>
+
+<!-- ★ 平均ラウンド数逆算モーダル -->
+<div id="avgRCalcModal" class="modal-overlay">
+  <div class="modal-content">
+    <h3 style="margin-top:0; border-bottom:2px solid #9b59b6; padding-bottom:8px; color:var(--text-main);">平均ラウンド逆算ツール</h3>
+    <p style="font-size:12px; color:var(--text-sub); line-height:1.4;">情報サイトに平均Rが載っていない場合、ボーダーや平均出玉から逆算できます。</p>
+    
+    <div style="background:var(--bg-main); padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid var(--border-color);">
+      <div style="font-weight:bold; color:#2980b9; margin-bottom:8px; font-size:14px;">① 等価ボーダーから逆算する</div>
+      <div style="display:flex; gap:5px; margin-bottom:5px;">
+        <div style="flex:1"><label style="font-size:11px;">等価ボーダー</label><input type="number" id="calc_b_border" step="0.1" class="swipe-input" oninput="doAvgRCalc1()"></div>
+        <div style="flex:1"><label style="font-size:11px;">初当確率</label><input type="number" id="calc_b_prob" step="0.1" class="swipe-input" oninput="doAvgRCalc1()"></div>
+        <div style="flex:1"><label style="font-size:11px;">1R出玉(玉)</label><input type="number" id="calc_b_payout" step="1" class="swipe-input" oninput="doAvgRCalc1()"></div>
+      </div>
+      <div style="text-align:right; font-size:14px; font-weight:bold;">算出結果: <span id="res_b_avgR" style="color:#e74c3c;">0.00</span> R</div>
+      <button class="btn-small" style="width:100%; background:#9b59b6; margin-top:8px; padding:8px;" onclick="applyAvgR('res_b_avgR')">この数値を平均Rに適用</button>
+    </div>
+
+    <div style="background:var(--bg-main); padding:10px; border-radius:6px; border:1px solid var(--border-color);">
+      <div style="font-weight:bold; color:#27ae60; margin-bottom:8px; font-size:14px;">② 平均獲得出玉から逆算する</div>
+      <div style="display:flex; gap:5px; margin-bottom:5px;">
+        <div style="flex:1"><label style="font-size:11px;">初当り平均出玉</label><input type="number" id="calc_p_total" step="10" class="swipe-input" oninput="doAvgRCalc2()"></div>
+        <div style="flex:1"><label style="font-size:11px;">1R出玉(玉)</label><input type="number" id="calc_p_payout" step="1" class="swipe-input" oninput="doAvgRCalc2()"></div>
+      </div>
+      <div style="text-align:right; font-size:14px; font-weight:bold;">算出結果: <span id="res_p_avgR" style="color:#e74c3c;">0.00</span> R</div>
+      <button class="btn-small" style="width:100%; background:#27ae60; margin-top:8px; padding:8px;" onclick="applyAvgR('res_p_avgR')">この数値を平均Rに適用</button>
+    </div>
+    <button class="modal-close-btn" onclick="closeAvgRCalcModal()">閉じる</button>
+  </div>
 </div>
 
 <script src="./app.js"></script>
