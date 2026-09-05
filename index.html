@@ -41,10 +41,10 @@
   input[type="number"], input[type="text"], input[type="date"] { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; font-size: 16px; background: var(--input-bg); color: var(--text-main); transition: 0.3s; }
   input::placeholder { color: #aaa; }
   .auto-filled { background-color: var(--box-yellow-bg) !important; border-color: #ffeeba; }
-  .swipe-input { cursor: ew-resize; touch-action: none; }
-  input[readonly] { background-color: var(--input-bg); cursor: pointer; opacity: 1; -webkit-text-fill-color: var(--text-main); }
-  input[readonly]:focus { outline: none; }
-  input[readonly]:active { transform: scale(0.98); background-color: rgba(0,0,0,0.05) !important; transition: transform 0.05s ease; }
+  
+  /* スワイプ入力（縦スクロールを邪魔しないようにpan-yを設定） */
+  .swipe-input { cursor: ew-resize; touch-action: pan-y; }
+  
   .section-title { margin-top: 20px; margin-bottom: 10px; font-size: 15px; font-weight: bold; color: #e67e22; border-left: 4px solid #e67e22; padding-left: 8px; }
   .section-title.purple { color: #9b59b6; border-left-color: #9b59b6; }
   .hint-text { font-size: 11px; color: var(--text-muted); font-weight: normal; margin-left: 4px; }
@@ -102,10 +102,11 @@
   .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
   input:checked + .slider { background-color: #2980b9; }
   input:checked + .slider:before { transform: translateX(24px); }
-  
-  /* ホールルールのチェックボックス用スタイル */
   .rule-check-label { display: flex; align-items: center; gap: 4px; font-weight: normal; font-size: 13px; color: var(--text-main); background: var(--bg-main); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; }
   .rule-check-label input { width: auto; margin: 0; }
+  
+  /* グレーアウト時のスタイル補正 */
+  input:disabled { opacity: 0.7; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -128,11 +129,11 @@
       <div style="flex: 1.5;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15" list="machineList" onchange="syncMachineSpec()"></div>
     </div>
     <div class="form-group" style="margin-top: 15px;">
-      <label>スタート時点の回転数 <span class="hint-text">※スワイプ/Wタップで手入力</span></label>
+      <label>スタート時点の回転数 <span class="hint-text">※スワイプ、またはタップ</span></label>
       <input type="number" id="startSpin" class="swipe-input" step="10" value="" placeholder="例: 150" oninput="updateMeasurementDisplay()">
     </div>
     <div class="form-group" style="margin-top: 15px; background: var(--bg-main); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
-      <label>現在のデータ機回転数 <span class="hint-text">※スワイプ/Wタップで手入力</span></label>
+      <label>現在のデータ機回転数 <span class="hint-text">※スワイプ、またはタップ</span></label>
       <input type="number" id="measuredSpin" class="swipe-input" step="1" value="" placeholder="例: 160">
       <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
         <div style="display: flex; align-items: center; gap: 6px;">
@@ -164,7 +165,7 @@
           <input type="number" id="payoutRounds" class="swipe-input" step="1" placeholder="例: 30" style="border-color: #f39c12;">
         </div>
       </div>
-      <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">備考 (Wタップ)</label><input type="text" id="payoutMemo" placeholder="例: 右打ちスルー 等" style="border-color: #f39c12;">
+      <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">備考 (タップ)</label><input type="text" id="payoutMemo" placeholder="例: 右打ちスルー 等" style="border-color: #f39c12;">
       <button class="action-btn" style="background-color: #e67e22; margin-top: 10px;" onclick="addPayout()">出玉を記録して次へ</button>
     </div>
     
@@ -250,6 +251,7 @@
     <div id="group-active" class="group-box" style="display: none; border-color:#27ae60; background:var(--bg-main); margin-top:0;">
       <p style="font-size:13px; color:#27ae60; font-weight:bold; margin-bottom:5px;">現在共有中のグループID</p><div id="dispGroupId" style="font-size:32px; font-weight:bold; letter-spacing:4px; color:var(--text-main); margin-bottom:10px;"></div><div id="dispUserRole" style="font-size:14px; font-weight:bold; margin-bottom:20px; color:#e67e22;"></div>
       <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;"><p style="font-size:12px; color:var(--text-sub); margin-top:0; margin-bottom:5px;">現在のニックネーム: <span id="dispNickname" style="font-weight:bold; color:#2980b9; font-size:14px;"></span></p><div style="display:flex; gap:5px;"><input type="text" id="updateNicknameInput" placeholder="新しいニックネーム" style="flex:1; padding:6px; font-size:14px;"><button class="btn-small" style="background-color:#3498db; margin:0;" onclick="updateNickname()">変更</button></div></div>
+      <div style="background: var(--card-bg); border: 1px solid #e74c3c; border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;"><p style="font-size:14px; font-weight:bold; color:#e74c3c; margin-top:0; margin-bottom:8px;">⚠️ 個人データをグループに統合</p><button class="btn-small" style="width:100%; background-color:#e74c3c; padding:10px;" onclick="mergePersonalDataToGroup()">過去データをすべて統合する</button></div>
       <button class="btn-reset" onclick="leaveGroup()">グループから退出する</button>
     </div>
 
@@ -300,7 +302,6 @@
     <div class="result" id="measurementResult" style="display: block; margin-top:10px; padding: 10px;">
       <p><span>250玉平均:</span> <span id="avg250" class="highlight">0.00 回</span></p><p><span>持ち球比率:</span> <span id="dispMochiRatio" style="font-weight:bold; color:#e67e22;">0.0 %</span></p>
       <p><span>自分で回した回転数:</span> <span id="totalMeasuredSpins">0 回</span></p><p><span>現在の総回転数:</span> <span id="absoluteTotalSpins" style="font-weight:bold; color:var(--text-main);">0 回</span></p><p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls">0 玉</span></p>
-      <!-- ★ここに仕事量と期待時給が挿入されます -->
       <div id="workValueArea"></div>
       <div class="history-list" id="historyList"></div>
     </div>
