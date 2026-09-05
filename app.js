@@ -27,7 +27,7 @@ let lastCalculatedEV = 0; let historyData = []; let currentPassData = null; let 
 let currentCalYear = new Date().getFullYear(); let currentCalMonth = new Date().getMonth();
 let unsubscribeGroup = null; let globalGroupData = { records: [], calendar: {}, dictionary: {}, halls: {} };
 let measurementStartTime = null; 
-let editingHistoryIndex = null; // ★履歴の編集モード用の変数
+let editingHistoryIndex = null; 
 
 // ==========================================
 // ユーティリティ・UI機能
@@ -59,7 +59,7 @@ if(avgRCalcModal) avgRCalcModal.addEventListener('click', function(e) { if (e.ta
 
 
 // ==========================================
-// 新しいスワイプ機能（タップで通常通りキーボード展開）
+// スワイプ機能（タップで通常通りキーボード展開）
 // ==========================================
 function setupSwipeInput(id, step, min, max, defaultVal) {
   const input = document.getElementById(id); 
@@ -220,14 +220,19 @@ window.onload = function() {
   document.getElementById('recordDate').value = todayStr; document.getElementById('evSaveDate').value = todayStr; document.getElementById('actualDate').value = todayStr;
   document.getElementById('analyzeDate').value = todayStr;
   
-  // ★すべての数値入力欄にスワイプ入力を適用
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
-    const start = parseInt(document.getElementById('startSpin').value) || 0;
-    let soFar = 0; historyData.forEach(d => { if (d.type === 'spin' || !d.type) soFar += d.spins; }); return start + soFar + 15;
+    // ★ デフォルト値の提案ロジックも「当たりリセット」に対応
+    let lastMachineSpin = parseInt(document.getElementById('startSpin').value) || 0;
+    historyData.forEach(d => { 
+      if (d.type === 'spin' || !d.type) {
+        lastMachineSpin += d.spins;
+        if (d.hitType) lastMachineSpin = 0; // 当たりがあれば0にリセット
+      }
+    }); 
+    return lastMachineSpin + 15;
   });
   
-  // 新規追加項目（出玉・ラウンド計算用）
   setupSwipeInput('payoutStartBalls', 10, 0, 100000, 0);
   setupSwipeInput('payoutEndBalls', 10, 0, 100000, 0);
   setupSwipeInput('rType1', 1, 1, 16, 10);
@@ -237,7 +242,6 @@ window.onload = function() {
   setupSwipeInput('rType3', 1, 1, 16, 2);
   setupSwipeInput('rCount3', 1, 0, 100, 0);
   
-  // ツール2・逆算等
   setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); 
   setupSwipeInput('avgRounds', 0.1, 1.0, 100.0, 32.2); 
   setupSwipeInput('payoutPerR', 1, 10, 150, 140); 
@@ -461,17 +465,12 @@ window.analyzeHalls = async function() {
   container.innerHTML = html;
 };
 
-// ==========================================
 // ★ 履歴のインライン編集機能
-// ==========================================
 window.editHistoryItem = function(index) {
-  editingHistoryIndex = index;
-  updateMeasurementDisplay();
+  editingHistoryIndex = index; updateMeasurementDisplay();
 };
-
 window.cancelEditHistoryItem = function() {
-  editingHistoryIndex = null;
-  updateMeasurementDisplay();
+  editingHistoryIndex = null; updateMeasurementDisplay();
 };
 
 window.saveEditHistoryItem = function(index, type) {
@@ -481,26 +480,17 @@ window.saveEditHistoryItem = function(index, type) {
     const m = document.getElementById(`edit_mochi_${index}`).value === 'true';
     const h = document.getElementById(`edit_hit_${index}`).value;
     if (isNaN(b) || isNaN(s)) return alert('玉数と回転数を正しく入力してください。');
-    historyData[index].balls = b;
-    historyData[index].spins = s;
-    historyData[index].isMochidama = m;
-    historyData[index].hitType = h || null;
+    historyData[index].balls = b; historyData[index].spins = s; historyData[index].isMochidama = m; historyData[index].hitType = h || null;
   } else if (type === 'payout') {
     const a = parseFloat(document.getElementById(`edit_amount_${index}`).value);
     const r = parseFloat(document.getElementById(`edit_rounds_${index}`).value);
     const h = document.getElementById(`edit_hitType_${index}`).value;
     const memo = document.getElementById(`edit_memo_${index}`).value;
     if (isNaN(a) || isNaN(r)) return alert('獲得出玉とラウンド数を正しく入力してください。');
-    historyData[index].amount = a;
-    historyData[index].rounds = r;
-    historyData[index].hitType = h;
-    historyData[index].memo = memo;
+    historyData[index].amount = a; historyData[index].rounds = r; historyData[index].hitType = h; historyData[index].memo = memo;
   }
-  editingHistoryIndex = null;
-  vibrate(30);
-  updateMeasurementDisplay();
+  editingHistoryIndex = null; vibrate(30); updateMeasurementDisplay();
 };
-
 
 function createRecordItemHtml(r) {
   let historyHtml = '';
@@ -535,31 +525,37 @@ function createRecordItemHtml(r) {
   return `<div class="saved-item"><div style="font-weight:bold; color:var(--text-main); font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}${authorDisp}</div><div style="font-size:13px; margin:6px 0; color:var(--text-sub);">総投資: ${r.totalBalls}玉 / 自力回転: ${r.totalSpins}回${startDisp}<br><span style="color:#e74c3c; font-weight:bold; font-size:14px;">250玉平均: ${r.avg250.toFixed(2)} 回</span><span style="color:#e67e22; font-weight:bold; font-size:13px; margin-left:10px;">持球比率: ${dispRatio}%</span></div>${historyHtml}<div style="margin-top: 10px; display: flex; gap: 4px; flex-wrap: wrap;">${resumeButton}<button class="btn-small" style="background:#3498db;" onclick="${btnCall}">期待値を計算</button>${adminButtons}</div></div>`;
 }
 
+// ★ 追加時のロジック（当たり後の回転数リセット対応）
 window.addMeasurement = function(balls) {
   vibrate();
   const spinInput = document.getElementById('measuredSpin'), currentMachineSpin = parseFloat(spinInput.value);
   if (isNaN(currentMachineSpin) || currentMachineSpin < 0) return alert("現在のデータ機回転数を正しく入力してください。");
-  const startSpin = parseInt(document.getElementById('startSpin').value) || 0;
-  let totalSpinsSoFar = 0; historyData.forEach(d => { if (d.type === 'spin' || !d.type) totalSpinsSoFar += d.spins; });
-  const lastSpin = startSpin + totalSpinsSoFar, spins = currentMachineSpin - lastSpin;
-  if (spins <= 0) return alert(`現在の回転数は、前回の回転数 (${lastSpin}回) より大きい数値を入力してください。`);
+  
+  // ★履歴を辿り、直近の「当たり」があったらそこからの回転数をベースにする
+  let lastMachineSpin = parseInt(document.getElementById('startSpin').value) || 0;
+  historyData.forEach(d => { 
+    if (d.type === 'spin' || !d.type) {
+      lastMachineSpin += d.spins;
+      if (d.hitType) lastMachineSpin = 0; // 当たり記録があればリセット
+    }
+  });
+  
+  const spins = currentMachineSpin - lastMachineSpin;
+  if (spins <= 0) return alert(`現在の回転数は、前回の回転数 (${lastMachineSpin}回) より大きい数値を入力してください。`);
   
   const isMochi = document.getElementById('isMochidama').checked, hitType = document.getElementById('hitNormal').checked ? '通常' : (document.getElementById('hitRush').checked ? 'ラッシュ' : null);
   historyData.push({ type: 'spin', balls: balls, spins: spins, isMochidama: isMochi, hitType: hitType });
   spinInput.value = ''; 
   if (!measurementStartTime) measurementStartTime = Date.now(); 
-  editingHistoryIndex = null; // 入力時に編集状態をリセット
+  editingHistoryIndex = null;
   
   if (hitType) {
     document.getElementById('payoutTitle').innerText = `${hitType}当たり 結果を入力`;
     ['payoutStartBalls', 'payoutEndBalls', 'rType1', 'rCount1', 'rType2', 'rCount2', 'rType3', 'rCount3', 'payoutMemo'].forEach(id => {
       document.getElementById(id).value = '';
     });
-    document.getElementById('payoutAmount').value = '0';
-    document.getElementById('dispPayoutAmount').innerText = '0';
-    document.getElementById('payoutRounds').value = '0';
-    document.getElementById('dispPayoutRounds').innerText = '0';
-    
+    document.getElementById('payoutAmount').value = '0'; document.getElementById('dispPayoutAmount').innerText = '0';
+    document.getElementById('payoutRounds').value = '0'; document.getElementById('dispPayoutRounds').innerText = '0';
     document.getElementById('payoutInputArea').style.display = 'block';
   } else { document.getElementById('payoutInputArea').style.display = 'none'; }
   updateMeasurementDisplay();
@@ -586,8 +582,7 @@ window.undoLastInput = function() {
   if (historyData.length === 0) return alert("取り消す入力がありません。");
   if (!confirm("直前の入力を取り消しますか？\n※この操作は元に戻せません。")) return;
   vibrate(40); historyData.pop(); if (historyData.length === 0) measurementStartTime = null; 
-  editingHistoryIndex = null;
-  updateMeasurementDisplay();
+  editingHistoryIndex = null; updateMeasurementDisplay();
 };
 
 window.deleteHistoryItem = function(index) { historyData.splice(index, 1); updateMeasurementDisplay(); };
@@ -597,17 +592,12 @@ window.updateMeasurementDisplay = function() {
   const startSpinInput = document.getElementById('startSpin');
 
   if (historyData.length === 0) { 
-    startSpinInput.disabled = false;
-    startSpinInput.style.backgroundColor = "var(--input-bg)";
-    btnModal.innerText = "📊 入力データを確認 (未入力)"; 
-    document.getElementById('avg250').innerText = "0.00 回"; 
-    document.getElementById('historyList').innerHTML = ""; 
-    document.getElementById('workValueArea').innerHTML = ""; 
-    return; 
+    startSpinInput.disabled = false; startSpinInput.style.backgroundColor = "var(--input-bg)";
+    btnModal.innerText = "📊 入力データを確認 (未入力)"; document.getElementById('avg250').innerText = "0.00 回"; 
+    document.getElementById('historyList').innerHTML = ""; document.getElementById('workValueArea').innerHTML = ""; return; 
   }
   
-  startSpinInput.disabled = true;
-  startSpinInput.style.backgroundColor = "var(--bg-main)";
+  startSpinInput.disabled = true; startSpinInput.style.backgroundColor = "var(--bg-main)";
   
   let totalBalls = 0, totalSpins = 0, mochidamaBalls = 0, historyHtml = '', spinCount = 0;
   let totalPayoutAmount = 0, totalPayoutRounds = 0;
@@ -621,7 +611,6 @@ window.updateMeasurementDisplay = function() {
       totalPayoutAmount += item.amount; if(item.rounds) totalPayoutRounds += item.rounds;
     }
 
-    // ★ 編集モード時のインラインフォーム描画
     if (editingHistoryIndex === i) {
       if (item.type === 'spin' || !item.type) {
         itemHtml = `
@@ -676,7 +665,6 @@ window.updateMeasurementDisplay = function() {
           </div>`;
       }
     } else {
-      // 通常表示 UI
       if (item.type === 'spin' || !item.type) {
         let cvt = item.balls === 125 ? `<span style="font-size:11px; color:var(--text-muted); margin-left:6px;">(250玉換算: ${item.spins * 2}回)</span>` : "";
         let typeLabel = item.isMochidama ? `<span style="color:#e67e22; font-size:11px; margin-left:4px;">[持球]</span>` : `<span style="color:#27ae60; font-size:11px; margin-left:4px;">[現金]</span>`;
