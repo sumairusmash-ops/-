@@ -2,12 +2,12 @@
 // Firebase設定（★ここにキーを入れます）
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -25,7 +25,7 @@ if ('serviceWorker' in navigator) {
 let currentUser = null; let currentGroupId = localStorage.getItem('pachinko_groupId') || null; let isAdmin = false; 
 let lastCalculatedEV = 0; let historyData = []; let currentPassData = null; let editingRecordId = null; let slumpChartInstance = null; 
 let currentCalYear = new Date().getFullYear(); let currentCalMonth = new Date().getMonth();
-let unsubscribeGroup = null; let globalGroupData = { records: [], calendar: {}, dictionary: {} };
+let unsubscribeGroup = null; let globalGroupData = { records: [], calendar: {}, dictionary: {}, halls: {} };
 let measurementStartTime = null; 
 
 // ==========================================
@@ -136,11 +136,15 @@ function updateModeIndicator() {
     document.getElementById('group-none').style.display = 'none'; document.getElementById('group-active').style.display = 'block';
     document.getElementById('dispGroupId').innerText = currentGroupId;
     document.getElementById('dispUserRole').innerText = isAdmin ? "👑 あなたの権限: 管理者 (更新・削除可能)" : "👤 あなたの権限: メンバー (追加・閲覧のみ)";
-    document.getElementById('dispNickname').innerText = getNickname(); hdSection.style.display = 'block';
+    document.getElementById('dispNickname').innerText = getNickname(); 
+    if(hdSection) hdSection.style.display = 'block';
+    const hallSec = document.getElementById('hall-management-section'); if(hallSec) hallSec.style.display = 'block';
   } else {
     if(n1) n1.style.display = 'none'; if(n2) n2.style.display = 'none'; if(n3) n3.style.display = 'none';
     document.getElementById('group-none').style.display = 'block'; document.getElementById('group-active').style.display = 'none';
-    hdSection.style.display = 'none'; switchTab('tab4');
+    if(hdSection) hdSection.style.display = 'none'; 
+    const hallSec = document.getElementById('hall-management-section'); if(hallSec) hallSec.style.display = 'none';
+    switchTab('tab4');
   }
 }
 
@@ -157,7 +161,7 @@ function refreshActiveTabUI() {
   const tabId = activeTabBtn.id.replace('nav-', '');
   if(tabId === 'tab1') renderSavedRecords();
   if(tabId === 'tab3') renderCalendar();
-  if(tabId === 'tab4') { renderDictionary(); renderHistoryTab(); }
+  if(tabId === 'tab4') { renderDictionary(); renderHistoryTab(); renderHalls(); window.analyzeHalls(); }
 }
 
 function attachGroupListener(groupId) {
@@ -166,7 +170,8 @@ function attachGroupListener(groupId) {
   unsubscribeGroup = db.collection('groups').doc(groupId).onSnapshot(doc => {
     if (doc.exists) {
       globalGroupData = doc.data();
-      if(!globalGroupData.records) globalGroupData.records = []; if(!globalGroupData.calendar) globalGroupData.calendar = {}; if(!globalGroupData.dictionary) globalGroupData.dictionary = {};
+      if(!globalGroupData.records) globalGroupData.records = []; if(!globalGroupData.calendar) globalGroupData.calendar = {}; 
+      if(!globalGroupData.dictionary) globalGroupData.dictionary = {}; if(!globalGroupData.halls) globalGroupData.halls = {};
       isAdmin = (globalGroupData.creator === currentUser.uid);
       updateModeIndicator(); refreshActiveTabUI(); 
     } else {
@@ -207,30 +212,6 @@ function leaveGroup() {
   }
 }
 
-async function mergePersonalDataToGroup() {
-  if (!currentGroupId || !currentUser || !db) return alert("ログインし、グループに参加した状態で実行してください。");
-  if (!confirm("あなたの個人の過去データ（履歴・カレンダー・辞書）をすべてグループに合算し共有します。\n※この操作は取り消せません。よろしいですか？")) return;
-  try {
-    const personalRef = db.collection('users').doc(currentUser.uid); const groupRef = db.collection('groups').doc(currentGroupId);
-    const [pDoc, gDoc] = await Promise.all([personalRef.get(), groupRef.get()]);
-    const pData = pDoc.exists ? pDoc.data() : {}; const gData = gDoc.exists ? gDoc.data() : {};
-
-    const mergedRecords = [...(gData.records || []), ...(pData.records || [])];
-    const uniqueRecordsMap = new Map(); mergedRecords.forEach(r => uniqueRecordsMap.set(r.id, r));
-    
-    const pCal = pData.calendar || {}, finalCal = { ...(gData.calendar || {}) };
-    for (let date in pCal) {
-      if (finalCal[date]) {
-        finalCal[date].ev = (finalCal[date].ev || 0) + (pCal[date].ev || 0); finalCal[date].actual = (finalCal[date].actual || 0) + (pCal[date].actual || 0);
-        finalCal[date].actualBalls = (finalCal[date].actualBalls || 0) + (pCal[date].actualBalls || 0); finalCal[date].details = [...(finalCal[date].details || []), ...(pCal[date].details || [])];
-      } else { finalCal[date] = pCal[date]; }
-    }
-    const finalDict = { ...(gData.dictionary || {}), ...(pData.dictionary || {}) };
-    await groupRef.set({ records: Array.from(uniqueRecordsMap.values()), calendar: finalCal, dictionary: finalDict }, { merge: true });
-    alert("個人のデータをすべてグループに共有・統合しました！");
-  } catch(e) { alert("データの統合に失敗しました。"); }
-}
-
 window.onload = function() {
   if (localStorage.getItem('pachinko_theme') === 'dark') document.getElementById('darkModeToggle').checked = true;
   const today = new Date(); currentCalYear = today.getFullYear(); currentCalMonth = today.getMonth();
@@ -238,6 +219,7 @@ window.onload = function() {
   const todayStr = `${yyyy}-${mm}-${dd}`;
   
   document.getElementById('recordDate').value = todayStr; document.getElementById('evSaveDate').value = todayStr; document.getElementById('actualDate').value = todayStr;
+  document.getElementById('analyzeDate').value = todayStr; // ★特定日検索の初期値
   
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
@@ -245,17 +227,11 @@ window.onload = function() {
     let soFar = 0; historyData.forEach(d => { if (d.type === 'spin' || !d.type) soFar += d.spins; }); return start + soFar + 15;
   });
   
-  // ★スワイプ入力項目の初期化
-  setupSwipeInput('payoutAmount', 10, 0, 100000, 4200); 
-  setupSwipeInput('payoutRounds', 1, 0, 1000, 30); 
-  setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); 
-  setupSwipeInput('avgRounds', 0.1, 1.0, 100.0, 32.2); 
-  setupSwipeInput('payoutPerR', 1, 10, 150, 140); 
-  setupSwipeInput('spinRate', 0.1, 10.0, 35.0, 20.0); 
-  setupSwipeInput('realPayoutPerR', 0.1, 10.0, 150.0, 140.0); 
-  setupSwipeInput('exchangeRate', 0.01, 2.50, 4.00, 3.57);
-  setupSwipeInput('ballRatio', 1, 0, 100, 60); 
-  setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
+  setupSwipeInput('payoutAmount', 10, 0, 100000, 4200); setupSwipeInput('payoutRounds', 1, 0, 1000, 30); 
+  setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); setupSwipeInput('avgRounds', 0.1, 1.0, 100.0, 32.2); 
+  setupSwipeInput('payoutPerR', 1, 10, 150, 140); setupSwipeInput('spinRate', 0.1, 10.0, 35.0, 20.0); 
+  setupSwipeInput('realPayoutPerR', 0.1, 10.0, 150.0, 140.0); setupSwipeInput('exchangeRate', 0.01, 2.50, 4.00, 3.57);
+  setupSwipeInput('ballRatio', 1, 0, 100, 60); setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
 
   applyDoubleTapToInputs(); updateModeIndicator();
 
@@ -284,34 +260,27 @@ function logout() { if(auth) auth.signOut(); }
 async function getRecordsData() { return globalGroupData.records || []; }
 async function getCalendarData() { return globalGroupData.calendar || {}; }
 async function getDictionaryData() { return globalGroupData.dictionary || {}; }
+async function getHallsData() { return globalGroupData.halls || {}; }
 
 async function saveRecordsData(records) { if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ records: records }, { merge: true }); }
 async function saveCalendarData(calendar) { if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ calendar: calendar }, { merge: true }); }
 async function saveDictionaryData(dict) { if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ dictionary: dict }, { merge: true }); }
+async function saveHallsData(halls) { if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ halls: halls }, { merge: true }); }
 
 // ★ ボーダー自動計算ロジック
 window.calcBorder = function() {
-  const P = parseFloat(document.getElementById('probDenom').value);
-  const avgR = parseFloat(document.getElementById('avgRounds').value);
-  const ppr = parseFloat(document.getElementById('payoutPerR').value);
+  const P = parseFloat(document.getElementById('probDenom').value), avgR = parseFloat(document.getElementById('avgRounds').value), ppr = parseFloat(document.getElementById('payoutPerR').value);
   const borderInput = document.getElementById('border');
-  if(P && avgR && ppr) {
-    const border = P / ((avgR * ppr) / 250);
-    borderInput.value = border.toFixed(2);
-  } else { borderInput.value = ""; }
+  if(P && avgR && ppr) { const border = P / ((avgR * ppr) / 250); borderInput.value = border.toFixed(2); } else { borderInput.value = ""; }
 };
 
 window.syncMachineSpec = function() {
-  const m = document.getElementById('machineName').value.trim();
-  document.getElementById('calcMachineName').value = m;
-  window.loadMachineSpec();
+  const m = document.getElementById('machineName').value.trim(); document.getElementById('calcMachineName').value = m; window.loadMachineSpec();
 };
 
 async function renderDictionary() {
-  const dict = await getDictionaryData();
-  const listEl = document.getElementById('machineList'); let optionsHtml = ''; for(let m in dict) { optionsHtml += `<option value="${m}"></option>`; }
-  listEl.innerHTML = optionsHtml;
-  const container = document.getElementById('dictContainer'); let html = '';
+  const dict = await getDictionaryData(), listEl = document.getElementById('machineList'); let optionsHtml = ''; for(let m in dict) { optionsHtml += `<option value="${m}"></option>`; }
+  listEl.innerHTML = optionsHtml; const container = document.getElementById('dictContainer'); let html = '';
   for(let m in dict) {
     const spec = dict[m];
     let adminButtons = isAdmin ? `<div style="display:flex; justify-content:flex-end; gap:5px;"><button class="btn-small" style="background:#3498db;" onclick="updateDictItem('${m}')">更新</button><button class="btn-small" style="background:#e74c3c;" onclick="deleteDictItem('${m}')">削除</button></div>` : '';
@@ -337,6 +306,97 @@ window.deleteDictItem = async function(machine) {
   if(confirm(`[${machine}] を辞書から削除しますか？`)) { const dict = await getDictionaryData(); delete dict[machine]; await saveDictionaryData(dict); }
 };
 
+// ★ ホール管理ロジック
+window.saveHall = async function() {
+  if (!isAdmin) return alert("権限がありません。");
+  const name = document.getElementById('hallNameInput').value.trim();
+  if (!name) return alert("ホール名を入力してください。");
+  
+  const checkboxes = document.querySelectorAll('input[name="hallRule"]:checked');
+  const rules = Array.from(checkboxes).map(cb => cb.value);
+  if (rules.length === 0) return alert("特定日ルールを1つ以上選択してください。");
+  
+  const halls = await getHallsData();
+  halls[name] = { rules: rules };
+  await saveHallsData(halls); alert(`${name} を登録しました。`);
+  
+  document.getElementById('hallNameInput').value = '';
+  checkboxes.forEach(cb => cb.checked = false);
+  renderHalls(); analyzeHalls();
+};
+
+window.deleteHall = async function(name) {
+  if (!isAdmin) return alert("権限がありません。");
+  if(confirm(`[${name}] を削除しますか？`)) {
+    const halls = await getHallsData(); delete halls[name]; await saveHallsData(halls); renderHalls(); analyzeHalls();
+  }
+};
+
+window.renderHalls = async function() {
+  const halls = await getHallsData(); const container = document.getElementById('hallListContainer'); let html = '';
+  for(let name in halls) {
+    const rules = halls[name].rules.join(', ');
+    let adminBtn = isAdmin ? `<button class="btn-small" style="background:#e74c3c; margin:0;" onclick="deleteHall('${name}')">削除</button>` : '';
+    html += `<div class="saved-item" style="border-left: 4px solid #27ae60; display: flex; justify-content: space-between; align-items: center;">
+        <div><div style="font-weight:bold; color:var(--text-main); font-size:14px;">${name}</div><div style="font-size:12px; color:var(--text-sub);">特定日: ${rules}</div></div>${adminBtn}
+      </div>`;
+  }
+  if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されているホールはありません。</p>';
+  container.innerHTML = html;
+};
+
+// ★ 特定日検索＆過去分析ロジック
+window.analyzeHalls = async function() {
+  const dateStr = document.getElementById('analyzeDate').value; const container = document.getElementById('analyzeResultContainer');
+  if(!dateStr) { container.innerHTML = ''; return; }
+  
+  const dateObj = new Date(dateStr), day = dateObj.getDate(), lastDigit = day.toString().slice(-1), isZorome = (day === 11 || day === 22);
+  const halls = await getHallsData(), records = await getRecordsData();
+  let targetHalls = [];
+  
+  for(let name in halls) {
+    const rules = halls[name].rules; let isTarget = false;
+    if (rules.includes(lastDigit)) isTarget = true;
+    if (isZorome && rules.includes("ゾロ目")) isTarget = true;
+    if (isTarget) targetHalls.push(name);
+  }
+  
+  if (targetHalls.length === 0) {
+    container.innerHTML = `<p style="font-size:13px; color:var(--text-sub); margin-top:15px;">${dateStr} が特定日のホールはありません。</p>`; return;
+  }
+  
+  let html = `<div style="font-weight:bold; color:var(--text-main); margin: 15px 0 10px 0;">🔥 ${dateStr} の熱いホール</div>`;
+  
+  targetHalls.forEach(hallName => {
+    const hallRecords = records.filter(r => r.store === hallName);
+    let totalSpins = 0, totalBalls = 0, machineCount = {};
+    
+    hallRecords.forEach(r => {
+      totalSpins += r.totalSpins || 0; totalBalls += r.totalBalls || 0;
+      if (r.machine) machineCount[r.machine] = (machineCount[r.machine] || 0) + 1;
+    });
+    
+    let avg250 = totalBalls > 0 ? (totalSpins / totalBalls) * 250 : 0;
+    let mainMachine = "-", maxCount = 0;
+    for(let m in machineCount) { if (machineCount[m] > maxCount) { maxCount = machineCount[m]; mainMachine = m; } }
+    
+    let dataHtml = '';
+    if (hallRecords.length > 0) {
+      dataHtml = `<div style="font-size:12px; color:var(--text-sub); margin-top:5px; padding:8px; background:var(--bg-main); border-radius:4px;">
+          <div>過去の平均回転数: <span style="color:#e74c3c; font-weight:bold; font-size:14px;">${avg250.toFixed(2)} 回/k</span> (サンプル: ${hallRecords.length}件)</div>
+          <div style="margin-top:4px;">メイン機種: <strong>${mainMachine}</strong></div>
+        </div>`;
+    } else { dataHtml = `<div style="font-size:12px; color:var(--text-muted); margin-top:5px;">過去の稼働データはありません。</div>`; }
+    
+    html += `<div class="saved-item" style="border-left: 4px solid #e67e22; margin-bottom: 10px;">
+        <div style="font-weight:bold; color:var(--text-main); font-size:15px;">${hallName}</div>
+        <div style="font-size:12px; color:var(--text-sub); margin-bottom: 5px;">特定日ルール: ${halls[hallName].rules.join(', ')}</div>
+        ${dataHtml}
+      </div>`;
+  });
+  container.innerHTML = html;
+};
+
 function createRecordItemHtml(r) {
   let historyHtml = '';
   if (r.history && r.history.length > 0) {
@@ -351,7 +411,7 @@ function createRecordItemHtml(r) {
         historyHtml += `<div style="margin-bottom: 4px; border-bottom: 1px dashed var(--border-color); padding-bottom: 2px;">${spinCount}回目: ${h.balls}玉 で <strong>${h.spins}回</strong>${typeLabel}${hitLabel}${cvt}</div>`; 
       } else if (h.type === 'payout') {
         let memoHtml = h.memo ? `<span style="font-size:11px; color: var(--text-muted); margin-left:6px;">(${h.memo})</span>` : "";
-        historyHtml += `<div style="margin-bottom: 4px; background-color:var(--box-yellow-bg); padding: 2px 4px; border-radius:2px; font-size:11px;"><span style="color:#d35400; font-weight:bold;">🎉 ${h.hitType}獲得: ${h.amount}玉${memoHtml}</span></div>`;
+        historyHtml += `<div style="margin-bottom: 4px; background-color:var(--box-yellow-bg); padding: 2px 4px; border-radius:2px; font-size:11px;"><span style="color:#d35400; font-weight:bold;">🎉 ${h.hitType}獲得: ${h.amount}玉 (${h.rounds}R)${memoHtml}</span></div>`;
       }
     });
     historyHtml += `</div></details>`;
@@ -359,7 +419,6 @@ function createRecordItemHtml(r) {
   let dispRatio = (r.mochidamaRatio || 0).toFixed(1), startDisp = (r.startSpins !== undefined && r.startSpins >= 0) ? ` <span style="color:var(--text-muted); font-size:11px;">(開始${r.startSpins}G → 終了${r.startSpins + r.totalSpins}G)</span>` : '';
   let storeDisp = r.store ? `<span style="color:var(--text-muted); font-size:12px; margin-right:6px;">[${r.store}]</span>` : '', authorDisp = r.author ? `<span class="author-badge">👤 ${r.author}</span>` : '';
   
-  // ★ 実測1R出玉を算出してツール②へ渡せるようにする
   const totalPayoutRounds = r.history ? r.history.reduce((sum, h) => sum + (h.rounds || 0), 0) : 0;
   const realPayoutPerR = totalPayoutRounds > 0 ? ((r.totalPayout || 0) / totalPayoutRounds) : 0;
 
@@ -474,7 +533,6 @@ function updateMeasurementDisplay() {
       <p><span>積んだ仕事量:</span> <span class="highlight" style="color:#27ae60;">${Math.round(workValue).toLocaleString()} 円</span></p>
       <p><span>現在の期待時給:</span> <span style="font-weight:bold;">${hourlyWage > 0 ? Math.round(hourlyWage).toLocaleString() + ' 円' : '-'}</span></p>`;
     
-    // ツール②へデータを自動流し込み
     document.getElementById('spinRate').value = avg250.toFixed(2); document.getElementById('spinRate').classList.add('auto-filled');
     if (realPayoutPerR > 0) { document.getElementById('realPayoutPerR').value = realPayoutPerR.toFixed(1); document.getElementById('realPayoutPerR').classList.add('auto-filled'); }
   } else {
@@ -600,7 +658,6 @@ function drawSlumpGraph() {
   slumpChartInstance = new Chart(ctx, { type: 'line', data: { datasets: [{ label: '差玉 (玉)', data: chartData, borderColor: '#3498db', backgroundColor: 'rgba(52, 152, 219, 0.1)', borderWidth: 2, pointRadius: 2, pointBackgroundColor: '#e67e22', fill: true, stepped: false }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', title: { display: true, text: '累積投資玉数 (玉)', font: {size: 11} }, min: 0 }, y: { title: { display: true, text: '差玉 (玉)', font: {size: 11} } } }, plugins: { legend: { display: false } } } });
 }
 
-// 🚀 フリーズしない 10万回 Web Worker シミュレーション（専業用期待値）
 window.calculateAndSimulate = function() {
   vibrate(); 
   const inputs = [
@@ -616,10 +673,10 @@ window.calculateAndSimulate = function() {
   const R = parseFloat(document.getElementById('spinRate').value), E = parseFloat(document.getElementById('exchangeRate').value);
   const M = parseFloat(document.getElementById('ballRatio').value) / 100, totalSpins = parseFloat(document.getElementById('totalSpins').value);
 
-  const E_out = avgR * realPayoutPerR; // 実測平均出玉
+  const E_out = avgR * realPayoutPerR; 
   const returnPerSpin = (E_out / P) * E;
   const costPerSpin = (250 / R) * (M * E + (1 - M) * 4.0);
-  const evSpin = returnPerSpin - costPerSpin; // 単価
+  const evSpin = returnPerSpin - costPerSpin; 
   lastCalculatedEV = evSpin * totalSpins; 
 
   document.getElementById('resSpin').innerText = evSpin.toFixed(2) + " 円";
