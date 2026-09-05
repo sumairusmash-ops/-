@@ -42,12 +42,31 @@ function closeResultModal() { document.getElementById('resultModal').style.displ
 function openSavedModal() { renderSavedRecords(); document.getElementById('savedModal').style.display = 'flex'; }
 function closeSavedModal() { document.getElementById('savedModal').style.display = 'none'; }
 
-const resultModal = document.getElementById('resultModal'); const savedModal = document.getElementById('savedModal');
+// ★ 新しい逆算モーダル用の関数
+function openAvgRCalcModal() { 
+  vibrate();
+  document.getElementById('avgRCalcModal').style.display = 'flex'; 
+  
+  // ツール②に入力済みの数値があれば自動で引っ張ってくる
+  const p = document.getElementById('probDenom').value;
+  const pr = document.getElementById('payoutPerR').value;
+  if(p) document.getElementById('calc_b_prob').value = p;
+  if(pr) {
+    document.getElementById('calc_b_payout').value = pr;
+    document.getElementById('calc_p_payout').value = pr;
+  }
+  window.doAvgRCalc1(); window.doAvgRCalc2();
+}
+function closeAvgRCalcModal() { document.getElementById('avgRCalcModal').style.display = 'none'; }
+
+const resultModal = document.getElementById('resultModal'); const savedModal = document.getElementById('savedModal'); const avgRCalcModal = document.getElementById('avgRCalcModal');
 if(resultModal) resultModal.addEventListener('click', function(e) { if (e.target === resultModal) closeResultModal(); });
 if(savedModal) savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
+if(avgRCalcModal) avgRCalcModal.addEventListener('click', function(e) { if (e.target === avgRCalcModal) closeAvgRCalcModal(); });
+
 
 // ==========================================
-// ★ 新しいスワイプ機能（ワンタップでキーボード展開可能）
+// ★ 新しいスワイプ機能（タップで通常通りキーボード展開）
 // ==========================================
 function setupSwipeInput(id, step, min, max, defaultVal) {
   const input = document.getElementById(id); 
@@ -78,8 +97,8 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
     
     // スワイプ（横に5px以上動いた）と判定されたら
     if (Math.abs(deltaX) > 5) {
-      if (e.cancelable) e.preventDefault(); // スクロール防止
-      if (document.activeElement === input) input.blur(); // キーボードを隠す
+      if (e.cancelable) e.preventDefault(); // 縦スクロールを防止
+      if (document.activeElement === input) input.blur(); // キーボードが出ている場合は隠す
     }
     
     let steps = Math.trunc(deltaX / 8); 
@@ -215,6 +234,7 @@ window.onload = function() {
     const start = parseInt(document.getElementById('startSpin').value) || 0;
     let soFar = 0; historyData.forEach(d => { if (d.type === 'spin' || !d.type) soFar += d.spins; }); return start + soFar + 15;
   });
+  
   setupSwipeInput('payoutAmount', 10, 0, 100000, 4200); 
   setupSwipeInput('payoutRounds', 1, 0, 1000, 30); 
   setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); 
@@ -225,6 +245,13 @@ window.onload = function() {
   setupSwipeInput('exchangeRate', 0.01, 2.50, 4.00, 3.57);
   setupSwipeInput('ballRatio', 1, 0, 100, 60); 
   setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
+  
+  // 逆算ツール用
+  setupSwipeInput('calc_b_border', 0.1, 10.0, 30.0, 18.0);
+  setupSwipeInput('calc_b_prob', 0.1, 1.0, 499.0, 319.6);
+  setupSwipeInput('calc_b_payout', 1, 10, 160, 140);
+  setupSwipeInput('calc_p_total', 10, 100, 10000, 4500);
+  setupSwipeInput('calc_p_payout', 1, 10, 160, 140);
 
   updateModeIndicator();
 
@@ -267,6 +294,37 @@ window.calcBorder = function() {
   if(P && avgR && ppr) { const border = P / ((avgR * ppr) / 250); borderInput.value = border.toFixed(2); } else { borderInput.value = ""; }
 };
 
+// ★ 平均Rの逆算ロジック
+window.doAvgRCalc1 = function() {
+  const b = parseFloat(document.getElementById('calc_b_border').value), p = parseFloat(document.getElementById('calc_b_prob').value), pr = parseFloat(document.getElementById('calc_b_payout').value);
+  const resEl = document.getElementById('res_b_avgR');
+  if (b > 0 && p > 0 && pr > 0) { resEl.innerText = ((250 * p) / (b * pr)).toFixed(2); } else { resEl.innerText = "0.00"; }
+};
+window.doAvgRCalc2 = function() {
+  const total = parseFloat(document.getElementById('calc_p_total').value), pr = parseFloat(document.getElementById('calc_p_payout').value);
+  const resEl = document.getElementById('res_p_avgR');
+  if (total > 0 && pr > 0) { resEl.innerText = (total / pr).toFixed(2); } else { resEl.innerText = "0.00"; }
+};
+
+window.applyAvgR = function(spanId) {
+  vibrate();
+  const val = document.getElementById(spanId).innerText;
+  if (val === "0.00" || isNaN(val)) return alert("正しく計算されていません。");
+  
+  document.getElementById('avgRounds').value = val;
+  document.getElementById('avgRounds').classList.remove('auto-filled');
+  
+  if(spanId === 'res_b_avgR') {
+    const p = document.getElementById('calc_b_prob').value, pr = document.getElementById('calc_b_payout').value;
+    if(p) document.getElementById('probDenom').value = p; if(pr) document.getElementById('payoutPerR').value = pr;
+  } else if(spanId === 'res_p_avgR') {
+    const pr = document.getElementById('calc_p_payout').value;
+    if(pr) document.getElementById('payoutPerR').value = pr;
+  }
+  
+  window.calcBorder(); window.updateMeasurementDisplay(); closeAvgRCalcModal();
+};
+
 window.syncMachineSpec = function() {
   const m = document.getElementById('machineName').value.trim(); document.getElementById('calcMachineName').value = m; window.loadMachineSpec();
 };
@@ -306,7 +364,7 @@ window.deleteDictItem = async function(machine) {
   if(confirm(`[${machine}] を辞書から削除しますか？`)) { const dict = await getDictionaryData(); delete dict[machine]; await saveDictionaryData(dict); }
 };
 
-// ★ ホール管理ロジック
+// ホール管理ロジック
 window.saveHall = async function() {
   if (!isAdmin) return alert("権限がありません。");
   const name = document.getElementById('hallNameInput').value.trim();
@@ -473,22 +531,19 @@ window.undoLastInput = function() {
 
 window.deleteHistoryItem = function(index) { historyData.splice(index, 1); updateMeasurementDisplay(); };
 
-function updateMeasurementDisplay() {
+window.updateMeasurementDisplay = function() {
   const btnModal = document.getElementById('btnOpenResultModal');
   const startSpinInput = document.getElementById('startSpin');
 
   if (historyData.length === 0) { 
-    // ★ 履歴がない時はスタート回転数の入力を許可
+    // ★履歴がない時はスタート回転数を入力可能にする
     startSpinInput.disabled = false;
     startSpinInput.style.backgroundColor = "var(--input-bg)";
-    btnModal.innerText = "📊 入力データを確認 (未入力)"; 
-    document.getElementById('avg250').innerText = "0.00 回"; 
-    document.getElementById('historyList').innerHTML = ""; 
-    document.getElementById('workValueArea').innerHTML = ""; 
-    return; 
+    btnModal.innerText = "📊 入力データを確認 (未入力)"; document.getElementById('avg250').innerText = "0.00 回"; 
+    document.getElementById('historyList').innerHTML = ""; document.getElementById('workValueArea').innerHTML = ""; return; 
   }
   
-  // ★ 履歴が追加されたらスタート回転数をロック（グレーアウト）
+  // ★履歴が入った瞬間にスタート回転数をロック（グレーアウト）する
   startSpinInput.disabled = true;
   startSpinInput.style.backgroundColor = "var(--bg-main)";
   
@@ -513,7 +568,7 @@ function updateMeasurementDisplay() {
   
   const avg250 = totalBalls > 0 ? (totalSpins / totalBalls) * 250 : 0;
   const mochiRatio = totalBalls > 0 ? (mochidamaBalls / totalBalls * 100) : 0;
-  const startSpin = parseInt(document.getElementById('startSpin').value) || 0, absoluteTotalSpins = startSpin + totalSpins;
+  const startSpin = parseInt(startSpinInput.value) || 0, absoluteTotalSpins = startSpin + totalSpins;
   
   document.getElementById('avg250').innerText = avg250.toFixed(2) + " 回"; document.getElementById('dispMochiRatio').innerText = mochiRatio.toFixed(1) + " %";
   document.getElementById('totalMeasuredSpins').innerText = totalSpins + " 回"; document.getElementById('absoluteTotalSpins').innerText = absoluteTotalSpins + " 回";
@@ -599,7 +654,6 @@ window.saveCurrentRecord = async function() {
   document.getElementById('machineName').value = ''; document.getElementById('startSpin').value = '';
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
   document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
-  
   updateMeasurementDisplay(); closeResultModal(); 
 };
 
@@ -612,7 +666,6 @@ window.resumeRecord = async function(id) {
   historyData = JSON.parse(JSON.stringify(r.history || [])); editingRecordId = r.id; measurementStartTime = Date.now(); 
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
   document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
-  
   updateMeasurementDisplay(); closeSavedModal(); window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
