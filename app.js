@@ -27,6 +27,7 @@ let lastCalculatedEV = 0; let historyData = []; let currentPassData = null; let 
 let currentCalYear = new Date().getFullYear(); let currentCalMonth = new Date().getMonth();
 let unsubscribeGroup = null; let globalGroupData = { records: [], calendar: {}, dictionary: {}, halls: {} };
 let measurementStartTime = null; let editingHistoryIndex = null; 
+let virtualSpins = 0; // ★ 1/99 お遊び用
 
 // ==========================================
 // ユーティリティ・UI機能
@@ -736,10 +737,7 @@ window.saveExpectedValueToCalendar = async function() {
   }
 
   const cal = await getCalendarData(); if(!cal[date]) cal[date] = { ev: 0, actual: 0, actualBalls: 0, details: [] };
-  
-  // ★ UIDベースでカレンダーの文字列を保存
-  const uid = currentUser ? currentUser.uid : 'guest';
-  const nick = getNickname();
+  const uid = currentUser ? currentUser.uid : 'guest'; const nick = getNickname();
   
   cal[date].ev = (cal[date].ev || 0) + lastCalculatedEV; cal[date].actual = (cal[date].actual || 0) + actualAmt; cal[date].actualBalls = (cal[date].actualBalls || 0) + diffBalls;
   cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:var(--text-muted);" data-uid="${uid}" data-name="${nick}">👤 ${nick}</span>${hitText}`);
@@ -757,7 +755,7 @@ window.saveExpectedValueToCalendar = async function() {
 };
 
 // ==========================================
-// ツール③：カレンダー機能 ＆ ランキング自動集計
+// ツール③：カレンダー機能＆ランキング自動集計
 // ==========================================
 window.changeMonth = function(diff) { currentCalMonth += diff; if(currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; } if(currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; } renderCalendar(); };
 window.selectDate = function(dateStr) { document.getElementById('actualDate').value = dateStr; renderCalendar(); };
@@ -771,8 +769,6 @@ async function renderCalendar() {
   
   let monthlyEV = 0, monthlyActual = 0, monthlyBalls = 0;
   const monthStr = `${year}-${String(month+1).padStart(2,'0')}`; const selectedDateVal = document.getElementById('actualDate').value;
-
-  // ★ 月間ランキング用ユーザー別集計（UIDベース）
   let userStats = {};
 
   for(let day=1; day<=daysInMonth; day++){
@@ -788,30 +784,14 @@ async function renderCalendar() {
       
       if (dayData.details && Array.isArray(dayData.details)) {
         dayData.details.forEach(detail => {
-          // UIDを含む新フォーマットと、含まない旧フォーマット両方に対応
           const matchNew = detail.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円.*data-uid="([^"]+)" data-name="([^"]+)">/);
           const matchOld = detail.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円.*👤\s*(.*?)<\/span>/);
-          
           let ev = 0, actual = 0, uid = "", name = "";
           
-          if (matchNew) {
-            ev = parseInt(matchNew[1].replace(/,/g, '')) || 0;
-            actual = parseInt(matchNew[2].replace(/,/g, '')) || 0;
-            uid = matchNew[3];
-            name = matchNew[4];
-          } else if (matchOld) {
-            ev = parseInt(matchOld[1].replace(/,/g, '')) || 0;
-            actual = parseInt(matchOld[2].replace(/,/g, '')) || 0;
-            name = matchOld[3].trim();
-            uid = name; // 古いデータは名前をUID扱いにする
-          }
+          if (matchNew) { ev = parseInt(matchNew[1].replace(/,/g, '')) || 0; actual = parseInt(matchNew[2].replace(/,/g, '')) || 0; uid = matchNew[3]; name = matchNew[4]; } 
+          else if (matchOld) { ev = parseInt(matchOld[1].replace(/,/g, '')) || 0; actual = parseInt(matchOld[2].replace(/,/g, '')) || 0; name = matchOld[3].trim(); uid = name; }
 
-          if (uid) {
-            if (!userStats[uid]) userStats[uid] = { ev: 0, actual: 0, latestName: name };
-            userStats[uid].ev += ev;
-            userStats[uid].actual += actual;
-            if (matchNew) userStats[uid].latestName = name; // 新フォーマットなら名前を最新のものに上書き
-          }
+          if (uid) { if (!userStats[uid]) userStats[uid] = { ev: 0, actual: 0, latestName: name }; userStats[uid].ev += ev; userStats[uid].actual += actual; if (matchNew) userStats[uid].latestName = name; }
         });
       }
     }
@@ -835,105 +815,43 @@ async function renderCalendar() {
 }
 
 function updateRankingAndAvatar(userStats) {
-  // ★ 自分のUIDベースで判定する（過去データの名前と新データのUIDを合算してアバター判定）
-  const myUid = currentUser ? currentUser.uid : 'guest';
-  const myName = getNickname();
-  
-  const myDataNew = userStats[myUid] || { ev: 0, actual: 0 };
-  const myDataOld = (myUid !== myName && userStats[myName]) ? userStats[myName] : { ev: 0, actual: 0 };
+  const myUid = currentUser ? currentUser.uid : 'guest'; const myName = getNickname();
+  const myDataNew = userStats[myUid] || { ev: 0, actual: 0 }; const myDataOld = (myUid !== myName && userStats[myName]) ? userStats[myName] : { ev: 0, actual: 0 };
   const myActual = myDataNew.actual + myDataOld.actual;
   
-  const avatarIcon = document.getElementById('avatar-icon');
-  const avatarMsg = document.getElementById('avatar-msg');
-  const avatarContainer = document.getElementById('avatar-container');
+  const avatarIcon = document.getElementById('avatar-icon'); const avatarMsg = document.getElementById('avatar-msg'); const avatarContainer = document.getElementById('avatar-container');
 
-  if (myActual >= 50000) {
-    avatarIcon.innerHTML = "✨🦝🦊✨"; 
-    avatarMsg.innerHTML = "5万円以上勝ち！<br>金色のたぬきときつね";
-    avatarContainer.style.borderColor = "#f1c40f";
-  } else if (myActual >= 10000) {
-    avatarIcon.innerHTML = "🍗🦝🔥🦊🍖"; 
-    avatarMsg.innerHTML = "1万円以上勝ち！<br>焼肉してるたぬきときつね";
-    avatarContainer.style.borderColor = "#e67e22";
-  } else if (myActual <= -50000) {
-    avatarIcon.innerHTML = "📦🦝🦊📦"; 
-    avatarMsg.innerHTML = "5万円以上負け...<br>段ボールに入っているたぬきときつね";
-    avatarContainer.style.borderColor = "#34495e";
-  } else if (myActual <= -10000) {
-    avatarIcon.innerHTML = "🌱🦝🦊🌱"; 
-    avatarMsg.innerHTML = "1万円以上負け...<br>もやし持ってるたぬきときつね";
-    avatarContainer.style.borderColor = "#95a5a6";
-  } else {
-    avatarIcon.innerHTML = "🦝🦊"; 
-    avatarMsg.innerHTML = "プラマイゼロ<br>棒立ちのたぬきときつね";
-    avatarContainer.style.borderColor = "var(--border-color)";
-  }
+  if (myActual >= 50000) { avatarIcon.innerHTML = "✨🦝🦊✨"; avatarMsg.innerHTML = "5万円以上勝ち！<br>金色のたぬきときつね"; avatarContainer.style.borderColor = "#f1c40f"; } 
+  else if (myActual >= 10000) { avatarIcon.innerHTML = "🍗🦝🔥🦊🍖"; avatarMsg.innerHTML = "1万円以上勝ち！<br>焼肉してるたぬきときつね"; avatarContainer.style.borderColor = "#e67e22"; } 
+  else if (myActual <= -50000) { avatarIcon.innerHTML = "📦🦝🦊📦"; avatarMsg.innerHTML = "5万円以上負け...<br>段ボールに入っているたぬきときつね"; avatarContainer.style.borderColor = "#34495e"; } 
+  else if (myActual <= -10000) { avatarIcon.innerHTML = "🌱🦝🦊🌱"; avatarMsg.innerHTML = "1万円以上負け...<br>もやし持ってるたぬきときつね"; avatarContainer.style.borderColor = "#95a5a6"; } 
+  else { avatarIcon.innerHTML = "🦝🦊"; avatarMsg.innerHTML = "プラマイゼロ<br>棒立ちのたぬきときつね"; avatarContainer.style.borderColor = "var(--border-color)"; }
 
-  // ★ ユーザー配列の作成（表示名はlatestNameを使用）
-  let users = Object.keys(userStats).map(key => {
-    return { name: userStats[key].latestName, ev: userStats[key].ev, actual: userStats[key].actual, diff: userStats[key].actual - userStats[key].ev };
-  });
+  let users = Object.keys(userStats).map(key => { return { name: userStats[key].latestName, ev: userStats[key].ev, actual: userStats[key].actual, diff: userStats[key].actual - userStats[key].ev }; });
 
-  // ページ1: 収支ランキング（実収支降順）
   users.sort((a, b) => b.actual - a.actual);
   let html1 = "";
   if (users.length > 0) {
     html1 += `<div style="font-size:18px; font-weight:bold; color:#f39c12; margin-bottom:10px;">👑 月間MVP: ${users[0].name} <span style="font-size:14px; color:#555;">(${formatCurrency(users[0].actual)})</span></div>`;
-    if (users.length > 1) {
-      let last = users[users.length - 1];
-      html1 += `<div style="font-size:15px; font-weight:bold; color:#34495e; margin-bottom:15px;">💸 今月の養分: ${last.name} <span style="font-size:13px; color:#555;">(${formatCurrency(last.actual)})</span></div>`;
-    }
+    if (users.length > 1) { let last = users[users.length - 1]; html1 += `<div style="font-size:15px; font-weight:bold; color:#34495e; margin-bottom:15px;">💸 今月の養分: ${last.name} <span style="font-size:13px; color:#555;">(${formatCurrency(last.actual)})</span></div>`; }
     html1 += `<table style="width:100%; border-collapse:collapse; font-size:13px;">`;
-    users.forEach((u, i) => {
-      html1 += `<tr style="border-bottom:1px dashed var(--border-color);">
-        <td style="padding:8px 0; font-weight:bold; color:var(--text-sub); width:40px;">${i+1}位</td>
-        <td style="font-weight:bold;">${u.name}</td>
-        <td style="text-align:right; font-weight:bold; color:${u.actual >= 0 ? '#2980b9' : '#e74c3c'}">${formatCurrency(u.actual)}</td>
-      </tr>`;
-    });
+    users.forEach((u, i) => { html1 += `<tr style="border-bottom:1px dashed var(--border-color);"><td style="padding:8px 0; font-weight:bold; color:var(--text-sub); width:40px;">${i+1}位</td><td style="font-weight:bold;">${u.name}</td><td style="text-align:right; font-weight:bold; color:${u.actual >= 0 ? '#2980b9' : '#e74c3c'}">${formatCurrency(u.actual)}</td></tr>`; });
     html1 += `</table>`;
   } else { html1 = "<div style='text-align:center; color:var(--text-muted); font-size:12px;'>稼働データがありません</div>"; }
   document.getElementById('rank-content-1').innerHTML = html1;
 
-  // ページ2: ヒキランキンググラフ（乖離額降順）
   users.sort((a, b) => b.diff - a.diff);
-  let labels = users.map(u => u.name);
-  let evData = users.map(u => u.ev);
-  let actualData = users.map(u => u.actual);
-
+  let labels = users.map(u => u.name), evData = users.map(u => u.ev), actualData = users.map(u => u.actual);
   if(window.hikiChartInstance) window.hikiChartInstance.destroy();
-  window.hikiChartInstance = new Chart(document.getElementById('hikiChart'), {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [
-        { label: '期待値', data: evData, backgroundColor: '#3498db', borderRadius: 4 },
-        { label: '実収支', data: actualData, backgroundColor: '#e74c3c', borderRadius: 4 }
-      ]
-    },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } }
-  });
+  window.hikiChartInstance = new Chart(document.getElementById('hikiChart'), { type: 'bar', data: { labels: labels, datasets: [ { label: '期待値', data: evData, backgroundColor: '#3498db', borderRadius: 4 }, { label: '実収支', data: actualData, backgroundColor: '#e74c3c', borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } } });
 
-  // ページ3: 貢献度ドーナツグラフ
   let posUsers = users.filter(u => u.actual > 0);
   if(window.pieChartInstance) window.pieChartInstance.destroy();
   if(posUsers.length > 0) {
-    document.getElementById('pieChartContainer').style.display = 'block';
-    document.getElementById('noPieData').style.display = 'none';
-    let pieLabels = posUsers.map(u => u.name);
-    let pieData = posUsers.map(u => u.actual);
-    window.pieChartInstance = new Chart(document.getElementById('pieChart'), {
-      type: 'doughnut',
-      data: {
-        labels: pieLabels,
-        datasets: [{ data: pieData, backgroundColor: ['#f1c40f', '#2ecc71', '#e67e22', '#9b59b6', '#3498db'], borderWidth: 0 }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } }, cutout: '65%' }
-    });
-  } else {
-    document.getElementById('pieChartContainer').style.display = 'none';
-    document.getElementById('noPieData').style.display = 'block';
-  }
+    document.getElementById('pieChartContainer').style.display = 'block'; document.getElementById('noPieData').style.display = 'none';
+    let pieLabels = posUsers.map(u => u.name), pieData = posUsers.map(u => u.actual);
+    window.pieChartInstance = new Chart(document.getElementById('pieChart'), { type: 'doughnut', data: { labels: pieLabels, datasets: [{ data: pieData, backgroundColor: ['#f1c40f', '#2ecc71', '#e67e22', '#9b59b6', '#3498db'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } }, cutout: '65%' } });
+  } else { document.getElementById('pieChartContainer').style.display = 'none'; document.getElementById('noPieData').style.display = 'block'; }
 }
 
 window.deleteCalendarDay = async function(date) {
@@ -947,4 +865,83 @@ window.renderHistoryTab = async function() {
   let filtered = records.filter(r => { if (!r.date) return false; if (new Date(r.date) < oneYearAgo) return false; if (filterText && r.machine && !r.machine.includes(filterText)) return false; return true; });
   if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">条件に一致する過去1年間のデータはありません。</p>';
   filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); }); container.innerHTML = html;
+};
+
+// ==========================================
+// ★ お遊び・運試しコーナー（占い＆1/99仮想ボタン）
+// ==========================================
+
+window.drawFortune = function() {
+  vibrate();
+  const fortunes = [
+    "【超大吉】オスイチ確定レベル！今日はいける！🔥",
+    "【大吉】期待値以上のヒキを見せつける日！✨",
+    "【大吉】右打ちスルー回避！連チャン止まらず！🎰",
+    "【中吉】ボーダー+2回の優秀台に座れそう！📈",
+    "【小吉】遊タイム直前で当たるかも…？💦",
+    "【末吉】トントンで終われれば御の字。🐢",
+    "【凶】単発地獄の気配…。熱くならずに撤退を。📉",
+    "【大凶】今日は絶対打つな！家でYouTube見とけ！💀"
+  ];
+  const result = fortunes[Math.floor(Math.random() * fortunes.length)];
+  const el = document.getElementById('fortuneResult');
+  el.style.color = "var(--text-main)";
+  el.innerHTML = "抽選中...";
+  
+  setTimeout(() => {
+    vibrate(100);
+    // 超大吉・大吉・大凶には色をつける
+    if (result.includes("超大吉") || result.includes("大吉")) el.style.color = "#e74c3c";
+    else if (result.includes("大凶") || result.includes("凶")) el.style.color = "#34495e";
+    else el.style.color = "#27ae60";
+    
+    el.innerHTML = `<span style="animation: fadeIn 0.5s;">${result}</span>`;
+  }, 600);
+};
+
+window.spinVirtual = function() {
+  vibrate(20);
+  virtualSpins++;
+  document.getElementById('virtualSpinCount').innerText = virtualSpins;
+  const resEl = document.getElementById('virtualSpinResult');
+  resEl.style.animation = "none"; 
+  resEl.offsetHeight; // リフローでアニメーションリセット
+  
+  // 1/99.9の抽選
+  if (Math.random() < (1 / 99.9)) {
+    resEl.innerHTML = `<span style="color:#e74c3c; font-size:18px; text-shadow: 0 0 10px #f1c40f; animation: pop 0.3s ease-out;">🌈 キュイン！当たり！！🌈</span>`;
+    vibrate([100, 50, 100, 50, 200]);
+    virtualSpins = 0; // 当たったらリセット
+  } else {
+    // リーチ演出（フェイク）
+    if (Math.random() < 0.05) {
+      resEl.innerHTML = `<span style="color:#f39c12; animation: pop 0.2s ease-out;">⚡ 激アツハズレ... ⚡</span>`;
+    } else {
+      resEl.innerHTML = `<span style="color:var(--text-muted);">ハズレ...</span>`;
+    }
+  }
+};
+
+window.spinUntilHit = function() {
+  vibrate(50);
+  let count = 0;
+  
+  // 当たるまでループ（ブラウザクラッシュ防止のため上限3000）
+  while(count < 3000) {
+    count++;
+    if (Math.random() < (1 / 99.9)) break;
+  }
+  
+  virtualSpins += count;
+  document.getElementById('virtualSpinCount').innerText = virtualSpins;
+  const resEl = document.getElementById('virtualSpinResult');
+  
+  let msg = "";
+  if (count <= 10) msg = `神引き！たった ${count} 回転で当たり！🎉`;
+  else if (count >= 300) msg = `地獄の ${count} 回転ハマり...💸`;
+  else msg = `${count} 回転で当たり！`;
+  
+  resEl.innerHTML = `<span style="color:#e74c3c; font-size:16px; animation: flashRed 1.5s infinite;">🌈 ${msg} 🌈</span>`;
+  vibrate([100, 50, 100, 50, 200]);
+  virtualSpins = 0; // リセット
 };
