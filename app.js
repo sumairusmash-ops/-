@@ -2,12 +2,12 @@
 // Firebase設定（★ここにキーを入れます）
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -64,104 +64,85 @@ function closeSavedModal() { document.getElementById('savedModal').style.display
 
 const resultModal = document.getElementById('resultModal');
 const savedModal = document.getElementById('savedModal');
-resultModal.addEventListener('click', function(e) { if (e.target === resultModal) closeResultModal(); });
-savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
+if(resultModal) resultModal.addEventListener('click', function(e) { if (e.target === resultModal) closeResultModal(); });
+if(savedModal) savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
 
+// Wタップ手入力機能
+function applyDoubleTapToInputs() {
+  const inputs = document.querySelectorAll('input[type="number"], input[type="text"]');
+  inputs.forEach(input => {
+    if (input.hasAttribute('data-dbltap-init')) return;
+    input.setAttribute('data-dbltap-init', 'true');
+    if(!input.disabled) input.setAttribute('readonly', 'readonly');
+    
+    let lastTap = 0;
+    input.addEventListener('touchend', function(e) {
+      let currentTime = new Date().getTime(); let tapLength = currentTime - lastTap;
+      if (tapLength < 400 && tapLength > 0) { 
+        if(!input.disabled) { input.removeAttribute('readonly'); input.focus(); e.preventDefault(); }
+      }
+      lastTap = currentTime;
+    });
+    input.addEventListener('dblclick', function(e) { if(!input.disabled) { input.removeAttribute('readonly'); input.focus(); } });
+    input.addEventListener('blur', function() { if(!input.disabled) input.setAttribute('readonly', 'readonly'); });
+  });
+}
 
-// ==========================================
-// ★ スワイプ機能（透明バリア方式による誤作動完全防止）
-// ==========================================
+// スワイプ機能
 function setupSwipeInput(id, step, min, max, defaultVal) {
   const input = document.getElementById(id);
   if (!input || input.hasAttribute('data-swipe-init')) return;
   input.setAttribute('data-swipe-init', 'true');
 
-  // 1. 透明なバリア（オーバーレイ）の作成
   const wrapper = document.createElement('div');
-  wrapper.style.position = 'relative';
-  wrapper.style.display = 'block';
-  
-  // inputをwrapperで囲む
-  input.parentNode.insertBefore(wrapper, input);
-  wrapper.appendChild(input);
+  wrapper.style.position = 'relative'; wrapper.style.display = 'block';
+  input.parentNode.insertBefore(wrapper, input); wrapper.appendChild(input);
   
   const overlay = document.createElement('div');
-  overlay.style.position = 'absolute';
-  overlay.style.top = '0'; overlay.style.left = '0';
-  overlay.style.width = '100%'; overlay.style.height = '100%';
-  overlay.style.zIndex = '10';
-  overlay.style.cursor = 'ew-resize';
-  overlay.style.touchAction = 'none'; // ネイティブスクロール防止
+  overlay.style.position = 'absolute'; overlay.style.top = '0'; overlay.style.left = '0';
+  overlay.style.width = '100%'; overlay.style.height = '100%'; overlay.style.zIndex = '10';
+  overlay.style.cursor = 'ew-resize'; overlay.style.touchAction = 'none'; 
   wrapper.appendChild(overlay);
 
-  // 2. スワイプ処理（対象は input ではなく overlay）
-  let isDragging = false;
-  let startX = 0;
-  let startVal = 0;
-  let hasMoved = false; // スワイプかタップかの判定用
+  let isDragging = false; let startX = 0; let startVal = 0; let hasMoved = false; 
 
   const onStart = (e) => {
-    isDragging = true;
-    hasMoved = false;
+    isDragging = true; hasMoved = false;
     startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     let def = typeof defaultVal === 'function' ? defaultVal() : defaultVal;
     if (input.value === "") {
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
-      input.value = Number(def).toFixed(decimals);
-      input.classList.remove('auto-filled');
-      if (input.oninput) input.oninput();
+      input.value = Number(def).toFixed(decimals); input.classList.remove('auto-filled'); if (input.oninput) input.oninput();
     }
-    startVal = parseFloat(input.value);
-    if (isNaN(startVal)) startVal = def;
+    startVal = parseFloat(input.value); if (isNaN(startVal)) startVal = def;
   };
   
-  overlay.addEventListener('mousedown', onStart);
-  overlay.addEventListener('touchstart', onStart, {passive: true});
+  overlay.addEventListener('mousedown', onStart); overlay.addEventListener('touchstart', onStart, {passive: true});
   
   const onMove = (e) => {
     if (!isDragging) return;
-    if (e.cancelable) e.preventDefault(); // スワイプ中の画面スクロールを完全にブロック
-    
+    if (e.cancelable) e.preventDefault(); 
     let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     let deltaX = clientX - startX;
-    
-    // 5px以上指が動いたら「スワイプ操作」と判定する
     if (Math.abs(deltaX) > 5) hasMoved = true; 
-
     let steps = Math.trunc(deltaX / 8); 
     if (steps !== 0) {
       let newVal = startVal + (steps * step);
-      if (newVal < min) newVal = min;
-      if (newVal > max) newVal = max;
+      if (newVal < min) newVal = min; if (newVal > max) newVal = max;
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
-      input.value = newVal.toFixed(decimals);
-      input.classList.remove('auto-filled');
-      if (input.oninput) input.oninput();
+      input.value = newVal.toFixed(decimals); input.classList.remove('auto-filled'); if (input.oninput) input.oninput();
     }
   };
   
-  window.addEventListener('mousemove', onMove);
-  window.addEventListener('touchmove', onMove, {passive: false}); // passive: false で preventDefault 有効化
-  
+  window.addEventListener('mousemove', onMove); window.addEventListener('touchmove', onMove, {passive: false}); 
   const onEnd = () => { isDragging = false; };
-  window.addEventListener('mouseup', onEnd);
-  window.addEventListener('touchend', onEnd);
+  window.addEventListener('mouseup', onEnd); window.addEventListener('touchend', onEnd);
 
-  // 3. タップでキーボード展開（バリアを一時的に消す）
   overlay.addEventListener('click', (e) => {
-    if (!hasMoved) {
-      // スワイプせずに純粋に1回タップされた場合
-      overlay.style.display = 'none'; // バリア解除
-      input.focus(); // 100%確実にキーボードが表示される
-    }
+    if (!hasMoved) { overlay.style.display = 'none'; input.focus(); }
   });
-
-  // 4. キーボードが閉じたらバリアを復活
-  input.addEventListener('blur', () => {
-    overlay.style.display = 'block'; // 再びスワイプ待機状態へ
-  });
+  input.addEventListener('blur', () => { overlay.style.display = 'block'; });
 }
-
 
 function getNickname() {
   let name = localStorage.getItem('pachinko_nickname');
@@ -185,13 +166,13 @@ function formatCurrency(num) { return (num > 0 ? "+" : "") + Math.round(num).toL
 function updateModeIndicator() {
   const n1 = document.getElementById('nav-tab1'), n2 = document.getElementById('nav-tab2'), n3 = document.getElementById('nav-tab3'), hdSection = document.getElementById('history-and-dict-section');
   if (currentGroupId) {
-    n1.style.display = 'block'; n2.style.display = 'block'; n3.style.display = 'block';
+    if(n1) n1.style.display = 'block'; if(n2) n2.style.display = 'block'; if(n3) n3.style.display = 'block';
     document.getElementById('group-none').style.display = 'none'; document.getElementById('group-active').style.display = 'block';
     document.getElementById('dispGroupId').innerText = currentGroupId;
     document.getElementById('dispUserRole').innerText = isAdmin ? "👑 あなたの権限: 管理者 (更新・削除可能)" : "👤 あなたの権限: メンバー (追加・閲覧のみ)";
     document.getElementById('dispNickname').innerText = getNickname(); hdSection.style.display = 'block';
   } else {
-    n1.style.display = 'none'; n2.style.display = 'none'; n3.style.display = 'none';
+    if(n1) n1.style.display = 'none'; if(n2) n2.style.display = 'none'; if(n3) n3.style.display = 'none';
     document.getElementById('group-none').style.display = 'block'; document.getElementById('group-active').style.display = 'none';
     hdSection.style.display = 'none'; switchTab('tab4');
   }
@@ -201,7 +182,10 @@ function switchTab(tabId) {
   vibrate(30); 
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.top-nav button').forEach(el => el.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active'); document.getElementById('nav-' + tabId).classList.add('active');
+  const targetTab = document.getElementById(tabId);
+  const targetNav = document.getElementById('nav-' + tabId);
+  if(targetTab) targetTab.classList.add('active'); 
+  if(targetNav) targetNav.classList.add('active');
   refreshActiveTabUI();
 }
 function refreshActiveTabUI() {
@@ -248,7 +232,8 @@ async function joinGroup() {
   try {
     const doc = await db.collection('groups').doc(idInput).get();
     if (doc.exists) {
-      currentGroupId = idInput; localStorage.setItem('pachinko_groupId', idInput);
+      currentGroupId = idInput; isAdmin = (doc.data().creator === currentUser.uid); 
+      localStorage.setItem('pachinko_groupId', idInput);
       document.getElementById('joinGroupId').value = ''; alert("参加しました！");
       attachGroupListener(idInput); switchTab('tab1');
     } else { alert("指定されたIDのグループが見つかりません。"); }
@@ -305,7 +290,7 @@ window.onload = function() {
   setupSwipeInput('ballRatio', 1, 0, 100, 60); setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
   setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); setupSwipeInput('avgPayout', 10, 100, 10500, 4500);
 
-  updateModeIndicator();
+  applyDoubleTapToInputs(); updateModeIndicator();
 
   if (auth) {
     auth.onAuthStateChanged(user => {
@@ -348,7 +333,7 @@ async function renderDictionary() {
     html += `<div class="saved-item" style="border-left: 4px solid #1abc9c;"><div style="font-weight:bold; color:var(--text-main); margin-bottom:8px;">${m}</div><div style="display:flex; gap:5px; margin-bottom:5px;"><div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">ボーダー</label><input type="number" id="dict_border_${m}" value="${spec.border || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div><div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">確率</label><input type="number" id="dict_prob_${m}" value="${spec.probDenom || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div><div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">出玉</label><input type="number" id="dict_payout_${m}" value="${spec.avgPayout || ''}" step="10" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div></div>${adminButtons}</div>`;
   }
   if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されている機種スペックはありません。</p>';
-  container.innerHTML = html; 
+  container.innerHTML = html; applyDoubleTapToInputs();
 }
 
 window.updateDictItem = async function(machine) {
@@ -403,6 +388,8 @@ window.addMeasurement = function(balls) {
   
   const isMochi = document.getElementById('isMochidama').checked, hitType = document.getElementById('hitNormal').checked ? '通常' : (document.getElementById('hitRush').checked ? 'ラッシュ' : null);
   historyData.push({ type: 'spin', balls: balls, spins: spins, isMochidama: isMochi, hitType: hitType });
+  
+  // Wタップのバリア仕様に合わせて入力欄をクリアするだけに留める
   spinInput.value = ''; 
   if (!measurementStartTime) measurementStartTime = Date.now(); 
   
@@ -736,3 +723,19 @@ window.renderHistoryTab = async function() {
   if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">条件に一致する過去1年間のデータはありません。</p>';
   filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); }); container.innerHTML = html;
 };
+
+// ==========================================
+// ボタン等をグローバルスコープに割り当て（HTML側からの呼び出しのため）
+// ==========================================
+window.createGroup = createGroup;
+window.joinGroup = joinGroup;
+window.leaveGroup = leaveGroup;
+window.mergePersonalDataToGroup = mergePersonalDataToGroup;
+window.login = login;
+window.logout = logout;
+window.openResultModal = openResultModal;
+window.closeResultModal = closeResultModal;
+window.openSavedModal = openSavedModal;
+window.closeSavedModal = closeSavedModal;
+window.switchTab = switchTab;
+window.toggleDarkMode = toggleDarkMode;
