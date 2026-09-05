@@ -2,7 +2,8 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- ★ダブルタップ時に画面がズーム拡大されるのを防ぐ設定を追加 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>パチンコ総合計算ツール</title>
 <!-- Firebase SDK & Chart.js の読み込み -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
@@ -18,24 +19,25 @@
 
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    padding: 15px 15px 80px 15px; /* フッターナビの分、下部に余白を確保 */
+    /* ★ヘッダーナビの分、上部に余白を確保 */
+    padding: 80px 15px 20px 15px; 
     max-width: 500px;
     margin: 0 auto;
     background-color: #f4f7f6;
     color: #333;
   }
   
-  /* スマホ風フッターナビゲーション */
-  .bottom-nav {
+  /* スマホ風ヘッダーナビゲーション（上部固定） */
+  .top-nav {
     position: fixed;
-    bottom: 0; left: 0; right: 0;
+    top: 0; left: 0; right: 0;
     background-color: #fff;
     display: flex;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     z-index: 1000;
-    padding-bottom: env(safe-area-inset-bottom); /* iPhoneのホームバー対応 */
+    padding-top: env(safe-area-inset-top); /* iPhoneのノッチ対応 */
   }
-  .bottom-nav button {
+  .top-nav button {
     flex: 1;
     background: none;
     border: none;
@@ -46,12 +48,12 @@
     cursor: pointer;
     transition: color 0.2s;
   }
-  .bottom-nav button span.icon {
+  .top-nav button span.icon {
     display: block;
     font-size: 20px;
     margin-bottom: 4px;
   }
-  .bottom-nav button.active {
+  .top-nav button.active {
     color: #3498db;
   }
 
@@ -83,7 +85,10 @@
   
   /* スワイプ中のブラウザのネイティブスクロールを完全に無効化 */
   .swipe-input { cursor: ew-resize; touch-action: none; }
-  .swipe-input:focus { cursor: text; }
+  
+  /* ★ダブルタップ専用になった入力欄のスタイル（グレーになるのを防ぐ） */
+  input[readonly] { background-color: #fff; cursor: pointer; }
+  input[readonly]:focus { outline: none; border-color: #ccc; }
 
   .section-title {
     margin-top: 20px; margin-bottom: 10px; font-size: 15px;
@@ -123,20 +128,22 @@
     display: inline-block;
   }
 
-  /* 擬似画面遷移（モーダル）用のスタイル */
+  /* ★上から降りてくるモーダルのスタイルに変更 */
   .modal-overlay {
     display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(0,0,0,0.6); z-index: 2000;
-    justify-content: center; align-items: flex-end; /* 下からスライドさせるため */
+    justify-content: center; align-items: flex-start; /* 上寄せに */
   }
   .modal-content {
     background: #fff; width: 100%; max-width: 500px;
     max-height: 85vh; overflow-y: auto;
-    border-radius: 12px 12px 0 0; padding: 20px;
-    animation: slideUp 0.3s forwards;
-    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+    border-radius: 0 0 12px 12px; /* 下側の角を丸くする */
+    padding: 20px;
+    animation: slideDown 0.3s forwards; /* スライドアニメーション変更 */
+    padding-top: calc(20px + env(safe-area-inset-top)); /* ノッチ対応 */
   }
-  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+  
   .modal-close-btn {
     display: block; width: 100%; padding: 12px; margin-top: 15px;
     background: #ecf0f1; color: #2c3e50; font-weight: bold;
@@ -225,8 +232,8 @@
 <!-- 辞書用サジェストリスト -->
 <datalist id="machineList"></datalist>
 
-<!-- フッターナビゲーション -->
-<nav class="bottom-nav">
+<!-- ヘッダーナビゲーション -->
+<nav class="top-nav">
   <button id="nav-tab1" onclick="switchTab('tab1')" style="display:none;"><span class="icon">⏱️</span>計測</button>
   <button id="nav-tab2" onclick="switchTab('tab2')" style="display:none;"><span class="icon">🧮</span>期待値</button>
   <button id="nav-tab3" onclick="switchTab('tab3')" style="display:none;"><span class="icon">📅</span>収支</button>
@@ -238,17 +245,17 @@
   <div id="tab1" class="tab-content">
     <div style="display: flex; gap: 8px; margin-bottom: 12px;">
       <div style="flex: 1;"><label>日付</label><input type="date" id="recordDate"></div>
-      <div style="flex: 1.5;"><label>店舗名</label><input type="text" id="storeName" placeholder="例: マルハン"></div>
+      <div style="flex: 1.5;"><label>店舗名</label><input type="text" id="storeName" placeholder="例: マルハン" list="machineList"></div>
       <div style="flex: 1.5;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15" list="machineList"></div>
     </div>
 
     <div class="form-group" style="margin-top: 15px;">
-      <label>スタート時点の回転数 <span class="hint-text">※枠内スワイプ対応</span></label>
+      <label>スタート時点の回転数 <span class="hint-text">※スワイプ、またはWタップで手入力</span></label>
       <input type="number" id="startSpin" class="swipe-input" step="10" value="" placeholder="例: 150" oninput="updateMeasurementDisplay()">
     </div>
     
     <div class="form-group" style="margin-top: 15px; background: #fdfdfd; padding: 10px; border-radius: 6px; border: 1px solid #e1e1e1;">
-      <label>現在のデータ機回転数を入力 <span class="hint-text">※枠内スワイプ対応</span></label>
+      <label>現在のデータ機回転数を入力 <span class="hint-text">※スワイプ、またはWタップで手入力</span></label>
       <input type="number" id="measuredSpin" class="swipe-input" step="1" value="" placeholder="例: 160">
       
       <div style="margin-top: 12px; display: flex; flex-direction: column; gap: 10px;">
@@ -278,9 +285,9 @@
     <!-- 当たり出玉入力エリア -->
     <div id="payoutInputArea" style="display: none; margin-top: 15px; padding: 15px; background: #fff3cd; border: 1px solid #ffeeba; border-radius: 6px;">
       <div style="font-weight: bold; color: #d35400; margin-bottom: 8px; font-size:15px;" id="payoutTitle">大当たり獲得出玉を入力</div>
-      <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">※枠内スワイプ対応</label>
+      <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">※スワイプ、またはWタップで手入力</label>
       <input type="number" id="payoutAmount" class="swipe-input" step="10" value="" placeholder="例: 1500" style="border-color: #f39c12;">
-      <label style="font-size: 11px; color: #d35400; margin-top: 10px; margin-bottom: 4px;">備考 (任意)</label>
+      <label style="font-size: 11px; color: #d35400; margin-top: 10px; margin-bottom: 4px;">備考 (Wタップで手入力)</label>
       <input type="text" id="payoutMemo" placeholder="例: 10連、右打ちスルー など" style="border-color: #f39c12;">
       <button class="action-btn" style="background-color: #e67e22; margin-top: 10px;" onclick="addPayout()">出玉を記録して次へ</button>
     </div>
@@ -299,20 +306,20 @@
   <!-- ================= ツール2：期待値 ================= -->
   <div id="tab2" class="tab-content">
     <h2>期待値計算＆シミュレーション</h2>
-    <div class="section-title">基本条件 <span class="hint-text">※枠内スワイプ対応</span></div>
+    <div class="section-title">基本条件</div>
     <div class="form-group" style="background: #e8f4f8; padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
       <label style="color: #2980b9;">機種名 (辞書からスペックを自動入力)</label>
       <input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="loadMachineSpec()">
     </div>
-    <div class="form-group"><label>等価ボーダー (回/千円)</label><input type="number" id="border" class="swipe-input" step="0.1" value="" placeholder="例: 18.0" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>現在の平均回転数 (回/千円)</label><input type="number" id="spinRate" class="swipe-input" step="0.1" value="" placeholder="例: 20.0" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>交換率 (円/玉) ※等価4.0、28玉3.57</label><input type="number" id="exchangeRate" class="swipe-input" step="0.01" value="" placeholder="例: 3.57"></div>
-    <div class="form-group"><label>持ち球比率 (%)</label><input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>総回転数 (回)</label><input type="number" id="totalSpins" class="swipe-input" step="10" value="" placeholder="例: 2000"></div>
+    <div class="form-group"><label>等価ボーダー (回/千円) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="border" class="swipe-input" step="0.1" value="" placeholder="例: 18.0" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>現在の平均回転数 (回/千円) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="spinRate" class="swipe-input" step="0.1" value="" placeholder="例: 20.0" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>交換率 (円/玉) ※等価4.0、28玉3.57 <span class="hint-text">※Wタップ</span></label><input type="number" id="exchangeRate" class="swipe-input" step="0.01" value="" placeholder="例: 3.57"></div>
+    <div class="form-group"><label>持ち球比率 (%) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>総回転数 (回) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="totalSpins" class="swipe-input" step="10" value="" placeholder="例: 2000"></div>
 
-    <div class="section-title">機種スペック（ブレの計算用） <span class="hint-text">※枠内スワイプ対応</span></div>
-    <div class="form-group"><label>大当たり確率 (1/〇〇)</label><input type="number" id="probDenom" class="swipe-input" step="0.1" value="" placeholder="例: 319.6" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>初当たり平均獲得出玉 (玉)</label><input type="number" id="avgPayout" class="swipe-input" step="10" value="" placeholder="例: 4500" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="section-title">機種スペック（ブレの計算用）</div>
+    <div class="form-group"><label>大当たり確率 (1/〇〇) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="probDenom" class="swipe-input" step="0.1" value="" placeholder="例: 319.6" oninput="this.classList.remove('auto-filled')"></div>
+    <div class="form-group"><label>初当たり平均獲得出玉 (玉) <span class="hint-text">※スワイプ、またはWタップ</span></label><input type="number" id="avgPayout" class="swipe-input" step="10" value="" placeholder="例: 4500" oninput="this.classList.remove('auto-filled')"></div>
     
     <button class="action-btn" onclick="calculateAndSimulate()">期待値を計算＆シミュレート</button>
     <p style="font-size:11px; text-align:center; color:#7f8c8d; margin-top:5px;">※管理者のみ、計算時に入力したスペックが自動的に「辞書」に登録・上書きされます。</p>
@@ -441,7 +448,7 @@
   </div>
 </div>
 
-<!-- ================= モーダル（擬似画面遷移）エリア ================= -->
+<!-- ================= モーダル（上から表示）エリア ================= -->
 <!-- 入力結果（青枠）モーダル -->
 <div id="resultModal" class="modal-overlay">
   <div class="modal-content">
@@ -490,7 +497,7 @@ function closeSavedModal() {
   document.getElementById('savedModal').style.display = 'none';
 }
 
-// ★モーダルの外側（黒い背景）をタップした時にも閉じる処理を強化（スマホのタッチ対応）
+// ★モーダルの外側（黒い背景）をタップした時にも閉じる処理
 const resultModal = document.getElementById('resultModal');
 const savedModal = document.getElementById('savedModal');
 
@@ -501,6 +508,57 @@ savedModal.addEventListener('click', function(e) {
   if (e.target === savedModal) closeSavedModal();
 });
 
+
+// ==========================================
+// ★ダブルタップ手入力機能（キーボード誤表示防止）
+// ==========================================
+function applyDoubleTapToInputs() {
+  // すべてのテキスト・数値入力欄を取得（※カレンダー用等のdateは除外）
+  const inputs = document.querySelectorAll('input[type="number"], input[type="text"]');
+  
+  inputs.forEach(input => {
+    if (input.hasAttribute('data-dbltap-init')) return;
+    input.setAttribute('data-dbltap-init', 'true');
+    
+    // 初期状態を読み取り専用にしてキーボードをブロック
+    if(!input.disabled) {
+      input.setAttribute('readonly', 'readonly');
+    }
+    
+    let lastTap = 0;
+    
+    // タッチデバイス用（スマホ・タブレット）
+    input.addEventListener('touchend', function(e) {
+      let currentTime = new Date().getTime();
+      let tapLength = currentTime - lastTap;
+      
+      // 400ミリ秒以内の連続タップならダブルタップと判定
+      if (tapLength < 400 && tapLength > 0) {
+        if(!input.disabled) {
+          input.removeAttribute('readonly'); // ロック解除
+          input.focus(); // キーボード表示
+          e.preventDefault(); // デフォルトのズーム機能を防止
+        }
+      }
+      lastTap = currentTime;
+    });
+    
+    // マウスデバイス用（PC）
+    input.addEventListener('dblclick', function(e) {
+      if(!input.disabled) {
+        input.removeAttribute('readonly');
+        input.focus();
+      }
+    });
+    
+    // 入力欄からフォーカスが外れたら再びロック
+    input.addEventListener('blur', function() {
+      if(!input.disabled) {
+        input.setAttribute('readonly', 'readonly');
+      }
+    });
+  });
+}
 
 // ==========================================
 // スワイプ機能設定（★画面ロック・バウンド防止強化）
@@ -532,7 +590,7 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
   const onMove = (e) => {
     if (!isDragging) return;
     
-    // ★スワイプ中は画面のネイティブスクロールを完全にブロックする
+    // ★スワイプ中は画面のネイティブスクロールを完全にブロック
     if (e.cancelable) {
       e.preventDefault(); 
     }
@@ -552,8 +610,7 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
   };
   
   window.addEventListener('mousemove', onMove);
-  // ★passive: false にすることで preventDefault が効くように設定
-  window.addEventListener('touchmove', onMove, {passive: false});
+  window.addEventListener('touchmove', onMove, {passive: false}); // passive: false で preventDefault を有効化
   
   const onEnd = () => { isDragging = false; };
   window.addEventListener('mouseup', onEnd);
@@ -564,12 +621,12 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -617,7 +674,7 @@ function formatCurrency(num) {
 }
 
 // ==========================================
-// タブ・モード表示管理
+// タブ・モード表示管理（ヘッダーナビ連動）
 // ==========================================
 function updateModeIndicator() {
   const n1 = document.getElementById('nav-tab1');
@@ -644,7 +701,7 @@ function updateModeIndicator() {
 
 function switchTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.bottom-nav button').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.top-nav button').forEach(el => el.classList.remove('active'));
   
   document.getElementById(tabId).classList.add('active');
   document.getElementById('nav-' + tabId).classList.add('active');
@@ -772,6 +829,9 @@ window.onload = function() {
   setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6);
   setupSwipeInput('avgPayout', 10, 100, 10500, 4500);
 
+  // ★画面読み込み時に、全ての入力欄にダブルタップ機能を適用
+  applyDoubleTapToInputs();
+
   updateModeIndicator();
 
   if (auth) {
@@ -868,6 +928,9 @@ async function renderDictionary() {
   }
   if(html === '') html = '<p style="font-size:13px; color:#777;">登録されている機種スペックはありません。</p>';
   container.innerHTML = html;
+  
+  // ★動的に生成された辞書の入力欄にもダブルタップ機能を適用
+  applyDoubleTapToInputs();
 }
 
 async function updateDictItem(machine) {
@@ -959,7 +1022,10 @@ function addMeasurement(balls) {
   let hitType = hitNormal ? '通常' : (hitRush ? 'ラッシュ' : null);
 
   historyData.push({ type: 'spin', balls: balls, spins: spins, isMochidama: isMochi, hitType: hitType });
-  spinInput.value = ''; spinInput.focus();
+  
+  // Wタップのreadonly仕様により、focus()でのキーボード呼び出しを防ぐため外す
+  spinInput.value = ''; 
+  // spinInput.focus(); 
   
   if (hitType) {
     document.getElementById('payoutTitle').innerText = `${hitType}当たり 獲得出玉を入力`;
