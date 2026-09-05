@@ -46,25 +46,52 @@ const resultModal = document.getElementById('resultModal'); const savedModal = d
 if(resultModal) resultModal.addEventListener('click', function(e) { if (e.target === resultModal) closeResultModal(); });
 if(savedModal) savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
 
-// Wタップ手入力機能
-function applyDoubleTapToInputs() {
-  const inputs = document.querySelectorAll('input[type="number"], input[type="text"]');
+// ==========================================
+// ★Wタップ機能（透明バリア方式）
+// ==========================================
+
+// 通常の入力欄（テキスト・日付・スワイプ未適用）へのWタップバリア
+function applyDoubleTapBarrier() {
+  const inputs = document.querySelectorAll('input[type="number"], input[type="text"], input[type="date"]');
   inputs.forEach(input => {
-    if (input.hasAttribute('data-dbltap-init')) return;
-    input.setAttribute('data-dbltap-init', 'true');
-    if(!input.disabled) input.setAttribute('readonly', 'readonly');
+    // スワイプ用バリア適用済み、または既にWタップ適用済みの場合はスキップ
+    if (input.hasAttribute('data-swipe-init') || input.hasAttribute('data-dbltap-barrier')) return;
+    input.setAttribute('data-dbltap-barrier', 'true');
+    
+    // 入力欄を覆う透明バリアの作成
+    const wrapper = document.createElement('div');
+    wrapper.style.position = 'relative'; wrapper.style.display = 'block';
+    input.parentNode.insertBefore(wrapper, input); wrapper.appendChild(input);
+    
+    const overlay = document.createElement('div');
+    overlay.style.position = 'absolute'; overlay.style.top = '0'; overlay.style.left = '0';
+    overlay.style.width = '100%'; overlay.style.height = '100%'; overlay.style.zIndex = '10';
+    wrapper.appendChild(overlay);
+    
     let lastTap = 0;
-    input.addEventListener('touchend', function(e) {
-      let currentTime = new Date().getTime(); let tapLength = currentTime - lastTap;
-      if (tapLength < 400 && tapLength > 0) { if(!input.disabled) { input.removeAttribute('readonly'); input.focus(); e.preventDefault(); } }
+    // スマホでのWタップ判定
+    overlay.addEventListener('touchend', function(e) {
+      let currentTime = new Date().getTime();
+      let tapLength = currentTime - lastTap;
+      if (tapLength < 400 && tapLength > 0) {
+        overlay.style.display = 'none'; // バリアを消す
+        input.focus(); // キーボード展開
+        e.preventDefault();
+      }
       lastTap = currentTime;
     });
-    input.addEventListener('dblclick', function(e) { if(!input.disabled) { input.removeAttribute('readonly'); input.focus(); } });
-    input.addEventListener('blur', function() { if(!input.disabled) input.setAttribute('readonly', 'readonly'); });
+    // PC等でのWクリック判定
+    overlay.addEventListener('dblclick', function() {
+      overlay.style.display = 'none'; input.focus();
+    });
+    // キーボードを閉じたらバリア復活
+    input.addEventListener('blur', function() {
+      overlay.style.display = 'block';
+    });
   });
 }
 
-// スワイプ機能（透明バリア）
+// スワイプ機能 ＆ Wタップバリア
 function setupSwipeInput(id, step, min, max, defaultVal) {
   const input = document.getElementById(id); if (!input || input.hasAttribute('data-swipe-init')) return;
   input.setAttribute('data-swipe-init', 'true');
@@ -106,9 +133,24 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
   const onEnd = () => { isDragging = false; };
   window.addEventListener('mouseup', onEnd); window.addEventListener('touchend', onEnd);
 
-  overlay.addEventListener('click', (e) => { if (!hasMoved) { overlay.style.display = 'none'; input.focus(); } });
+  let lastTap = 0;
+  overlay.addEventListener('touchend', (e) => {
+    if (hasMoved) return; // スワイプ操作をした場合はキーボードを出さない
+    let currentTime = new Date().getTime();
+    let tapLength = currentTime - lastTap;
+    if (tapLength < 400 && tapLength > 0) {
+      overlay.style.display = 'none'; input.focus(); e.preventDefault();
+    }
+    lastTap = currentTime;
+  });
+  overlay.addEventListener('dblclick', () => {
+    if (hasMoved) return;
+    overlay.style.display = 'none'; input.focus();
+  });
+  
   input.addEventListener('blur', () => { overlay.style.display = 'block'; });
 }
+
 
 function getNickname() {
   let name = localStorage.getItem('pachinko_nickname');
@@ -219,7 +261,7 @@ window.onload = function() {
   const todayStr = `${yyyy}-${mm}-${dd}`;
   
   document.getElementById('recordDate').value = todayStr; document.getElementById('evSaveDate').value = todayStr; document.getElementById('actualDate').value = todayStr;
-  document.getElementById('analyzeDate').value = todayStr; // ★特定日検索の初期値
+  document.getElementById('analyzeDate').value = todayStr;
   
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
@@ -233,7 +275,9 @@ window.onload = function() {
   setupSwipeInput('realPayoutPerR', 0.1, 10.0, 150.0, 140.0); setupSwipeInput('exchangeRate', 0.01, 2.50, 4.00, 3.57);
   setupSwipeInput('ballRatio', 1, 0, 100, 60); setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
 
-  applyDoubleTapToInputs(); updateModeIndicator();
+  // ★ 全ての入力欄へのWタップバリア適用を呼び出し
+  applyDoubleTapBarrier();
+  updateModeIndicator();
 
   if (auth) {
     auth.onAuthStateChanged(user => {
@@ -267,7 +311,7 @@ async function saveCalendarData(calendar) { if (currentGroupId && db) await db.c
 async function saveDictionaryData(dict) { if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ dictionary: dict }, { merge: true }); }
 async function saveHallsData(halls) { if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ halls: halls }, { merge: true }); }
 
-// ★ ボーダー自動計算ロジック
+// ボーダー自動計算ロジック
 window.calcBorder = function() {
   const P = parseFloat(document.getElementById('probDenom').value), avgR = parseFloat(document.getElementById('avgRounds').value), ppr = parseFloat(document.getElementById('payoutPerR').value);
   const borderInput = document.getElementById('border');
@@ -291,7 +335,8 @@ async function renderDictionary() {
       </div>${adminButtons}</div>`;
   }
   if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されている機種スペックはありません。</p>';
-  container.innerHTML = html; applyDoubleTapToInputs();
+  container.innerHTML = html; 
+  applyDoubleTapBarrier(); // 動的生成された項目にもWタップ適用
 }
 
 window.updateDictItem = async function(machine) {
