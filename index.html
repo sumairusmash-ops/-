@@ -57,6 +57,11 @@
   .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: flex-start; }
   .modal-content { background: var(--card-bg); width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; border-radius: 0 0 12px 12px; padding: 20px; animation: slideDown 0.3s forwards; padding-top: calc(20px + env(safe-area-inset-top)); }
   @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+  
+  /* お遊び機能用のアニメーション */
+  @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+  @keyframes flashRed { 0% { color: #e74c3c; text-shadow: 0 0 10px #e74c3c; } 50% { color: #f1c40f; text-shadow: 0 0 20px #f1c40f; } 100% { color: #e74c3c; text-shadow: 0 0 10px #e74c3c; } }
+
   .modal-close-btn { display: block; width: 100%; padding: 12px; margin-top: 15px; background: #ecf0f1; color: #2c3e50; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; }
   .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; margin-top: 20px; }
   .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border-color); border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; }
@@ -152,7 +157,6 @@
     </div>
     <div style="text-align: right; margin-top: 8px;"><button class="btn-small" style="background-color:#e74c3c; margin:0;" onclick="undoLastInput()">↩️ 入力取り消し</button></div>
     
-    <!-- 当たり出玉・ラウンド数の自動計算エリア -->
     <div id="payoutInputArea" style="display: none; margin-top: 15px; padding: 15px; background: var(--box-yellow-bg); border: 1px solid #ffeeba; border-radius: 6px;">
       <div style="font-weight: bold; color: #d35400; margin-bottom: 12px; font-size:15px;" id="payoutTitle">大当たり結果を入力</div>
       <div style="background:var(--card-bg); padding:10px; border-radius:4px; border:1px solid var(--border-color); margin-bottom:10px;">
@@ -273,6 +277,32 @@
     <div class="result summary-box" style="margin-top: 0;"><p><span>月間期待値:</span> <span id="monthlyEV" style="font-weight: bold; color: #27ae60;"></span></p><p><span>月間実収支:</span> <span id="monthlyActual" style="font-weight: bold; color: #2980b9;"></span></p><p><span>月間獲得差玉:</span> <span id="monthlyBalls" style="font-weight: bold; color: #e67e22;"></span></p><hr><p><span>収支のブレ:</span> <span id="monthlyDiff" style="font-weight: bold;"></span></p></div>
     <div class="section-title purple">選択した日付のデータ詳細 (<span id="selectedDateDisp">未選択</span>)</div>
     <div id="calendarList"></div><input type="hidden" id="actualDate">
+
+    <!-- ★ お遊び・運試しコーナー ★ -->
+    <h2 style="margin-top: 40px; color:#e67e22; border-bottom: 2px solid #e67e22;">🎰 お遊び・運試しコーナー</h2>
+    <div style="background: var(--card-bg); border: 2px solid #f1c40f; border-radius: 8px; padding: 15px; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(241,196,15,0.2);">
+      
+      <!-- おみくじ -->
+      <div style="font-weight:bold; color:#f39c12; margin-bottom:10px; font-size:15px; display:flex; align-items:center; gap:6px;">🔮 今日のパチンコ運勢占い</div>
+      <button class="action-btn" style="background-color:#f1c40f; color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,0.3); margin-top:0;" onclick="drawFortune()">おみくじを引く</button>
+      <div id="fortuneResult" style="margin-top:10px; font-size:14px; font-weight:bold; color:var(--text-main); text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; background:var(--bg-main); border-radius:4px;">ここに結果が出ます</div>
+
+      <hr style="margin: 20px 0; border-top:1px dashed var(--border-color);">
+
+      <!-- 1/99仮想ボタン -->
+      <div style="font-weight:bold; color:#3498db; margin-bottom:5px; font-size:15px; display:flex; align-items:center; gap:6px;">🔘 1/99 仮想プッシュボタン</div>
+      <p style="font-size:11px; color:var(--text-sub); margin-top:0; margin-bottom:12px;">「当たる気がしない…」そんな時のヒキ試し！</p>
+      
+      <div style="display:flex; gap:10px;">
+        <button class="action-btn" style="background-color:#3498db; flex:1; margin-top:0;" onclick="spinVirtual()">1回転プッシュ</button>
+        <button class="action-btn" style="background-color:#e74c3c; flex:1; margin-top:0;" onclick="spinUntilHit()">当たるまで全ツ</button>
+      </div>
+      
+      <div style="margin-top:15px; text-align:center; background:var(--box-blue-bg); padding:15px; border-radius:4px; border:1px solid #3498db;">
+        <div style="font-size:13px; color:var(--text-sub);">現在のハマり: <span id="virtualSpinCount" style="font-size:20px; font-weight:bold; color:#e74c3c;">0</span> 回</div>
+        <div id="virtualSpinResult" style="font-size:15px; font-weight:bold; color:#2980b9; margin-top:8px;">ボタンプッシュで抽選！</div>
+      </div>
+    </div>
   </div>
 
   <!-- ツール4：設定・データ -->
@@ -343,7 +373,6 @@
     <div class="result" id="measurementResult" style="display: block; margin-top:10px; padding: 10px;">
       <p><span>250玉平均:</span> <span id="avg250" class="highlight">0.00 回</span></p><p><span>持ち球比率:</span> <span id="dispMochiRatio" style="font-weight:bold; color:#e67e22;">0.0 %</span></p>
       
-      <!-- ★ 大当たり回数とデータ機回転数の表示エリア -->
       <div style="background:var(--bg-main); padding:10px; border-radius:6px; margin:10px 0; border:1px solid var(--border-color);">
         <p style="margin-top:0;"><span>🎯 大当たり回数:</span> <span id="currentHitCount" style="font-weight:bold; color:#d35400; font-size:16px;">0 回</span></p>
         <p style="margin-bottom:0;"><span>🎰 現在のデータ機回転数:</span> <span id="currentMachineSpinDisp" style="font-weight:bold; color:#2980b9; font-size:16px;">0 回</span></p>
