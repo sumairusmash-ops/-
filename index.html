@@ -465,11 +465,17 @@ function closeSavedModal() {
   document.getElementById('savedModal').style.display = 'none';
 }
 
-// モーダルの外側（黒い背景）をタップした時にも閉じる処理
-window.onclick = function(event) {
-  if (event.target == document.getElementById('resultModal')) closeResultModal();
-  if (event.target == document.getElementById('savedModal')) closeSavedModal();
-}
+// ★モーダルの外側（黒い背景）をタップした時にも閉じる処理を強化（スマホのタッチ対応）
+const resultModal = document.getElementById('resultModal');
+const savedModal = document.getElementById('savedModal');
+
+resultModal.addEventListener('click', function(e) {
+  if (e.target === resultModal) closeResultModal();
+});
+savedModal.addEventListener('click', function(e) {
+  if (e.target === savedModal) closeSavedModal();
+});
+
 
 // ==========================================
 // スワイプ機能設定
@@ -522,12 +528,12 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
 // Firebase設定
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -575,7 +581,7 @@ function formatCurrency(num) {
 }
 
 // ==========================================
-// タブ・モード表示管理（フッターナビ連動）
+// タブ・モード表示管理
 // ==========================================
 function updateModeIndicator() {
   const n1 = document.getElementById('nav-tab1');
@@ -633,7 +639,7 @@ async function createGroup() {
     updateModeIndicator();
     alert(`グループを作成しました！\nID: ${newId}`);
     renderSavedRecords(); renderCalendar(); renderHistoryTab(); renderDictionary();
-    switchTab('tab1'); // 作成後は計測タブへ
+    switchTab('tab1');
   } catch (error) { alert("グループの作成に失敗しました。"); }
 }
 
@@ -651,7 +657,7 @@ async function joinGroup() {
       updateModeIndicator();
       alert(`グループに参加しました！（権限: ${isAdmin ? '管理者' : 'メンバー'}）`);
       renderSavedRecords(); renderCalendar(); renderHistoryTab(); renderDictionary();
-      switchTab('tab1'); // 参加後は計測タブへ
+      switchTab('tab1');
     } else { alert("指定されたIDのグループが見つかりません。"); }
   } catch (error) { alert("グループの参加に失敗しました。"); }
 }
@@ -877,7 +883,9 @@ function createRecordItemHtml(r) {
   const safeHist = encodeURIComponent(JSON.stringify(r.history || []));
   const btnCall = `useRecordForCalc('${r.date}', ${r.avg250}, '${r.machine}', ${r.mochidamaRatio || 0}, '${r.store || ''}', ${r.totalCashBalls || 0}, ${r.totalMochiBalls || 0}, ${r.totalPayout || 0}, '${safeStr}', '${safeHist}')`;
 
-  let adminButtons = isAdmin ? `<button class="btn-small" style="background:#f39c12;" onclick="resumeRecord(${r.id})">続きを計測</button><button class="btn-small" style="background:#95a5a6;" onclick="deleteRecord(${r.id})">削除</button>` : '';
+  // ★「続きを計測」ボタンは全メンバーに表示
+  let resumeButton = `<button class="btn-small" style="background:#f39c12;" onclick="resumeRecord(${r.id})">続きを計測</button>`;
+  let adminButtons = isAdmin ? `<button class="btn-small" style="background:#95a5a6;" onclick="deleteRecord(${r.id})">削除</button>` : '';
 
   return `<div class="saved-item">
     <div style="font-weight:bold; color:#2c3e50; font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}${authorDisp}</div>
@@ -887,6 +895,7 @@ function createRecordItemHtml(r) {
     </div>
     ${historyHtml}
     <div style="margin-top: 10px; display: flex; gap: 4px; flex-wrap: wrap;">
+      ${resumeButton}
       <button class="btn-small" style="background:#3498db;" onclick="${btnCall}">期待値を計算</button>
       ${adminButtons}
     </div>
@@ -989,10 +998,10 @@ function updateMeasurementDisplay() {
   document.getElementById('totalMeasuredBalls').innerText = totalBalls + " 玉";
   document.getElementById('historyList').innerHTML = historyHtml;
   
-  // ボタントキストをリアルタイム更新
   btnModal.innerText = `📊 データ確認 (投資:${totalBalls}玉 / 平均:${avg250.toFixed(1)}回)`;
 
-  if (editingRecordId && isAdmin) {
+  // ★メンバー（管理者以外）でも編集時は上書き保存ボタンになるように修正
+  if (editingRecordId) {
     document.getElementById('btnSaveRecord').innerText = "この記録を上書き保存";
     document.getElementById('btnSaveRecord').style.backgroundColor = "#d35400";
   } else {
@@ -1047,14 +1056,15 @@ async function saveCurrentRecord() {
   
   const records = await getRecordsData();
   const newRecord = { 
-    id: (isAdmin && editingRecordId) ? editingRecordId : Date.now(), 
+    id: editingRecordId ? editingRecordId : Date.now(), 
     date: date, store: store, machine: machine, author: getNickname(), 
     totalBalls: totalBalls, totalSpins: totalSpins, startSpins: startSpin,
     totalCashBalls: cashBalls, totalMochiBalls: mochidamaBalls, totalPayout: totalPayout,
     avg250: avg250, mochidamaRatio: mochiRatio, history: [...historyData], hitHistory: hitHistory
   };
   
-  if (isAdmin && editingRecordId) {
+  // ★メンバー（管理者以外）でも編集時は上書き保存ができるように修正
+  if (editingRecordId) {
     const idx = records.findIndex(rec => rec.id === editingRecordId);
     if(idx !== -1) records[idx] = newRecord; else records.push(newRecord);
     editingRecordId = null; 
@@ -1074,10 +1084,11 @@ async function saveCurrentRecord() {
 }
 
 async function resumeRecord(id) {
-  if (!isAdmin) return alert("権限がありません。");
+  // ★確認メッセージの追加（全権限共通）
+  if(!confirm("このデータの続きを計測しますか？\n※現在入力中のデータがある場合、破棄されて上書きされます。")) return;
+
   const records = await getRecordsData(); const r = records.find(rec => rec.id === id);
   if(!r) return;
-  if (historyData.length > 0) { if(!confirm("現在入力中のデータは破棄され、上書きされます。よろしいですか？")) return; }
   
   document.getElementById('recordDate').value = r.date || '';
   document.getElementById('storeName').value = r.store || '';
@@ -1155,8 +1166,11 @@ function drawSlumpGraph() {
 
   let chartData = [{ x: 0, y: 0 }]; let currentInvest = 0, currentPayout = 0;
   targetHistory.forEach(item => {
-    if (item.type === 'spin' || !item.type) currentInvest += item.balls;
-    else if (item.type === 'payout') currentPayout += item.amount;
+    if (item.type === 'spin' || !item.type) {
+      currentInvest += item.balls;
+    } else if (item.type === 'payout') {
+      currentPayout += item.amount;
+    }
     chartData.push({ x: currentInvest, y: currentPayout - currentInvest });
   });
 
