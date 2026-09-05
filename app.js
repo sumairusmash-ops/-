@@ -42,19 +42,11 @@ function closeResultModal() { document.getElementById('resultModal').style.displ
 function openSavedModal() { renderSavedRecords(); document.getElementById('savedModal').style.display = 'flex'; }
 function closeSavedModal() { document.getElementById('savedModal').style.display = 'none'; }
 
-// ★ 新しい逆算モーダル用の関数
 function openAvgRCalcModal() { 
-  vibrate();
-  document.getElementById('avgRCalcModal').style.display = 'flex'; 
-  
-  // ツール②に入力済みの数値があれば自動で引っ張ってくる
-  const p = document.getElementById('probDenom').value;
-  const pr = document.getElementById('payoutPerR').value;
+  vibrate(); document.getElementById('avgRCalcModal').style.display = 'flex'; 
+  const p = document.getElementById('probDenom').value, pr = document.getElementById('payoutPerR').value;
   if(p) document.getElementById('calc_b_prob').value = p;
-  if(pr) {
-    document.getElementById('calc_b_payout').value = pr;
-    document.getElementById('calc_p_payout').value = pr;
-  }
+  if(pr) { document.getElementById('calc_b_payout').value = pr; document.getElementById('calc_p_payout').value = pr; }
   window.doAvgRCalc1(); window.doAvgRCalc2();
 }
 function closeAvgRCalcModal() { document.getElementById('avgRCalcModal').style.display = 'none'; }
@@ -64,9 +56,8 @@ if(resultModal) resultModal.addEventListener('click', function(e) { if (e.target
 if(savedModal) savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
 if(avgRCalcModal) avgRCalcModal.addEventListener('click', function(e) { if (e.target === avgRCalcModal) closeAvgRCalcModal(); });
 
-
 // ==========================================
-// ★ 新しいスワイプ機能（タップで通常通りキーボード展開）
+// ★ 新しいスワイプ機能（直接入力欄上で動作・タップでキーボード展開）
 // ==========================================
 function setupSwipeInput(id, step, min, max, defaultVal) {
   const input = document.getElementById(id); 
@@ -95,10 +86,10 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
     let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     let deltaX = clientX - startX; 
     
-    // スワイプ（横に5px以上動いた）と判定されたら
+    // スワイプ判定
     if (Math.abs(deltaX) > 5) {
-      if (e.cancelable) e.preventDefault(); // 縦スクロールを防止
-      if (document.activeElement === input) input.blur(); // キーボードが出ている場合は隠す
+      if (e.cancelable) e.preventDefault(); 
+      if (document.activeElement === input) input.blur(); 
     }
     
     let steps = Math.trunc(deltaX / 8); 
@@ -111,8 +102,7 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
   };
   
   window.addEventListener('mousemove', onMove); 
-  window.addEventListener('touchmove', onMove, {passive: false}); // passive: false で preventDefault 有効化
-  
+  window.addEventListener('touchmove', onMove, {passive: false}); 
   const onEnd = () => { isDragging = false; };
   window.addEventListener('mouseup', onEnd); window.addEventListener('touchend', onEnd);
 }
@@ -219,6 +209,30 @@ function leaveGroup() {
   }
 }
 
+async function mergePersonalDataToGroup() {
+  if (!currentGroupId || !currentUser || !db) return alert("ログインし、グループに参加した状態で実行してください。");
+  if (!confirm("あなたの個人の過去データ（履歴・カレンダー・辞書）をすべてグループに合算し共有します。\n※この操作は取り消せません。よろしいですか？")) return;
+  try {
+    const personalRef = db.collection('users').doc(currentUser.uid); const groupRef = db.collection('groups').doc(currentGroupId);
+    const [pDoc, gDoc] = await Promise.all([personalRef.get(), groupRef.get()]);
+    const pData = pDoc.exists ? pDoc.data() : {}; const gData = gDoc.exists ? gDoc.data() : {};
+
+    const mergedRecords = [...(gData.records || []), ...(pData.records || [])];
+    const uniqueRecordsMap = new Map(); mergedRecords.forEach(r => uniqueRecordsMap.set(r.id, r));
+    
+    const pCal = pData.calendar || {}, finalCal = { ...(gData.calendar || {}) };
+    for (let date in pCal) {
+      if (finalCal[date]) {
+        finalCal[date].ev = (finalCal[date].ev || 0) + (pCal[date].ev || 0); finalCal[date].actual = (finalCal[date].actual || 0) + (pCal[date].actual || 0);
+        finalCal[date].actualBalls = (finalCal[date].actualBalls || 0) + (pCal[date].actualBalls || 0); finalCal[date].details = [...(finalCal[date].details || []), ...(pCal[date].details || [])];
+      } else { finalCal[date] = pCal[date]; }
+    }
+    const finalDict = { ...(gData.dictionary || {}), ...(pData.dictionary || {}) };
+    await groupRef.set({ records: Array.from(uniqueRecordsMap.values()), calendar: finalCal, dictionary: finalDict }, { merge: true });
+    alert("個人のデータをすべてグループに共有・統合しました！");
+  } catch(e) { alert("データの統合に失敗しました。"); }
+}
+
 window.onload = function() {
   if (localStorage.getItem('pachinko_theme') === 'dark') document.getElementById('darkModeToggle').checked = true;
   const today = new Date(); currentCalYear = today.getFullYear(); currentCalMonth = today.getMonth();
@@ -235,8 +249,12 @@ window.onload = function() {
     let soFar = 0; historyData.forEach(d => { if (d.type === 'spin' || !d.type) soFar += d.spins; }); return start + soFar + 15;
   });
   
-  setupSwipeInput('payoutAmount', 10, 0, 100000, 4200); 
+  // 大当たり結果入力
+  setupSwipeInput('payoutStartBalls', 10, 0, 100000, 0); 
+  setupSwipeInput('payoutEndBalls', 10, 0, 100000, 4200); 
   setupSwipeInput('payoutRounds', 1, 0, 1000, 30); 
+  
+  // ツール②
   setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); 
   setupSwipeInput('avgRounds', 0.1, 1.0, 100.0, 32.2); 
   setupSwipeInput('payoutPerR', 1, 10, 150, 140); 
@@ -287,14 +305,12 @@ async function saveCalendarData(calendar) { if (currentGroupId && db) await db.c
 async function saveDictionaryData(dict) { if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ dictionary: dict }, { merge: true }); }
 async function saveHallsData(halls) { if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ halls: halls }, { merge: true }); }
 
-// ボーダー自動計算ロジック
 window.calcBorder = function() {
   const P = parseFloat(document.getElementById('probDenom').value), avgR = parseFloat(document.getElementById('avgRounds').value), ppr = parseFloat(document.getElementById('payoutPerR').value);
   const borderInput = document.getElementById('border');
   if(P && avgR && ppr) { const border = P / ((avgR * ppr) / 250); borderInput.value = border.toFixed(2); } else { borderInput.value = ""; }
 };
 
-// ★ 平均Rの逆算ロジック
 window.doAvgRCalc1 = function() {
   const b = parseFloat(document.getElementById('calc_b_border').value), p = parseFloat(document.getElementById('calc_b_prob').value), pr = parseFloat(document.getElementById('calc_b_payout').value);
   const resEl = document.getElementById('res_b_avgR');
@@ -310,18 +326,14 @@ window.applyAvgR = function(spanId) {
   vibrate();
   const val = document.getElementById(spanId).innerText;
   if (val === "0.00" || isNaN(val)) return alert("正しく計算されていません。");
-  
-  document.getElementById('avgRounds').value = val;
-  document.getElementById('avgRounds').classList.remove('auto-filled');
+  document.getElementById('avgRounds').value = val; document.getElementById('avgRounds').classList.remove('auto-filled');
   
   if(spanId === 'res_b_avgR') {
     const p = document.getElementById('calc_b_prob').value, pr = document.getElementById('calc_b_payout').value;
     if(p) document.getElementById('probDenom').value = p; if(pr) document.getElementById('payoutPerR').value = pr;
   } else if(spanId === 'res_p_avgR') {
-    const pr = document.getElementById('calc_p_payout').value;
-    if(pr) document.getElementById('payoutPerR').value = pr;
+    const pr = document.getElementById('calc_p_payout').value; if(pr) document.getElementById('payoutPerR').value = pr;
   }
-  
   window.calcBorder(); window.updateMeasurementDisplay(); closeAvgRCalcModal();
 };
 
@@ -344,11 +356,8 @@ async function renderDictionary() {
   if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されている機種スペックはありません。</p>';
   container.innerHTML = html; 
   
-  // ★ 辞書の各入力欄にもスワイプを適用
   for(let m in dict) {
-    setupSwipeInput(`dict_prob_${m}`, 0.1, 1.0, 999.0, 319.6);
-    setupSwipeInput(`dict_avgRounds_${m}`, 0.1, 1.0, 100.0, 32.2);
-    setupSwipeInput(`dict_payoutPerR_${m}`, 1, 10, 150, 140);
+    setupSwipeInput(`dict_prob_${m}`, 0.1, 1.0, 999.0, 319.6); setupSwipeInput(`dict_avgRounds_${m}`, 0.1, 1.0, 100.0, 32.2); setupSwipeInput(`dict_payoutPerR_${m}`, 1, 10, 150, 140);
   }
 }
 
@@ -364,7 +373,6 @@ window.deleteDictItem = async function(machine) {
   if(confirm(`[${machine}] を辞書から削除しますか？`)) { const dict = await getDictionaryData(); delete dict[machine]; await saveDictionaryData(dict); }
 };
 
-// ホール管理ロジック
 window.saveHall = async function() {
   if (!isAdmin) return alert("権限がありません。");
   const name = document.getElementById('hallNameInput').value.trim();
@@ -373,12 +381,9 @@ window.saveHall = async function() {
   const rules = Array.from(checkboxes).map(cb => cb.value);
   if (rules.length === 0) return alert("特定日ルールを1つ以上選択してください。");
   
-  const halls = await getHallsData();
-  halls[name] = { rules: rules };
-  await saveHallsData(halls); alert(`${name} を登録しました。`);
+  const halls = await getHallsData(); halls[name] = { rules: rules }; await saveHallsData(halls); alert(`${name} を登録しました。`);
   
-  document.getElementById('hallNameInput').value = '';
-  checkboxes.forEach(cb => cb.checked = false);
+  document.getElementById('hallNameInput').value = ''; checkboxes.forEach(cb => cb.checked = false);
   renderHalls(); analyzeHalls();
 };
 
@@ -405,8 +410,7 @@ window.analyzeHalls = async function() {
   if(!dateStr) { container.innerHTML = ''; return; }
   
   const dateObj = new Date(dateStr), day = dateObj.getDate(), lastDigit = day.toString().slice(-1), isZorome = (day === 11 || day === 22);
-  const halls = await getHallsData(), records = await getRecordsData();
-  let targetHalls = [];
+  const halls = await getHallsData(), records = await getRecordsData(); let targetHalls = [];
   
   for(let name in halls) {
     const rules = halls[name].rules; let isTarget = false;
@@ -415,9 +419,7 @@ window.analyzeHalls = async function() {
     if (isTarget) targetHalls.push(name);
   }
   
-  if (targetHalls.length === 0) {
-    container.innerHTML = `<p style="font-size:13px; color:var(--text-sub); margin-top:15px;">${dateStr} が特定日のホールはありません。</p>`; return;
-  }
+  if (targetHalls.length === 0) { container.innerHTML = `<p style="font-size:13px; color:var(--text-sub); margin-top:15px;">${dateStr} が特定日のホールはありません。</p>`; return; }
   
   let html = `<div style="font-weight:bold; color:var(--text-main); margin: 15px 0 10px 0;">🔥 ${dateStr} の熱いホール</div>`;
   
@@ -425,13 +427,9 @@ window.analyzeHalls = async function() {
     const hallRecords = records.filter(r => r.store === hallName);
     let totalSpins = 0, totalBalls = 0, machineCount = {};
     
-    hallRecords.forEach(r => {
-      totalSpins += r.totalSpins || 0; totalBalls += r.totalBalls || 0;
-      if (r.machine) machineCount[r.machine] = (machineCount[r.machine] || 0) + 1;
-    });
+    hallRecords.forEach(r => { totalSpins += r.totalSpins || 0; totalBalls += r.totalBalls || 0; if (r.machine) machineCount[r.machine] = (machineCount[r.machine] || 0) + 1; });
     
-    let avg250 = totalBalls > 0 ? (totalSpins / totalBalls) * 250 : 0;
-    let mainMachine = "-", maxCount = 0;
+    let avg250 = totalBalls > 0 ? (totalSpins / totalBalls) * 250 : 0, mainMachine = "-", maxCount = 0;
     for(let m in machineCount) { if (machineCount[m] > maxCount) { maxCount = machineCount[m]; mainMachine = m; } }
     
     let dataHtml = '';
@@ -444,11 +442,18 @@ window.analyzeHalls = async function() {
     
     html += `<div class="saved-item" style="border-left: 4px solid #e67e22; margin-bottom: 10px;">
         <div style="font-weight:bold; color:var(--text-main); font-size:15px;">${hallName}</div>
-        <div style="font-size:12px; color:var(--text-sub); margin-bottom: 5px;">特定日ルール: ${halls[hallName].rules.join(', ')}</div>
-        ${dataHtml}
+        <div style="font-size:12px; color:var(--text-sub); margin-bottom: 5px;">特定日ルール: ${halls[hallName].rules.join(', ')}</div>${dataHtml}
       </div>`;
   });
   container.innerHTML = html;
+};
+
+// ★ 自動計算アップデート関数
+window.updateCalculatedPayout = function() {
+  const start = parseFloat(document.getElementById('payoutStartBalls').value) || 0;
+  const end = parseFloat(document.getElementById('payoutEndBalls').value) || 0;
+  const diff = end - start;
+  document.getElementById('dispCalculatedPayout').innerText = diff > 0 ? "+" + diff : diff;
 };
 
 function createRecordItemHtml(r) {
@@ -500,7 +505,9 @@ window.addMeasurement = function(balls) {
   
   if (hitType) {
     document.getElementById('payoutTitle').innerText = `${hitType}当たり 獲得出玉を入力`;
-    document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = '';
+    document.getElementById('payoutStartBalls').value = ''; document.getElementById('payoutEndBalls').value = ''; 
+    document.getElementById('dispCalculatedPayout').innerText = '0';
+    document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = '';
     document.getElementById('payoutInputArea').style.display = 'block';
   } else { document.getElementById('payoutInputArea').style.display = 'none'; }
   updateMeasurementDisplay();
@@ -508,16 +515,20 @@ window.addMeasurement = function(balls) {
 
 window.addPayout = function() {
   vibrate();
-  const amountInput = document.getElementById('payoutAmount'), amount = parseFloat(amountInput.value);
+  const startBalls = parseFloat(document.getElementById('payoutStartBalls').value);
+  const endBalls = parseFloat(document.getElementById('payoutEndBalls').value);
   const roundsInput = document.getElementById('payoutRounds'), rounds = parseFloat(roundsInput.value);
-  if (isNaN(amount) || amount < 0) return alert("正しい出玉を入力してください。");
+  
+  if (isNaN(startBalls) || isNaN(endBalls)) return alert("当たり時と終了時の持ち球を両方入力してください。");
+  const amount = endBalls - startBalls;
   if (isNaN(rounds) || rounds <= 0) return alert("消化ラウンド数を入力してください。（例：10連チャンで合計150Rなど）");
 
   const hitType = document.getElementById('hitNormal').checked ? '通常' : (document.getElementById('hitRush').checked ? 'ラッシュ' : '不明');
   historyData.push({ type: 'payout', amount: amount, rounds: rounds, hitType: hitType, memo: document.getElementById('payoutMemo').value.trim() });
   
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
-  amountInput.value = ''; roundsInput.value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+  document.getElementById('payoutStartBalls').value = ''; document.getElementById('payoutEndBalls').value = ''; document.getElementById('dispCalculatedPayout').innerText = '0';
+  roundsInput.value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
   if (!measurementStartTime) measurementStartTime = Date.now(); 
   updateMeasurementDisplay();
 };
@@ -531,21 +542,17 @@ window.undoLastInput = function() {
 
 window.deleteHistoryItem = function(index) { historyData.splice(index, 1); updateMeasurementDisplay(); };
 
-window.updateMeasurementDisplay = function() {
+function updateMeasurementDisplay() {
   const btnModal = document.getElementById('btnOpenResultModal');
   const startSpinInput = document.getElementById('startSpin');
 
   if (historyData.length === 0) { 
-    // ★履歴がない時はスタート回転数を入力可能にする
-    startSpinInput.disabled = false;
-    startSpinInput.style.backgroundColor = "var(--input-bg)";
+    startSpinInput.disabled = false; startSpinInput.style.backgroundColor = "var(--input-bg)";
     btnModal.innerText = "📊 入力データを確認 (未入力)"; document.getElementById('avg250').innerText = "0.00 回"; 
     document.getElementById('historyList').innerHTML = ""; document.getElementById('workValueArea').innerHTML = ""; return; 
   }
   
-  // ★履歴が入った瞬間にスタート回転数をロック（グレーアウト）する
-  startSpinInput.disabled = true;
-  startSpinInput.style.backgroundColor = "var(--bg-main)";
+  startSpinInput.disabled = true; startSpinInput.style.backgroundColor = "var(--bg-main)";
   
   let totalBalls = 0, totalSpins = 0, mochidamaBalls = 0, historyHtml = '', spinCount = 0;
   let totalPayoutAmount = 0, totalPayoutRounds = 0;
@@ -568,7 +575,7 @@ window.updateMeasurementDisplay = function() {
   
   const avg250 = totalBalls > 0 ? (totalSpins / totalBalls) * 250 : 0;
   const mochiRatio = totalBalls > 0 ? (mochidamaBalls / totalBalls * 100) : 0;
-  const startSpin = parseInt(startSpinInput.value) || 0, absoluteTotalSpins = startSpin + totalSpins;
+  const startSpin = parseInt(document.getElementById('startSpin').value) || 0, absoluteTotalSpins = startSpin + totalSpins;
   
   document.getElementById('avg250').innerText = avg250.toFixed(2) + " 回"; document.getElementById('dispMochiRatio').innerText = mochiRatio.toFixed(1) + " %";
   document.getElementById('totalMeasuredSpins').innerText = totalSpins + " 回"; document.getElementById('absoluteTotalSpins').innerText = absoluteTotalSpins + " 回";
@@ -613,7 +620,8 @@ window.resetMeasurement = function() {
   if(confirm("現在の入力データをすべてクリアしますか？")) { 
     historyData = []; editingRecordId = null; measurementStartTime = null;
     document.getElementById('startSpin').value = ''; document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
-    document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+    document.getElementById('payoutStartBalls').value = ''; document.getElementById('payoutEndBalls').value = ''; document.getElementById('dispCalculatedPayout').innerText = '0';
+    document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
     updateMeasurementDisplay(); closeResultModal();
   }
 };
@@ -653,7 +661,9 @@ window.saveCurrentRecord = async function() {
   historyData = []; measurementStartTime = null;
   document.getElementById('machineName').value = ''; document.getElementById('startSpin').value = '';
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
-  document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+  document.getElementById('payoutStartBalls').value = ''; document.getElementById('payoutEndBalls').value = ''; document.getElementById('dispCalculatedPayout').innerText = '0';
+  document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+  
   updateMeasurementDisplay(); closeResultModal(); 
 };
 
@@ -665,7 +675,9 @@ window.resumeRecord = async function(id) {
   document.getElementById('machineName').value = r.machine || ''; document.getElementById('startSpin').value = r.startSpins || 0;
   historyData = JSON.parse(JSON.stringify(r.history || [])); editingRecordId = r.id; measurementStartTime = Date.now(); 
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
-  document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+  document.getElementById('payoutStartBalls').value = ''; document.getElementById('payoutEndBalls').value = ''; document.getElementById('dispCalculatedPayout').innerText = '0';
+  document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+  
   updateMeasurementDisplay(); closeSavedModal(); window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
