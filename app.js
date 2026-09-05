@@ -2,17 +2,16 @@
 // Firebase設定（★ここにキーを入れます）
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
   firebase.initializeApp(firebaseConfig);
-  // ★オフライン・圏外でも使えるようにキャッシュを有効化（完全オフライン対応）
   firebase.firestore().enablePersistence().catch((err) => {
     console.log("Offline persistence error: ", err.code);
   });
@@ -21,7 +20,7 @@ if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
 const auth = firebase.apps.length ? firebase.auth() : null;
 const db = firebase.apps.length ? firebase.firestore() : null;
 
-// ★サービスワーカー（PWA・アプリ化機能）の登録
+// PWAサービスワーカーの登録
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => {
@@ -68,59 +67,101 @@ const savedModal = document.getElementById('savedModal');
 resultModal.addEventListener('click', function(e) { if (e.target === resultModal) closeResultModal(); });
 savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
 
-// Wタップ手入力機能
-function applyDoubleTapToInputs() {
-  const inputs = document.querySelectorAll('input[type="number"], input[type="text"]');
-  inputs.forEach(input => {
-    if (input.hasAttribute('data-dbltap-init')) return;
-    input.setAttribute('data-dbltap-init', 'true');
-    if(!input.disabled) input.setAttribute('readonly', 'readonly');
-    
-    let lastTap = 0;
-    input.addEventListener('touchend', function(e) {
-      let currentTime = new Date().getTime(); let tapLength = currentTime - lastTap;
-      if (tapLength < 400 && tapLength > 0) { 
-        if(!input.disabled) { input.removeAttribute('readonly'); input.focus(); e.preventDefault(); }
-      }
-      lastTap = currentTime;
-    });
-    input.addEventListener('dblclick', function(e) { if(!input.disabled) { input.removeAttribute('readonly'); input.focus(); } });
-    input.addEventListener('blur', function() { if(!input.disabled) input.setAttribute('readonly', 'readonly'); });
-  });
-}
 
-// スワイプ機能
+// ==========================================
+// ★ スワイプ機能（透明バリア方式による誤作動完全防止）
+// ==========================================
 function setupSwipeInput(id, step, min, max, defaultVal) {
-  const el = document.getElementById(id); if (!el) return;
-  let isDragging = false; let startX = 0; let startVal = 0;
+  const input = document.getElementById(id);
+  if (!input || input.hasAttribute('data-swipe-init')) return;
+  input.setAttribute('data-swipe-init', 'true');
+
+  // 1. 透明なバリア（オーバーレイ）の作成
+  const wrapper = document.createElement('div');
+  wrapper.style.position = 'relative';
+  wrapper.style.display = 'block';
+  
+  // inputをwrapperで囲む
+  input.parentNode.insertBefore(wrapper, input);
+  wrapper.appendChild(input);
+  
+  const overlay = document.createElement('div');
+  overlay.style.position = 'absolute';
+  overlay.style.top = '0'; overlay.style.left = '0';
+  overlay.style.width = '100%'; overlay.style.height = '100%';
+  overlay.style.zIndex = '10';
+  overlay.style.cursor = 'ew-resize';
+  overlay.style.touchAction = 'none'; // ネイティブスクロール防止
+  wrapper.appendChild(overlay);
+
+  // 2. スワイプ処理（対象は input ではなく overlay）
+  let isDragging = false;
+  let startX = 0;
+  let startVal = 0;
+  let hasMoved = false; // スワイプかタップかの判定用
 
   const onStart = (e) => {
-    isDragging = true; startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    isDragging = true;
+    hasMoved = false;
+    startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     let def = typeof defaultVal === 'function' ? defaultVal() : defaultVal;
-    if (el.value === "") {
+    if (input.value === "") {
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
-      el.value = Number(def).toFixed(decimals); el.classList.remove('auto-filled'); if (el.oninput) el.oninput();
+      input.value = Number(def).toFixed(decimals);
+      input.classList.remove('auto-filled');
+      if (input.oninput) input.oninput();
     }
-    startVal = parseFloat(el.value); if (isNaN(startVal)) startVal = def;
+    startVal = parseFloat(input.value);
+    if (isNaN(startVal)) startVal = def;
   };
-  el.addEventListener('mousedown', onStart); el.addEventListener('touchstart', onStart, {passive: true});
+  
+  overlay.addEventListener('mousedown', onStart);
+  overlay.addEventListener('touchstart', onStart, {passive: true});
   
   const onMove = (e) => {
     if (!isDragging) return;
-    if (e.cancelable) e.preventDefault(); 
+    if (e.cancelable) e.preventDefault(); // スワイプ中の画面スクロールを完全にブロック
+    
     let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    let deltaX = clientX - startX; let steps = Math.trunc(deltaX / 8); 
+    let deltaX = clientX - startX;
+    
+    // 5px以上指が動いたら「スワイプ操作」と判定する
+    if (Math.abs(deltaX) > 5) hasMoved = true; 
+
+    let steps = Math.trunc(deltaX / 8); 
     if (steps !== 0) {
       let newVal = startVal + (steps * step);
-      if (newVal < min) newVal = min; if (newVal > max) newVal = max;
+      if (newVal < min) newVal = min;
+      if (newVal > max) newVal = max;
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
-      el.value = newVal.toFixed(decimals); el.classList.remove('auto-filled'); if (el.oninput) el.oninput();
+      input.value = newVal.toFixed(decimals);
+      input.classList.remove('auto-filled');
+      if (input.oninput) input.oninput();
     }
   };
-  window.addEventListener('mousemove', onMove); window.addEventListener('touchmove', onMove, {passive: false});
+  
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, {passive: false}); // passive: false で preventDefault 有効化
+  
   const onEnd = () => { isDragging = false; };
-  window.addEventListener('mouseup', onEnd); window.addEventListener('touchend', onEnd);
+  window.addEventListener('mouseup', onEnd);
+  window.addEventListener('touchend', onEnd);
+
+  // 3. タップでキーボード展開（バリアを一時的に消す）
+  overlay.addEventListener('click', (e) => {
+    if (!hasMoved) {
+      // スワイプせずに純粋に1回タップされた場合
+      overlay.style.display = 'none'; // バリア解除
+      input.focus(); // 100%確実にキーボードが表示される
+    }
+  });
+
+  // 4. キーボードが閉じたらバリアを復活
+  input.addEventListener('blur', () => {
+    overlay.style.display = 'block'; // 再びスワイプ待機状態へ
+  });
 }
+
 
 function getNickname() {
   let name = localStorage.getItem('pachinko_nickname');
@@ -264,7 +305,7 @@ window.onload = function() {
   setupSwipeInput('ballRatio', 1, 0, 100, 60); setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
   setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); setupSwipeInput('avgPayout', 10, 100, 10500, 4500);
 
-  applyDoubleTapToInputs(); updateModeIndicator();
+  updateModeIndicator();
 
   if (auth) {
     auth.onAuthStateChanged(user => {
@@ -307,10 +348,9 @@ async function renderDictionary() {
     html += `<div class="saved-item" style="border-left: 4px solid #1abc9c;"><div style="font-weight:bold; color:var(--text-main); margin-bottom:8px;">${m}</div><div style="display:flex; gap:5px; margin-bottom:5px;"><div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">ボーダー</label><input type="number" id="dict_border_${m}" value="${spec.border || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div><div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">確率</label><input type="number" id="dict_prob_${m}" value="${spec.probDenom || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div><div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">出玉</label><input type="number" id="dict_payout_${m}" value="${spec.avgPayout || ''}" step="10" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div></div>${adminButtons}</div>`;
   }
   if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されている機種スペックはありません。</p>';
-  container.innerHTML = html; applyDoubleTapToInputs();
+  container.innerHTML = html; 
 }
 
-// updateDictItem, deleteDictItem, createRecordItemHtml 等の関数はグローバルに配置
 window.updateDictItem = async function(machine) {
   if (!isAdmin) return alert("権限がありません。");
   const b = parseFloat(document.getElementById(`dict_border_${machine}`).value), p = parseFloat(document.getElementById(`dict_prob_${machine}`).value), a = parseFloat(document.getElementById(`dict_payout_${machine}`).value);
@@ -561,7 +601,7 @@ function drawSlumpGraph() {
   });
 }
 
-// ★ Web Worker (10万回計算をフリーズさせずに行う)
+// 🚀 フリーズしない 10万回 Web Worker シミュレーション
 window.calculateAndSimulate = function() {
   vibrate(); 
   const inputs = [
@@ -586,11 +626,9 @@ window.calculateAndSimulate = function() {
     });
   }
 
-  // 計算中UI
   const btn = document.querySelector('button[onclick="calculateAndSimulate()"]');
   if(btn) btn.innerText = "🚀 10万回シミュレート中...";
 
-  // worker.js による裏側計算
   const worker = new Worker('./worker.js');
   worker.postMessage({ B, R, E, M, totalSpins, probDenom, avgPayout });
   
@@ -629,7 +667,7 @@ window.saveExpectedValueToCalendar = async function() {
   
   cal[date].ev = (cal[date].ev || 0) + lastCalculatedEV; cal[date].actual = (cal[date].actual || 0) + actualAmt; cal[date].actualBalls = (cal[date].actualBalls || 0) + diffBalls;
   cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:var(--text-muted);">👤 ${getNickname()}</span>${hitText}`);
-  await saveCalendarData(cal); alert(`${date} の収支にデータを保存しました。`); 
+  await saveCalendarData(cal); alert(`${date} の収支にデータを保存しました。`); renderCalendar();
 
   document.getElementById('calcMachineName').value = ''; document.getElementById('border').value = ''; document.getElementById('spinRate').value = ''; document.getElementById('exchangeRate').value = '';
   document.getElementById('ballRatio').value = ''; document.getElementById('totalSpins').value = ''; document.getElementById('probDenom').value = ''; document.getElementById('avgPayout').value = '';
@@ -698,9 +736,3 @@ window.renderHistoryTab = async function() {
   if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">条件に一致する過去1年間のデータはありません。</p>';
   filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); }); container.innerHTML = html;
 };
-
-// グローバルスコープへの露出（HTMLからの呼び出し用）
-window.createGroup = createGroup; window.joinGroup = joinGroup; window.leaveGroup = leaveGroup; window.mergePersonalDataToGroup = mergePersonalDataToGroup;
-window.login = login; window.logout = logout; window.openResultModal = openResultModal; window.closeResultModal = closeResultModal;
-window.openSavedModal = openSavedModal; window.closeSavedModal = closeSavedModal; window.switchTab = switchTab;
-window.toggleDarkMode = toggleDarkMode;
