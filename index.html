@@ -41,11 +41,8 @@
   input[type="number"], input[type="text"], input[type="date"] { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; font-size: 16px; background: var(--input-bg); color: var(--text-main); transition: 0.3s; }
   input::placeholder { color: #aaa; }
   .auto-filled { background-color: var(--box-yellow-bg) !important; border-color: #ffeeba; }
-  
-  /* スワイプ入力（縦スクロールを邪魔しないようにpan-yを設定） */
   .swipe-input { cursor: ew-resize; touch-action: pan-y; }
   input:disabled { opacity: 0.6; cursor: not-allowed; background-color: var(--bg-main) !important; }
-  
   .section-title { margin-top: 20px; margin-bottom: 10px; font-size: 15px; font-weight: bold; color: #e67e22; border-left: 4px solid #e67e22; padding-left: 8px; }
   .section-title.purple { color: #9b59b6; border-left-color: #9b59b6; }
   .hint-text { font-size: 11px; color: var(--text-muted); font-weight: normal; margin-left: 4px; }
@@ -61,7 +58,7 @@
   .modal-content { background: var(--card-bg); width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; border-radius: 0 0 12px 12px; padding: 20px; animation: slideDown 0.3s forwards; padding-top: calc(20px + env(safe-area-inset-top)); }
   @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
   .modal-close-btn { display: block; width: 100%; padding: 12px; margin-top: 15px; background: #ecf0f1; color: #2c3e50; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; }
-  .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; margin-top: 20px; }
   .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: var(--border-color); border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden; }
   .calendar-day-header { background: var(--bg-main); text-align: center; font-size: 12px; padding: 6px 0; font-weight: bold; color: var(--text-sub); }
   .calendar-cell { background: var(--card-bg); min-height: 65px; padding: 4px; cursor: pointer; position: relative; display: flex; flex-direction: column; transition: 0.2s; }
@@ -105,6 +102,13 @@
   input:checked + .slider:before { transform: translateX(24px); }
   .rule-check-label { display: flex; align-items: center; gap: 4px; font-weight: normal; font-size: 13px; color: var(--text-main); background: var(--bg-main); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; }
   .rule-check-label input { width: auto; margin: 0; }
+
+  /* ランキングタブ用スタイル */
+  .rank-tab-container { display: flex; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+  .rank-tab { flex: 1; padding: 10px 0; text-align: center; background: var(--bg-main); border: 1px solid var(--border-color); cursor: pointer; font-weight: bold; font-size: 13px; color: var(--text-sub); }
+  .rank-tab.active { background: var(--card-bg); color: #3498db; border-bottom: 2px solid #3498db; }
+  .rank-content { display: none; padding: 15px; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 6px 6px; background: var(--card-bg); }
+  .rank-content.active { display: block; animation: fadeIn 0.3s; }
 </style>
 </head>
 <body>
@@ -150,21 +154,13 @@
     </div>
     <div style="text-align: right; margin-top: 8px;"><button class="btn-small" style="background-color:#e74c3c; margin:0;" onclick="undoLastInput()">↩️ 入力取り消し</button></div>
     
-    <!-- ★ 当たり出玉・ラウンド数の自動計算入力エリア -->
     <div id="payoutInputArea" style="display: none; margin-top: 15px; padding: 15px; background: var(--box-yellow-bg); border: 1px solid #ffeeba; border-radius: 6px;">
       <div style="font-weight: bold; color: #d35400; margin-bottom: 12px; font-size:15px;" id="payoutTitle">大当たり結果を入力</div>
-      
       <div style="background:var(--card-bg); padding:10px; border-radius:4px; border:1px solid var(--border-color); margin-bottom:10px;">
         <div style="font-size:12px; font-weight:bold; color:#2980b9; margin-bottom:8px;">① 出玉の計算（終了時持ち球 - 開始時持ち球）</div>
         <div style="display:flex; gap:10px; margin-bottom:5px;">
-          <div style="flex:1;">
-            <label style="font-size: 11px; margin-bottom: 2px;">開始時の持ち球</label>
-            <input type="number" id="payoutStartBalls" class="swipe-input" step="10" placeholder="例: 1500" oninput="calcPayoutAmount()">
-          </div>
-          <div style="flex:1;">
-            <label style="font-size: 11px; margin-bottom: 2px;">終了時の持ち球</label>
-            <input type="number" id="payoutEndBalls" class="swipe-input" step="10" placeholder="例: 8500" oninput="calcPayoutAmount()">
-          </div>
+          <div style="flex:1;"><label style="font-size: 11px; margin-bottom: 2px;">開始時</label><input type="number" id="payoutStartBalls" class="swipe-input" step="10" placeholder="例: 1500" oninput="calcPayoutAmount()"></div>
+          <div style="flex:1;"><label style="font-size: 11px; margin-bottom: 2px;">終了時</label><input type="number" id="payoutEndBalls" class="swipe-input" step="10" placeholder="例: 8500" oninput="calcPayoutAmount()"></div>
         </div>
         <div style="text-align:right; font-size:14px; font-weight:bold; color:var(--text-main);">獲得出玉: <span id="dispPayoutAmount" style="color:#e74c3c;">0</span> 玉</div>
         <input type="hidden" id="payoutAmount" value="0">
@@ -199,7 +195,7 @@
     </div>
   </div>
 
-  <!-- ツール2：期待値（専業仕様） -->
+  <!-- ツール2：期待値 -->
   <div id="tab2" class="tab-content">
     <h2>専業用：期待値＆仕事量計算</h2>
     
@@ -209,14 +205,12 @@
     </div>
     <div style="display:flex; gap:10px;">
       <div class="form-group" style="flex:1;"><label>初当確率</label><input type="number" id="probDenom" class="swipe-input" step="0.1" placeholder="例: 319" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
-      
       <div class="form-group" style="flex:1;">
         <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
           平均R <button class="btn-small" style="padding:2px 6px; margin:0; font-size:10px; background-color:#9b59b6;" onclick="openAvgRCalcModal()">逆算</button>
         </label>
         <input type="number" id="avgRounds" class="swipe-input" step="0.1" placeholder="例: 32.2" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();">
       </div>
-      
       <div class="form-group" style="flex:1;"><label>1R出玉(玉)</label><input type="number" id="payoutPerR" class="swipe-input" step="1" placeholder="例: 140" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
     </div>
     <div class="form-group"><label>【自動計算】等価ボーダー (回/千円)</label><input type="text" id="border" readonly style="background:var(--bg-main); color:var(--text-muted); border-style:dashed;"></div>
@@ -250,10 +244,45 @@
     </div>
   </div>
 
-  <!-- ツール3：収支カレンダー -->
+  <!-- ツール3：収支カレンダー ＆ ランキングダッシュボード -->
   <div id="tab3" class="tab-content">
-    <h2>収支カレンダー</h2>
-    <div class="calendar-header"><button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(-1)">◀ 前月</button><div id="calendarMonthLabel" style="font-weight:bold; font-size:16px; color:#2c3e50;"></div><button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(1)">次月 ▶</button></div>
+    <h2>収支カレンダー ＆ 分析</h2>
+    
+    <!-- ★ アバター表示エリア -->
+    <div id="avatar-container" style="text-align:center; margin-bottom:20px; padding:15px; background:var(--card-bg); border-radius:8px; border:2px solid var(--border-color); transition:0.3s; box-shadow: 0 2px 6px var(--shadow);">
+      <div id="avatar-icon" style="font-size: 50px; margin-bottom: 10px;">🦝🦊</div>
+      <div id="avatar-msg" style="font-weight:bold; font-size:15px; color:var(--text-main); line-height:1.4;">プラマイゼロ<br>棒立ちのたぬきときつね</div>
+      <!-- ※AIで生成した画像を使いたい場合は、上の🦝🦊を <img src="URL" width="80"> に差し替えるだけで適用できます -->
+    </div>
+
+    <!-- ★ ランキング・分析ダッシュボード -->
+    <div class="rank-tab-container">
+      <div id="btn-rank-1" class="rank-tab active" onclick="switchRankTab(1)">🏆 収支</div>
+      <div id="btn-rank-2" class="rank-tab" onclick="switchRankTab(2)">📊 ヒキ</div>
+      <div id="btn-rank-3" class="rank-tab" onclick="switchRankTab(3)">🍩 貢献度</div>
+    </div>
+    
+    <!-- 収支ランキング -->
+    <div id="rank-content-1" class="rank-content active"></div>
+    
+    <!-- ヒキグラフ -->
+    <div id="rank-content-2" class="rank-content">
+      <div style="height:220px; position:relative;"><canvas id="hikiChart"></canvas></div>
+      <p style="font-size:11px; color:var(--text-muted); margin-top:10px; text-align:center;">※青色: 期待値 / 赤色: 実収支。<br>ヒキが強い（実収支が上振れている）順です。</p>
+    </div>
+    
+    <!-- 貢献度グラフ -->
+    <div id="rank-content-3" class="rank-content">
+      <div id="pieChartContainer" style="height:220px; position:relative;"><canvas id="pieChart"></canvas></div>
+      <div id="noPieData" style="font-size:12px; color:var(--text-muted); text-align:center; padding:20px; display:none;">今月プラス収支のメンバーがいません...</div>
+    </div>
+
+    <!-- 月間カレンダー -->
+    <div class="calendar-header">
+      <button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(-1)">◀ 前月</button>
+      <div id="calendarMonthLabel" style="font-weight:bold; font-size:16px; color:#2c3e50;"></div>
+      <button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(1)">次月 ▶</button>
+    </div>
     <div id="visualCalendar" class="calendar-grid" style="margin-bottom: 15px;"></div>
     <div class="result summary-box" style="margin-top: 0;"><p><span>月間期待値:</span> <span id="monthlyEV" style="font-weight: bold; color: #27ae60;"></span></p><p><span>月間実収支:</span> <span id="monthlyActual" style="font-weight: bold; color: #2980b9;"></span></p><p><span>月間獲得差玉:</span> <span id="monthlyBalls" style="font-weight: bold; color: #e67e22;"></span></p><hr><p><span>収支のブレ:</span> <span id="monthlyDiff" style="font-weight: bold;"></span></p></div>
     <div class="section-title purple">選択した日付のデータ詳細 (<span id="selectedDateDisp">未選択</span>)</div>
@@ -261,7 +290,7 @@
   </div>
 
   <!-- ツール4：設定・データ -->
-  <div id="tab4" class="tab-content active">
+  <div id="tab4" class="tab-content">
     <div id="mode-indicator-container"><div id="mode-indicator" class="mode-badge mode-warning">⚠️ グループ未参加</div></div>
     <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px; display:flex; justify-content:space-between; align-items:center;">
       <div><span style="font-weight:bold; font-size:15px; color:var(--text-main);">🌙 ダークモード</span><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">目とバッテリーに優しい配色</div></div>
@@ -290,36 +319,31 @@
     <div id="hall-management-section" style="display: none;">
       <h2 style="margin-top: 30px;">📅 特定日検索＆過去分析</h2>
       <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px;">
-        <div class="form-group" style="margin-bottom: 0;">
-          <label>検索する日付 <span class="hint-text">※選択すると特定日のホールを自動抽出します</span></label>
-          <input type="date" id="analyzeDate" onchange="analyzeHalls()">
-        </div>
+        <div class="form-group" style="margin-bottom: 0;"><label>検索する日付</label><input type="date" id="analyzeDate" onchange="analyzeHalls()"></div>
         <div id="analyzeResultContainer"></div>
       </div>
-
       <h2 style="margin-top: 30px;">🏠 マイホール特定日管理</h2>
       <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px;">
         <div class="form-group"><label>ホール名</label><input type="text" id="hallNameInput" placeholder="例: マルハン〇〇店"></div>
         <div class="form-group">
           <label>特定日ルール</label>
           <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="1">1のつく日</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="2">2のつく日</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="3">3のつく日</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="4">4のつく日</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="5">5のつく日</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="6">6のつく日</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="7">7のつく日</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="8">8のつく日</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="9">9のつく日</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="0">0のつく日</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="ゾロ目">ゾロ目(11,22等)</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="1">1</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="2">2</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="3">3</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="4">4</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="5">5</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="6">6</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="7">7</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="8">8</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="9">9</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="0">0</label>
+            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="ゾロ目">ゾロ目</label>
           </div>
         </div>
         <button class="action-btn" style="background-color: #27ae60; margin-top:0;" onclick="saveHall()">ホールを登録する</button>
       </div>
       <div id="hallListContainer" style="margin-bottom: 30px;"></div>
-
       <h2 style="margin-top: 30px;">過去1年間の履歴</h2><div style="display: flex; gap: 10px; margin-bottom: 12px;"><div style="flex: 1;"><input type="text" id="historyMachineFilter" list="machineList" placeholder="機種名で絞り込み" oninput="renderHistoryTab()"></div></div><div id="historyRecordsContainer"></div>
       <h2 style="margin-top: 30px;">機種辞書管理</h2><div id="dictContainer"></div>
     </div>
@@ -333,8 +357,7 @@
     <div class="result" id="measurementResult" style="display: block; margin-top:10px; padding: 10px;">
       <p><span>250玉平均:</span> <span id="avg250" class="highlight">0.00 回</span></p><p><span>持ち球比率:</span> <span id="dispMochiRatio" style="font-weight:bold; color:#e67e22;">0.0 %</span></p>
       <p><span>自分で回した回転数:</span> <span id="totalMeasuredSpins">0 回</span></p><p><span>現在の総回転数:</span> <span id="absoluteTotalSpins" style="font-weight:bold; color:var(--text-main);">0 回</span></p><p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls">0 玉</span></p>
-      <div id="workValueArea"></div>
-      <div class="history-list" id="historyList"></div>
+      <div id="workValueArea"></div><div class="history-list" id="historyList"></div>
     </div>
     <button class="btn-save" id="btnSaveRecord" onclick="saveCurrentRecord()" style="margin-top: 20px;">この記録を保存</button>
     <button class="btn-reset" onclick="resetMeasurement()">現在の入力をすべてリセット</button>
@@ -350,23 +373,20 @@
 <div id="avgRCalcModal" class="modal-overlay">
   <div class="modal-content">
     <h3 style="margin-top:0; border-bottom:2px solid #9b59b6; padding-bottom:8px; color:var(--text-main);">平均ラウンド逆算ツール</h3>
-    <p style="font-size:12px; color:var(--text-sub); line-height:1.4;">情報サイトに平均Rが載っていない場合、ボーダーや平均出玉から逆算できます。</p>
-    
     <div style="background:var(--bg-main); padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid var(--border-color);">
       <div style="font-weight:bold; color:#2980b9; margin-bottom:8px; font-size:14px;">① 等価ボーダーから逆算する</div>
       <div style="display:flex; gap:5px; margin-bottom:5px;">
-        <div style="flex:1"><label style="font-size:11px;">等価ボーダー</label><input type="number" id="calc_b_border" step="0.1" class="swipe-input" oninput="doAvgRCalc1()"></div>
+        <div style="flex:1"><label style="font-size:11px;">ボーダー</label><input type="number" id="calc_b_border" step="0.1" class="swipe-input" oninput="doAvgRCalc1()"></div>
         <div style="flex:1"><label style="font-size:11px;">初当確率</label><input type="number" id="calc_b_prob" step="0.1" class="swipe-input" oninput="doAvgRCalc1()"></div>
         <div style="flex:1"><label style="font-size:11px;">1R出玉(玉)</label><input type="number" id="calc_b_payout" step="1" class="swipe-input" oninput="doAvgRCalc1()"></div>
       </div>
       <div style="text-align:right; font-size:14px; font-weight:bold;">算出結果: <span id="res_b_avgR" style="color:#e74c3c;">0.00</span> R</div>
       <button class="btn-small" style="width:100%; background:#9b59b6; margin-top:8px; padding:8px;" onclick="applyAvgR('res_b_avgR')">この数値を平均Rに適用</button>
     </div>
-
     <div style="background:var(--bg-main); padding:10px; border-radius:6px; border:1px solid var(--border-color);">
       <div style="font-weight:bold; color:#27ae60; margin-bottom:8px; font-size:14px;">② 平均獲得出玉から逆算する</div>
       <div style="display:flex; gap:5px; margin-bottom:5px;">
-        <div style="flex:1"><label style="font-size:11px;">初当り平均出玉</label><input type="number" id="calc_p_total" step="10" class="swipe-input" oninput="doAvgRCalc2()"></div>
+        <div style="flex:1"><label style="font-size:11px;">平均出玉</label><input type="number" id="calc_p_total" step="10" class="swipe-input" oninput="doAvgRCalc2()"></div>
         <div style="flex:1"><label style="font-size:11px;">1R出玉(玉)</label><input type="number" id="calc_p_payout" step="1" class="swipe-input" oninput="doAvgRCalc2()"></div>
       </div>
       <div style="text-align:right; font-size:14px; font-weight:bold;">算出結果: <span id="res_p_avgR" style="color:#e74c3c;">0.00</span> R</div>
