@@ -47,67 +47,19 @@ if(resultModal) resultModal.addEventListener('click', function(e) { if (e.target
 if(savedModal) savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
 
 // ==========================================
-// ★Wタップ機能（透明バリア方式）
+// ★ 新しいスワイプ機能（ワンタップでキーボード展開可能）
 // ==========================================
-
-// 通常の入力欄（テキスト・日付・スワイプ未適用）へのWタップバリア
-function applyDoubleTapBarrier() {
-  const inputs = document.querySelectorAll('input[type="number"], input[type="text"], input[type="date"]');
-  inputs.forEach(input => {
-    // スワイプ用バリア適用済み、または既にWタップ適用済みの場合はスキップ
-    if (input.hasAttribute('data-swipe-init') || input.hasAttribute('data-dbltap-barrier')) return;
-    input.setAttribute('data-dbltap-barrier', 'true');
-    
-    // 入力欄を覆う透明バリアの作成
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'relative'; wrapper.style.display = 'block';
-    input.parentNode.insertBefore(wrapper, input); wrapper.appendChild(input);
-    
-    const overlay = document.createElement('div');
-    overlay.style.position = 'absolute'; overlay.style.top = '0'; overlay.style.left = '0';
-    overlay.style.width = '100%'; overlay.style.height = '100%'; overlay.style.zIndex = '10';
-    wrapper.appendChild(overlay);
-    
-    let lastTap = 0;
-    // スマホでのWタップ判定
-    overlay.addEventListener('touchend', function(e) {
-      let currentTime = new Date().getTime();
-      let tapLength = currentTime - lastTap;
-      if (tapLength < 400 && tapLength > 0) {
-        overlay.style.display = 'none'; // バリアを消す
-        input.focus(); // キーボード展開
-        e.preventDefault();
-      }
-      lastTap = currentTime;
-    });
-    // PC等でのWクリック判定
-    overlay.addEventListener('dblclick', function() {
-      overlay.style.display = 'none'; input.focus();
-    });
-    // キーボードを閉じたらバリア復活
-    input.addEventListener('blur', function() {
-      overlay.style.display = 'block';
-    });
-  });
-}
-
-// スワイプ機能 ＆ Wタップバリア
 function setupSwipeInput(id, step, min, max, defaultVal) {
-  const input = document.getElementById(id); if (!input || input.hasAttribute('data-swipe-init')) return;
+  const input = document.getElementById(id); 
+  if (!input || input.hasAttribute('data-swipe-init')) return;
   input.setAttribute('data-swipe-init', 'true');
 
-  const wrapper = document.createElement('div'); wrapper.style.position = 'relative'; wrapper.style.display = 'block';
-  input.parentNode.insertBefore(wrapper, input); wrapper.appendChild(input);
+  let isDragging = false; let startX = 0; let startVal = 0; 
   
-  const overlay = document.createElement('div');
-  overlay.style.position = 'absolute'; overlay.style.top = '0'; overlay.style.left = '0';
-  overlay.style.width = '100%'; overlay.style.height = '100%'; overlay.style.zIndex = '10';
-  overlay.style.cursor = 'ew-resize'; overlay.style.touchAction = 'none'; 
-  wrapper.appendChild(overlay);
-
-  let isDragging = false; let startX = 0; let startVal = 0; let hasMoved = false; 
   const onStart = (e) => {
-    isDragging = true; hasMoved = false; startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    if (input.disabled) return;
+    isDragging = true; 
+    startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     let def = typeof defaultVal === 'function' ? defaultVal() : defaultVal;
     if (input.value === "") {
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
@@ -116,11 +68,20 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
     startVal = parseFloat(input.value); if (isNaN(startVal)) startVal = def;
   };
   
-  overlay.addEventListener('mousedown', onStart); overlay.addEventListener('touchstart', onStart, {passive: true});
+  input.addEventListener('mousedown', onStart); 
+  input.addEventListener('touchstart', onStart, {passive: true});
+  
   const onMove = (e) => {
-    if (!isDragging) return; if (e.cancelable) e.preventDefault(); 
+    if (!isDragging || input.disabled) return; 
     let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    let deltaX = clientX - startX; if (Math.abs(deltaX) > 5) hasMoved = true; 
+    let deltaX = clientX - startX; 
+    
+    // スワイプ（横に5px以上動いた）と判定されたら
+    if (Math.abs(deltaX) > 5) {
+      if (e.cancelable) e.preventDefault(); // スクロール防止
+      if (document.activeElement === input) input.blur(); // キーボードを隠す
+    }
+    
     let steps = Math.trunc(deltaX / 8); 
     if (steps !== 0) {
       let newVal = startVal + (steps * step);
@@ -129,28 +90,13 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
       input.value = newVal.toFixed(decimals); input.classList.remove('auto-filled'); if (input.oninput) input.oninput();
     }
   };
-  window.addEventListener('mousemove', onMove); window.addEventListener('touchmove', onMove, {passive: false}); 
+  
+  window.addEventListener('mousemove', onMove); 
+  window.addEventListener('touchmove', onMove, {passive: false}); // passive: false で preventDefault 有効化
+  
   const onEnd = () => { isDragging = false; };
   window.addEventListener('mouseup', onEnd); window.addEventListener('touchend', onEnd);
-
-  let lastTap = 0;
-  overlay.addEventListener('touchend', (e) => {
-    if (hasMoved) return; // スワイプ操作をした場合はキーボードを出さない
-    let currentTime = new Date().getTime();
-    let tapLength = currentTime - lastTap;
-    if (tapLength < 400 && tapLength > 0) {
-      overlay.style.display = 'none'; input.focus(); e.preventDefault();
-    }
-    lastTap = currentTime;
-  });
-  overlay.addEventListener('dblclick', () => {
-    if (hasMoved) return;
-    overlay.style.display = 'none'; input.focus();
-  });
-  
-  input.addEventListener('blur', () => { overlay.style.display = 'block'; });
 }
-
 
 function getNickname() {
   let name = localStorage.getItem('pachinko_nickname');
@@ -263,20 +209,23 @@ window.onload = function() {
   document.getElementById('recordDate').value = todayStr; document.getElementById('evSaveDate').value = todayStr; document.getElementById('actualDate').value = todayStr;
   document.getElementById('analyzeDate').value = todayStr;
   
+  // ★すべての数値入力欄にスワイプ入力を適用
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
     const start = parseInt(document.getElementById('startSpin').value) || 0;
     let soFar = 0; historyData.forEach(d => { if (d.type === 'spin' || !d.type) soFar += d.spins; }); return start + soFar + 15;
   });
-  
-  setupSwipeInput('payoutAmount', 10, 0, 100000, 4200); setupSwipeInput('payoutRounds', 1, 0, 1000, 30); 
-  setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); setupSwipeInput('avgRounds', 0.1, 1.0, 100.0, 32.2); 
-  setupSwipeInput('payoutPerR', 1, 10, 150, 140); setupSwipeInput('spinRate', 0.1, 10.0, 35.0, 20.0); 
-  setupSwipeInput('realPayoutPerR', 0.1, 10.0, 150.0, 140.0); setupSwipeInput('exchangeRate', 0.01, 2.50, 4.00, 3.57);
-  setupSwipeInput('ballRatio', 1, 0, 100, 60); setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
+  setupSwipeInput('payoutAmount', 10, 0, 100000, 4200); 
+  setupSwipeInput('payoutRounds', 1, 0, 1000, 30); 
+  setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); 
+  setupSwipeInput('avgRounds', 0.1, 1.0, 100.0, 32.2); 
+  setupSwipeInput('payoutPerR', 1, 10, 150, 140); 
+  setupSwipeInput('spinRate', 0.1, 10.0, 35.0, 20.0); 
+  setupSwipeInput('realPayoutPerR', 0.1, 10.0, 150.0, 140.0); 
+  setupSwipeInput('exchangeRate', 0.01, 2.50, 4.00, 3.57);
+  setupSwipeInput('ballRatio', 1, 0, 100, 60); 
+  setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
 
-  // ★ 全ての入力欄へのWタップバリア適用を呼び出し
-  applyDoubleTapBarrier();
   updateModeIndicator();
 
   if (auth) {
@@ -336,7 +285,13 @@ async function renderDictionary() {
   }
   if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されている機種スペックはありません。</p>';
   container.innerHTML = html; 
-  applyDoubleTapBarrier(); // 動的生成された項目にもWタップ適用
+  
+  // ★ 辞書の各入力欄にもスワイプを適用
+  for(let m in dict) {
+    setupSwipeInput(`dict_prob_${m}`, 0.1, 1.0, 999.0, 319.6);
+    setupSwipeInput(`dict_avgRounds_${m}`, 0.1, 1.0, 100.0, 32.2);
+    setupSwipeInput(`dict_payoutPerR_${m}`, 1, 10, 150, 140);
+  }
 }
 
 window.updateDictItem = async function(machine) {
@@ -356,7 +311,6 @@ window.saveHall = async function() {
   if (!isAdmin) return alert("権限がありません。");
   const name = document.getElementById('hallNameInput').value.trim();
   if (!name) return alert("ホール名を入力してください。");
-  
   const checkboxes = document.querySelectorAll('input[name="hallRule"]:checked');
   const rules = Array.from(checkboxes).map(cb => cb.value);
   if (rules.length === 0) return alert("特定日ルールを1つ以上選択してください。");
@@ -372,9 +326,7 @@ window.saveHall = async function() {
 
 window.deleteHall = async function(name) {
   if (!isAdmin) return alert("権限がありません。");
-  if(confirm(`[${name}] を削除しますか？`)) {
-    const halls = await getHallsData(); delete halls[name]; await saveHallsData(halls); renderHalls(); analyzeHalls();
-  }
+  if(confirm(`[${name}] を削除しますか？`)) { const halls = await getHallsData(); delete halls[name]; await saveHallsData(halls); renderHalls(); analyzeHalls(); }
 };
 
 window.renderHalls = async function() {
@@ -390,7 +342,6 @@ window.renderHalls = async function() {
   container.innerHTML = html;
 };
 
-// ★ 特定日検索＆過去分析ロジック
 window.analyzeHalls = async function() {
   const dateStr = document.getElementById('analyzeDate').value; const container = document.getElementById('analyzeResultContainer');
   if(!dateStr) { container.innerHTML = ''; return; }
@@ -524,10 +475,22 @@ window.deleteHistoryItem = function(index) { historyData.splice(index, 1); updat
 
 function updateMeasurementDisplay() {
   const btnModal = document.getElementById('btnOpenResultModal');
+  const startSpinInput = document.getElementById('startSpin');
+
   if (historyData.length === 0) { 
-    btnModal.innerText = "📊 入力データを確認 (未入力)"; document.getElementById('avg250').innerText = "0.00 回"; 
-    document.getElementById('historyList').innerHTML = ""; document.getElementById('workValueArea').innerHTML = ""; return; 
+    // ★ 履歴がない時はスタート回転数の入力を許可
+    startSpinInput.disabled = false;
+    startSpinInput.style.backgroundColor = "var(--input-bg)";
+    btnModal.innerText = "📊 入力データを確認 (未入力)"; 
+    document.getElementById('avg250').innerText = "0.00 回"; 
+    document.getElementById('historyList').innerHTML = ""; 
+    document.getElementById('workValueArea').innerHTML = ""; 
+    return; 
   }
+  
+  // ★ 履歴が追加されたらスタート回転数をロック（グレーアウト）
+  startSpinInput.disabled = true;
+  startSpinInput.style.backgroundColor = "var(--bg-main)";
   
   let totalBalls = 0, totalSpins = 0, mochidamaBalls = 0, historyHtml = '', spinCount = 0;
   let totalPayoutAmount = 0, totalPayoutRounds = 0;
@@ -556,7 +519,6 @@ function updateMeasurementDisplay() {
   document.getElementById('totalMeasuredSpins').innerText = totalSpins + " 回"; document.getElementById('absoluteTotalSpins').innerText = absoluteTotalSpins + " 回";
   document.getElementById('totalMeasuredBalls').innerText = totalBalls + " 玉"; document.getElementById('historyList').innerHTML = historyHtml;
   
-  // ★ 仕事量と期待時給の算出
   let realPayoutPerR = totalPayoutRounds > 0 ? (totalPayoutAmount / totalPayoutRounds) : 0;
   const P = parseFloat(document.getElementById('probDenom').value), avgR = parseFloat(document.getElementById('avgRounds').value), specPayoutPerR = parseFloat(document.getElementById('payoutPerR').value);
   const currentPayoutR = realPayoutPerR > 0 ? realPayoutPerR : specPayoutPerR;
@@ -637,6 +599,7 @@ window.saveCurrentRecord = async function() {
   document.getElementById('machineName').value = ''; document.getElementById('startSpin').value = '';
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
   document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+  
   updateMeasurementDisplay(); closeResultModal(); 
 };
 
@@ -649,6 +612,7 @@ window.resumeRecord = async function(id) {
   historyData = JSON.parse(JSON.stringify(r.history || [])); editingRecordId = r.id; measurementStartTime = Date.now(); 
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
   document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+  
   updateMeasurementDisplay(); closeSavedModal(); window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
