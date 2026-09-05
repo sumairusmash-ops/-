@@ -4,14 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>パチンコ総合計算ツール</title>
-
-<!-- ★ PWA (アプリ化) 用の設定 -->
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-
-<!-- Firebase SDK & Chart.js の読み込み -->
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
@@ -31,15 +27,8 @@
     --shadow: rgba(0,0,0,0.5);
   }
   html, body { overscroll-behavior-y: none; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    padding: 80px 15px 20px 15px; max-width: 500px; margin: 0 auto;
-    background-color: var(--bg-main); color: var(--text-main); transition: 0.3s;
-  }
-  .top-nav {
-    position: fixed; top: 0; left: 0; right: 0; background-color: var(--nav-bg); display: flex;
-    box-shadow: 0 2px 10px var(--shadow); z-index: 1000; padding-top: env(safe-area-inset-top); transition: 0.3s;
-  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; padding: 80px 15px 20px 15px; max-width: 500px; margin: 0 auto; background-color: var(--bg-main); color: var(--text-main); transition: 0.3s; }
+  .top-nav { position: fixed; top: 0; left: 0; right: 0; background-color: var(--nav-bg); display: flex; box-shadow: 0 2px 10px var(--shadow); z-index: 1000; padding-top: env(safe-area-inset-top); transition: 0.3s; }
   .top-nav button { flex: 1; background: none; border: none; padding: 10px 0; font-size: 11px; font-weight: bold; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
   .top-nav button span.icon { display: block; font-size: 20px; margin-bottom: 4px; }
   .top-nav button.active { color: #3498db; }
@@ -49,23 +38,23 @@
   h2 { margin-top: 0; font-size: 18px; color: #3498db; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
   .form-group { margin-bottom: 15px; }
   label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 6px; color: var(--text-sub); }
-  input[type="number"], input[type="text"], input[type="date"] {
-    width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box;
-    font-size: 16px; background: var(--input-bg); color: var(--text-main); transition: 0.3s;
-  }
+  input[type="number"], input[type="text"], input[type="date"] { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; font-size: 16px; background: var(--input-bg); color: var(--text-main); transition: 0.3s; }
   input::placeholder { color: #aaa; }
   .auto-filled { background-color: var(--box-yellow-bg) !important; border-color: #ffeeba; }
   .swipe-input { cursor: ew-resize; touch-action: none; }
   input[readonly] { background-color: var(--input-bg); cursor: pointer; opacity: 1; -webkit-text-fill-color: var(--text-main); }
   input[readonly]:focus { outline: none; }
+  input[readonly]:active { transform: scale(0.98); background-color: rgba(0,0,0,0.05) !important; transition: transform 0.05s ease; }
   .section-title { margin-top: 20px; margin-bottom: 10px; font-size: 15px; font-weight: bold; color: #e67e22; border-left: 4px solid #e67e22; padding-left: 8px; }
   .section-title.purple { color: #9b59b6; border-left-color: #9b59b6; }
   .hint-text { font-size: 11px; color: var(--text-muted); font-weight: normal; margin-left: 4px; }
   button.action-btn { margin-top: 10px; width: 100%; padding: 14px; background-color: #3498db; color: white; border: none; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; }
   button.action-btn:hover { background-color: #2980b9; }
+  button:active { transform: scale(0.92) !important; opacity: 0.8; transition: transform 0.05s ease, opacity 0.05s ease; }
   .btn-half { width: 48%; display: inline-block; padding: 14px 0; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 14px; cursor: pointer; }
   .btn-reset { background-color: #95a5a6; margin-top: 10px; width: 100%; padding: 10px; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
   .btn-save { background-color: #e67e22; margin-top: 15px; width: 100%; padding: 12px; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 15px; cursor: pointer; }
+  .btn-save:hover { background-color: #d35400; }
   .btn-small { padding: 6px 12px; font-size: 12px; font-weight: bold; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 5px; margin-top: 8px; display: inline-block; }
   .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; justify-content: center; align-items: flex-start; }
   .modal-content { background: var(--card-bg); width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; border-radius: 0 0 12px 12px; padding: 20px; animation: slideDown 0.3s forwards; padding-top: calc(20px + env(safe-area-inset-top)); }
@@ -113,20 +102,6 @@
   .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
   input:checked + .slider { background-color: #2980b9; }
   input:checked + .slider:before { transform: translateX(24px); }
-
-  /* ボタンタップ時の沈み込みエフェクト（疑似クリック感） */
-button:active {
-  transform: scale(0.92) !important;
-  opacity: 0.8;
-  transition: transform 0.05s ease, opacity 0.05s ease;
-}
-
-/* Wタップする入力欄も、触れた瞬間に少し凹ませる */
-input[readonly]:active {
-  transform: scale(0.98);
-  background-color: rgba(0,0,0,0.05) !important;
-  transition: transform 0.05s ease;
-}
 </style>
 </head>
 <body>
@@ -141,12 +116,12 @@ input[readonly]:active {
 </nav>
 
 <div class="card">
-  <!-- ツール1：計測 -->
+  <!-- ================= ツール1：計測 ================= -->
   <div id="tab1" class="tab-content">
     <div style="display: flex; gap: 8px; margin-bottom: 12px;">
       <div style="flex: 1;"><label>日付</label><input type="date" id="recordDate"></div>
       <div style="flex: 1.5;"><label>店舗名</label><input type="text" id="storeName" placeholder="例: マルハン" list="machineList"></div>
-      <div style="flex: 1.5;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15" list="machineList"></div>
+      <div style="flex: 1.5;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15" list="machineList" onchange="syncMachineSpec()"></div>
     </div>
     <div class="form-group" style="margin-top: 15px;">
       <label>スタート時点の回転数 <span class="hint-text">※スワイプ/Wタップ</span></label>
@@ -171,39 +146,61 @@ input[readonly]:active {
       <button class="btn-half" onclick="addMeasurement(250)" style="background-color: #16a085;">250玉(1000円)追加</button>
     </div>
     <div style="text-align: right; margin-top: 8px;"><button class="btn-small" style="background-color:#e74c3c; margin:0;" onclick="undoLastInput()">↩️ 入力取り消し</button></div>
+    
+    <!-- 当たり出玉入力（ラウンド数対応） -->
     <div id="payoutInputArea" style="display: none; margin-top: 15px; padding: 15px; background: var(--box-yellow-bg); border: 1px solid #ffeeba; border-radius: 6px;">
       <div style="font-weight: bold; color: #d35400; margin-bottom: 8px; font-size:15px;" id="payoutTitle">大当たり獲得出玉を入力</div>
-      <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">※スワイプ/Wタップ</label><input type="number" id="payoutAmount" class="swipe-input" step="10" value="" placeholder="例: 1500" style="border-color: #f39c12;">
-      <label style="font-size: 11px; color: #d35400; margin-top: 10px; margin-bottom: 4px;">備考 (Wタップ)</label><input type="text" id="payoutMemo" placeholder="例: 10連 など" style="border-color: #f39c12;">
+      <div style="display:flex; gap:10px; margin-bottom:10px;">
+        <div style="flex:1;">
+          <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">獲得出玉 (玉)</label>
+          <input type="number" id="payoutAmount" class="swipe-input" step="10" placeholder="例: 4200" style="border-color: #f39c12;">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">消化ラウンド数 (R)</label>
+          <input type="number" id="payoutRounds" class="swipe-input" step="1" placeholder="例: 30" style="border-color: #f39c12;">
+        </div>
+      </div>
+      <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">備考 (Wタップ)</label><input type="text" id="payoutMemo" placeholder="例: 右打ちスルー 等" style="border-color: #f39c12;">
       <button class="action-btn" style="background-color: #e67e22; margin-top: 10px;" onclick="addPayout()">出玉を記録して次へ</button>
     </div>
+    
     <div style="margin-top: 25px;">
       <button id="btnOpenResultModal" class="action-btn" style="background-color: #34495e; padding: 16px; font-size:14px;" onclick="openResultModal()">📊 入力データを確認 (未入力)</button>
       <button class="action-btn" style="background-color: #7f8c8d; padding: 12px; margin-top: 10px; font-size:13px;" onclick="openSavedModal()">💾 同日の保存データを呼び出し</button>
     </div>
   </div>
 
-  <!-- ツール2：期待値 -->
+  <!-- ================= ツール2：期待値 ================= -->
   <div id="tab2" class="tab-content">
-    <h2>期待値計算＆シミュレーション</h2>
-    <div class="section-title">基本条件</div>
-    <div class="form-group" style="background: var(--box-blue-bg); padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
-      <label style="color: #2980b9;">機種名 (辞書から自動入力)</label><input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="loadMachineSpec()">
-    </div>
-    <div class="form-group"><label>等価ボーダー (回/千円) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="border" class="swipe-input" step="0.1" value="" placeholder="例: 18.0" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>現在の平均回転数 (回/千円) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="spinRate" class="swipe-input" step="0.1" value="" placeholder="例: 20.0" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>交換率 (円/玉) ※等価4.0、28玉3.57 <span class="hint-text">※Wタップ</span></label><input type="number" id="exchangeRate" class="swipe-input" step="0.01" value="" placeholder="例: 3.57"></div>
-    <div class="form-group"><label>持ち球比率 (%) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>総回転数 (回) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="totalSpins" class="swipe-input" step="10" value="" placeholder="例: 2000"></div>
-    <div class="section-title">機種スペック（ブレの計算用）</div>
-    <div class="form-group"><label>大当たり確率 (1/〇〇) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="probDenom" class="swipe-input" step="0.1" value="" placeholder="例: 319.6" oninput="this.classList.remove('auto-filled')"></div>
-    <div class="form-group"><label>初当たり平均獲得出玉 (玉) <span class="hint-text">※スワイプ/Wタップ</span></label><input type="number" id="avgPayout" class="swipe-input" step="10" value="" placeholder="例: 4500" oninput="this.classList.remove('auto-filled')"></div>
+    <h2>専業用：期待値＆仕事量シミュレータ</h2>
     
+    <div class="section-title">機種スペック（辞書連動）</div>
+    <div class="form-group" style="background: var(--box-blue-bg); padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
+      <label style="color: #2980b9;">機種名 (辞書から自動読込)</label><input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="loadMachineSpec()">
+    </div>
+    <div style="display:flex; gap:10px;">
+      <div class="form-group" style="flex:1;"><label>初当たり確率</label><input type="number" id="probDenom" class="swipe-input" step="0.1" placeholder="例: 319.6" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
+      <div class="form-group" style="flex:1;"><label>平均ラウンド(R)</label><input type="number" id="avgRounds" class="swipe-input" step="0.1" placeholder="例: 32.2" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
+      <div class="form-group" style="flex:1;"><label>1R表記出玉(玉)</label><input type="number" id="payoutPerR" class="swipe-input" step="1" placeholder="例: 140" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
+    </div>
+    <div class="form-group"><label>【自動計算】等価ボーダー (回/千円)</label><input type="text" id="border" readonly style="background:var(--bg-main); color:var(--text-muted); border-style:dashed;"></div>
+
+    <div class="section-title">実測データ・稼働条件</div>
+    <div style="display:flex; gap:10px;">
+      <div class="form-group" style="flex:1;"><label>現在の平均回転数</label><input type="number" id="spinRate" class="swipe-input" step="0.1" placeholder="例: 20.0" oninput="this.classList.remove('auto-filled')"></div>
+      <div class="form-group" style="flex:1;"><label>実測1R出玉 (玉)</label><input type="number" id="realPayoutPerR" class="swipe-input" step="0.1" placeholder="例: 135" oninput="this.classList.remove('auto-filled')"></div>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <div class="form-group" style="flex:1;"><label>交換率 (円/玉)</label><input type="number" id="exchangeRate" class="swipe-input" step="0.01" value="" placeholder="例: 3.57" oninput="updateMeasurementDisplay()"></div>
+      <div class="form-group" style="flex:1;"><label>持ち球比率 (%)</label><input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60" oninput="this.classList.remove('auto-filled'); updateMeasurementDisplay()"></div>
+    </div>
+    <div class="form-group"><label>総回転数 (回) <span class="hint-text">※シミュレーション用</span></label><input type="number" id="totalSpins" class="swipe-input" step="10" value="" placeholder="例: 2000"></div>
+
     <button class="action-btn" onclick="calculateAndSimulate()">期待値を計算＆シミュレート</button>
-    <p style="font-size:11px; text-align:center; color:var(--text-muted); margin-top:5px;">※管理者のみ、辞書に自動登録・上書きされます。</p>
+    <p style="font-size:11px; text-align:center; color:var(--text-muted); margin-top:5px;">※管理者のみ、計算時にスペックが自動的に「辞書」に登録・上書きされます。</p>
 
     <div class="result" id="resultArea" style="display: none;">
-      <p><span>1回転あたり:</span> <span id="resSpin" style="font-weight: bold;"></span></p><hr><p><span>トータル理論期待値:</span> <span id="resTotal" class="total"></span></p>
+      <p><span>回転単価:</span> <span id="resSpin" style="font-weight: bold;"></span></p><hr><p><span>トータル理論期待値:</span> <span id="resTotal" class="total"></span></p>
       <div style="margin-top: 15px; background: var(--card-bg); padding: 15px; border-radius: 4px; border: 1px solid #3498db;">
         <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #2980b9;">この結果から実収支を自動計算しカレンダーへ</div>
         <div style="display: flex; gap: 8px; margin-bottom: 8px;"><input type="date" id="evSaveDate" style="flex: 1;"><input type="text" id="evSaveStore" placeholder="店舗名" style="flex: 1;"><input type="text" id="evSaveMachine" placeholder="機種名" style="flex: 1;"></div>
@@ -211,16 +208,13 @@ input[readonly]:active {
       </div>
     </div>
     <div class="simulation" id="simArea" style="display: none;">
-      <div id="graphContainer" style="display: none; margin-bottom: 25px;">
-        <div style="font-weight: bold; margin-bottom: 10px; color: #3498db;">実稼働の差玉推移グラフ</div>
-        <div style="position: relative; height: 250px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #ccc;"><canvas id="slumpGraph"></canvas></div><hr style="margin: 20px 0;">
-      </div>
+      <div id="graphContainer" style="display: none; margin-bottom: 25px;"><div style="font-weight: bold; margin-bottom: 10px; color: #3498db;">実稼働の差玉推移グラフ</div><div style="position: relative; height: 250px; background: #fff; padding: 10px; border-radius: 4px; border: 1px solid #ccc;"><canvas id="slumpGraph"></canvas></div><hr style="margin: 20px 0;"></div>
       <div style="font-weight: bold; margin-bottom: 10px; color: #d35400;">10万回シミュレーション結果（理論値のブレ）</div>
       <p><span>上位 5% (大上振れ):</span> <span id="simTop5" class="sim-value plus"></span></p><p><span>上位 25% (やや上振れ):</span> <span id="simTop25" class="sim-value plus"></span></p><p><span>中央値 (50%):</span> <span id="simMedian" class="sim-value"></span></p><p><span>下位 25% (やや欠損):</span> <span id="simBot25" class="sim-value minus"></span></p><p><span>下位 5% (大欠損):</span> <span id="simBot5" class="sim-value minus"></span></p>
     </div>
   </div>
 
-  <!-- ツール3：収支カレンダー -->
+  <!-- ================= ツール3：収支カレンダー ================= -->
   <div id="tab3" class="tab-content">
     <h2>収支カレンダー</h2>
     <div class="calendar-header"><button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(-1)">◀ 前月</button><div id="calendarMonthLabel" style="font-weight:bold; font-size:16px; color:#2c3e50;"></div><button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(1)">次月 ▶</button></div>
@@ -230,7 +224,7 @@ input[readonly]:active {
     <div id="calendarList"></div><input type="hidden" id="actualDate">
   </div>
 
-  <!-- ツール4：設定・データ -->
+  <!-- ================= ツール4：設定・データ ================= -->
   <div id="tab4" class="tab-content active">
     <div id="mode-indicator-container"><div id="mode-indicator" class="mode-badge mode-warning">⚠️ グループ未参加</div></div>
     <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px; display:flex; justify-content:space-between; align-items:center;">
@@ -260,12 +254,15 @@ input[readonly]:active {
   </div>
 </div>
 
-<!-- モーダルエリア -->
+<!-- ================= モーダル ================= -->
 <div id="resultModal" class="modal-overlay">
   <div class="modal-content">
-    <h3 style="margin-top:0; border-bottom:2px solid #3498db; padding-bottom:8px; color:var(--text-main);">計測結果の詳細</h3>
+    <h3 style="margin-top:0; border-bottom:2px solid #3498db; padding-bottom:8px; color:var(--text-main);">計測結果と仕事量の詳細</h3>
     <div class="result" id="measurementResult" style="display: block; margin-top:10px; padding: 10px;">
-      <p><span>250玉平均:</span> <span id="avg250" class="highlight">0.00 回</span></p><p><span>持ち球比率:</span> <span id="dispMochiRatio" style="font-weight:bold; color:#e67e22;">0.0 %</span></p><hr><p><span>自分で回した回転数:</span> <span id="totalMeasuredSpins">0 回</span></p><p><span>現在の総回転数:</span> <span id="absoluteTotalSpins" style="font-weight:bold; color:var(--text-main);">0 回</span></p><p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls">0 玉</span></p>
+      <p><span>250玉平均:</span> <span id="avg250" class="highlight">0.00 回</span></p><p><span>持ち球比率:</span> <span id="dispMochiRatio" style="font-weight:bold; color:#e67e22;">0.0 %</span></p>
+      <p><span>自分で回した回転数:</span> <span id="totalMeasuredSpins">0 回</span></p><p><span>現在の総回転数:</span> <span id="absoluteTotalSpins" style="font-weight:bold; color:var(--text-main);">0 回</span></p><p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls">0 玉</span></p>
+      <!-- ★ここに仕事量計算結果が挿入される -->
+      <div id="workValueArea"></div>
       <div class="history-list" id="historyList"></div>
     </div>
     <button class="btn-save" id="btnSaveRecord" onclick="saveCurrentRecord()" style="margin-top: 20px;">この記録を保存</button>
@@ -278,7 +275,7 @@ input[readonly]:active {
   <div class="modal-content"><h3 style="margin-top:0; border-bottom:2px solid #7f8c8d; padding-bottom:8px; color:var(--text-main);">同日の保存データ</h3><div id="savedRecordsContainer"></div><button class="modal-close-btn" onclick="closeSavedModal()">元の画面に戻る</button></div>
 </div>
 
-<!-- ★分離したプログラム本体の読み込み -->
+<!-- 分離したプログラム本体 -->
 <script src="./app.js"></script>
 
 </body>
