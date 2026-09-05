@@ -41,7 +41,11 @@
   input[type="number"], input[type="text"], input[type="date"] { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; box-sizing: border-box; font-size: 16px; background: var(--input-bg); color: var(--text-main); transition: 0.3s; }
   input::placeholder { color: #aaa; }
   .auto-filled { background-color: var(--box-yellow-bg) !important; border-color: #ffeeba; }
+  
+  /* スワイプ入力（縦スクロールを邪魔しないようにpan-yを設定） */
   .swipe-input { cursor: ew-resize; touch-action: pan-y; }
+  input:disabled { opacity: 0.6; cursor: not-allowed; background-color: var(--bg-main) !important; }
+  
   .section-title { margin-top: 20px; margin-bottom: 10px; font-size: 15px; font-weight: bold; color: #e67e22; border-left: 4px solid #e67e22; padding-left: 8px; }
   .section-title.purple { color: #9b59b6; border-left-color: #9b59b6; }
   .hint-text { font-size: 11px; color: var(--text-muted); font-weight: normal; margin-left: 4px; }
@@ -101,8 +105,6 @@
   input:checked + .slider:before { transform: translateX(24px); }
   .rule-check-label { display: flex; align-items: center; gap: 4px; font-weight: normal; font-size: 13px; color: var(--text-main); background: var(--bg-main); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; }
   .rule-check-label input { width: auto; margin: 0; }
-  
-  input:disabled { opacity: 0.7; cursor: not-allowed; }
 </style>
 </head>
 <body>
@@ -148,36 +150,47 @@
     </div>
     <div style="text-align: right; margin-top: 8px;"><button class="btn-small" style="background-color:#e74c3c; margin:0;" onclick="undoLastInput()">↩️ 入力取り消し</button></div>
     
-    <!-- ★当たり出玉入力（持ち球の差分で自動計算） -->
+    <!-- ★ 当たり出玉・ラウンド数の自動計算入力エリア -->
     <div id="payoutInputArea" style="display: none; margin-top: 15px; padding: 15px; background: var(--box-yellow-bg); border: 1px solid #ffeeba; border-radius: 6px;">
-      <div style="font-weight: bold; color: #d35400; margin-bottom: 8px; font-size:15px;" id="payoutTitle">大当たり結果を入力</div>
+      <div style="font-weight: bold; color: #d35400; margin-bottom: 12px; font-size:15px;" id="payoutTitle">大当たり結果を入力</div>
       
-      <div style="display:flex; gap:10px; margin-bottom:10px;">
-        <div style="flex:1;">
-          <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">当たり時の持ち球数</label>
-          <input type="number" id="payoutStartBalls" class="swipe-input" step="10" placeholder="例: 0" style="border-color: #f39c12;" oninput="updateCalculatedPayout()">
+      <div style="background:var(--card-bg); padding:10px; border-radius:4px; border:1px solid var(--border-color); margin-bottom:10px;">
+        <div style="font-size:12px; font-weight:bold; color:#2980b9; margin-bottom:8px;">① 出玉の計算（終了時持ち球 - 開始時持ち球）</div>
+        <div style="display:flex; gap:10px; margin-bottom:5px;">
+          <div style="flex:1;">
+            <label style="font-size: 11px; margin-bottom: 2px;">開始時の持ち球</label>
+            <input type="number" id="payoutStartBalls" class="swipe-input" step="10" placeholder="例: 1500" oninput="calcPayoutAmount()">
+          </div>
+          <div style="flex:1;">
+            <label style="font-size: 11px; margin-bottom: 2px;">終了時の持ち球</label>
+            <input type="number" id="payoutEndBalls" class="swipe-input" step="10" placeholder="例: 8500" oninput="calcPayoutAmount()">
+          </div>
         </div>
-        <div style="flex:1;">
-          <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">終了後の持ち球数</label>
-          <input type="number" id="payoutEndBalls" class="swipe-input" step="10" placeholder="例: 4200" style="border-color: #f39c12;" oninput="updateCalculatedPayout()">
-        </div>
-      </div>
-      
-      <div style="text-align:right; font-size:13px; font-weight:bold; color:#e67e22; margin-bottom:12px;">
-        獲得出玉: <span id="dispCalculatedPayout" style="font-size:16px;">0</span> 玉
+        <div style="text-align:right; font-size:14px; font-weight:bold; color:var(--text-main);">獲得出玉: <span id="dispPayoutAmount" style="color:#e74c3c;">0</span> 玉</div>
+        <input type="hidden" id="payoutAmount" value="0">
       </div>
 
-      <div style="display:flex; gap:10px; margin-bottom:10px;">
-        <div style="flex:1;">
-          <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">消化ラウンド数 (R)</label>
-          <input type="number" id="payoutRounds" class="swipe-input" step="1" placeholder="例: 30" style="border-color: #f39c12;">
+      <div style="background:var(--card-bg); padding:10px; border-radius:4px; border:1px solid var(--border-color); margin-bottom:10px;">
+        <div style="font-size:12px; font-weight:bold; color:#27ae60; margin-bottom:8px;">② 消化ラウンド数の計算</div>
+        <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
+          <input type="number" id="rType1" class="swipe-input" style="width:60px; padding:6px;" placeholder="10" oninput="calcPayoutRounds()"> <span style="font-size:12px; color:var(--text-sub);">R ×</span>
+          <input type="number" id="rCount1" class="swipe-input" style="flex:1; padding:6px;" placeholder="回数" oninput="calcPayoutRounds()">
         </div>
-        <div style="flex:1;">
-          <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">備考 (タップ)</label>
-          <input type="text" id="payoutMemo" placeholder="例: 右打ちスルー" style="border-color: #f39c12;">
+        <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
+          <input type="number" id="rType2" class="swipe-input" style="width:60px; padding:6px;" placeholder="3" oninput="calcPayoutRounds()"> <span style="font-size:12px; color:var(--text-sub);">R ×</span>
+          <input type="number" id="rCount2" class="swipe-input" style="flex:1; padding:6px;" placeholder="回数" oninput="calcPayoutRounds()">
         </div>
+        <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
+          <input type="number" id="rType3" class="swipe-input" style="width:60px; padding:6px;" placeholder="2" oninput="calcPayoutRounds()"> <span style="font-size:12px; color:var(--text-sub);">R ×</span>
+          <input type="number" id="rCount3" class="swipe-input" style="flex:1; padding:6px;" placeholder="回数" oninput="calcPayoutRounds()">
+        </div>
+        <div style="text-align:right; font-size:14px; font-weight:bold; color:var(--text-main);">合計: <span id="dispPayoutRounds" style="color:#e74c3c;">0</span> R</div>
+        <input type="hidden" id="payoutRounds" value="0">
       </div>
-      <button class="action-btn" style="background-color: #e67e22; margin-top: 5px;" onclick="addPayout()">出玉を記録して次へ</button>
+
+      <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">備考 (タップ)</label>
+      <input type="text" id="payoutMemo" placeholder="例: 右打ちスルー 等" style="border-color: #f39c12;">
+      <button class="action-btn" style="background-color: #e67e22; margin-top: 10px;" onclick="addPayout()">出玉を記録して次へ</button>
     </div>
     
     <div style="margin-top: 25px;">
