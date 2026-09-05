@@ -111,7 +111,7 @@ function getNickname() {
 }
 function updateNickname() {
   const newName = document.getElementById('updateNicknameInput').value.trim();
-  if(newName) { localStorage.setItem('pachinko_nickname', newName); alert("ニックネームを更新しました！"); document.getElementById('updateNicknameInput').value = ''; updateModeIndicator(); } 
+  if(newName) { localStorage.setItem('pachinko_nickname', newName); alert("ニックネームを更新しました！\nランキングにも順次反映されます。"); document.getElementById('updateNicknameInput').value = ''; updateModeIndicator(); renderCalendar(); } 
   else { alert("ニックネームを入力してください。"); }
 }
 function saveNicknameFromInput() {
@@ -436,7 +436,6 @@ function createRecordItemHtml(r) {
   return `<div class="saved-item"><div style="font-weight:bold; color:var(--text-main); font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}${authorDisp}</div><div style="font-size:13px; margin:6px 0; color:var(--text-sub);">総投資: ${r.totalBalls}玉 / 自力回転: ${r.totalSpins}回${startDisp}<br><span style="color:#e74c3c; font-weight:bold; font-size:14px;">250玉平均: ${r.avg250.toFixed(2)} 回</span><span style="color:#e67e22; font-weight:bold; font-size:13px; margin-left:10px;">持球比率: ${dispRatio}%</span></div>${historyHtml}<div style="margin-top: 10px; display: flex; gap: 4px; flex-wrap: wrap;">${resumeButton}<button class="btn-small" style="background:#3498db;" onclick="${btnCall}">期待値を計算</button>${adminButtons}</div></div>`;
 }
 
-// ★ 当たり記録時の処理（履歴データにそのまま追加）
 window.addMeasurement = function(balls) {
   vibrate();
   const spinInput = document.getElementById('measuredSpin'), currentMachineSpin = parseFloat(spinInput.value);
@@ -490,11 +489,8 @@ window.updateMeasurementDisplay = function() {
   if (historyData.length === 0) { 
     startSpinInput.disabled = false; startSpinInput.style.backgroundColor = "var(--input-bg)";
     btnModal.innerText = "📊 入力データを確認 (未入力)"; document.getElementById('avg250').innerText = "0.00 回"; 
-    
-    // 未入力時は0回・スタート回転数をそのまま表示
     if(document.getElementById('currentHitCount')) document.getElementById('currentHitCount').innerText = "0 回";
     if(document.getElementById('currentMachineSpinDisp')) document.getElementById('currentMachineSpinDisp').innerText = (parseInt(startSpinInput.value) || 0) + " 回";
-    
     document.getElementById('historyList').innerHTML = ""; document.getElementById('workValueArea').innerHTML = ""; return; 
   }
   
@@ -502,18 +498,14 @@ window.updateMeasurementDisplay = function() {
   
   let totalBalls = 0, totalSpins = 0, mochidamaBalls = 0, historyHtml = '', spinCount = 0;
   let totalPayoutAmount = 0, totalPayoutRounds = 0;
-  
-  // ★ 大当たり回数と現在回転数の集計
-  let currentHitCount = 0;
-  let currentMachineSpin = parseInt(startSpinInput.value) || 0;
+  let currentHitCount = 0; let currentMachineSpin = parseInt(startSpinInput.value) || 0;
 
   for (let i = 0; i < historyData.length; i++) {
     let item = historyData[i]; let itemHtml = '';
     
     if (item.type === 'spin' || !item.type) {
       spinCount++; totalBalls += item.balls; totalSpins += item.spins; if (item.isMochidama) mochidamaBalls += item.balls;
-      currentMachineSpin += item.spins;
-      if (item.hitType) currentMachineSpin = 0; // 当たりがあれば0にリセット
+      currentMachineSpin += item.spins; if (item.hitType) currentMachineSpin = 0;
     } else if (item.type === 'payout') {
       totalPayoutAmount += item.amount; if(item.rounds) totalPayoutRounds += item.rounds;
       currentHitCount++;
@@ -540,10 +532,9 @@ window.updateMeasurementDisplay = function() {
   }
   historyHtml = '<strong>入力履歴:</strong><br>' + historyHtml;
   
-  // ★ モーダルへの値のセット
   if(document.getElementById('currentHitCount')) document.getElementById('currentHitCount').innerText = currentHitCount + " 回";
   if(document.getElementById('currentMachineSpinDisp')) document.getElementById('currentMachineSpinDisp').innerText = currentMachineSpin + " 回";
-  
+
   const avg250 = totalBalls > 0 ? (totalSpins / totalBalls) * 250 : 0; const mochiRatio = totalBalls > 0 ? (mochidamaBalls / totalBalls * 100) : 0;
   const startSpin = parseInt(startSpinInput.value) || 0, absoluteTotalSpins = startSpin + totalSpins;
   
@@ -745,8 +736,13 @@ window.saveExpectedValueToCalendar = async function() {
   }
 
   const cal = await getCalendarData(); if(!cal[date]) cal[date] = { ev: 0, actual: 0, actualBalls: 0, details: [] };
+  
+  // ★ UIDベースでカレンダーの文字列を保存
+  const uid = currentUser ? currentUser.uid : 'guest';
+  const nick = getNickname();
+  
   cal[date].ev = (cal[date].ev || 0) + lastCalculatedEV; cal[date].actual = (cal[date].actual || 0) + actualAmt; cal[date].actualBalls = (cal[date].actualBalls || 0) + diffBalls;
-  cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:var(--text-muted);">👤 ${getNickname()}</span>${hitText}`);
+  cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:var(--text-muted);" data-uid="${uid}" data-name="${nick}">👤 ${nick}</span>${hitText}`);
   await saveCalendarData(cal); alert(`${date} の収支にデータを保存しました。`); renderCalendar();
 
   document.getElementById('calcMachineName').value = ''; document.getElementById('border').value = ''; document.getElementById('spinRate').value = ''; document.getElementById('exchangeRate').value = '';
@@ -761,7 +757,7 @@ window.saveExpectedValueToCalendar = async function() {
 };
 
 // ==========================================
-// ツール③：カレンダー機能＆ランキング自動集計
+// ツール③：カレンダー機能 ＆ ランキング自動集計
 // ==========================================
 window.changeMonth = function(diff) { currentCalMonth += diff; if(currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; } if(currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; } renderCalendar(); };
 window.selectDate = function(dateStr) { document.getElementById('actualDate').value = dateStr; renderCalendar(); };
@@ -775,6 +771,8 @@ async function renderCalendar() {
   
   let monthlyEV = 0, monthlyActual = 0, monthlyBalls = 0;
   const monthStr = `${year}-${String(month+1).padStart(2,'0')}`; const selectedDateVal = document.getElementById('actualDate').value;
+
+  // ★ 月間ランキング用ユーザー別集計（UIDベース）
   let userStats = {};
 
   for(let day=1; day<=daysInMonth; day++){
@@ -790,13 +788,29 @@ async function renderCalendar() {
       
       if (dayData.details && Array.isArray(dayData.details)) {
         dayData.details.forEach(detail => {
-          const match = detail.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円.*👤\s*(.*?)<\/span>/);
-          if (match) {
-            let ev = parseInt(match[1].replace(/,/g, '')) || 0;
-            let actual = parseInt(match[2].replace(/,/g, '')) || 0;
-            let name = match[3].trim();
-            if (!userStats[name]) userStats[name] = { ev: 0, actual: 0 };
-            userStats[name].ev += ev; userStats[name].actual += actual;
+          // UIDを含む新フォーマットと、含まない旧フォーマット両方に対応
+          const matchNew = detail.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円.*data-uid="([^"]+)" data-name="([^"]+)">/);
+          const matchOld = detail.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円.*👤\s*(.*?)<\/span>/);
+          
+          let ev = 0, actual = 0, uid = "", name = "";
+          
+          if (matchNew) {
+            ev = parseInt(matchNew[1].replace(/,/g, '')) || 0;
+            actual = parseInt(matchNew[2].replace(/,/g, '')) || 0;
+            uid = matchNew[3];
+            name = matchNew[4];
+          } else if (matchOld) {
+            ev = parseInt(matchOld[1].replace(/,/g, '')) || 0;
+            actual = parseInt(matchOld[2].replace(/,/g, '')) || 0;
+            name = matchOld[3].trim();
+            uid = name; // 古いデータは名前をUID扱いにする
+          }
+
+          if (uid) {
+            if (!userStats[uid]) userStats[uid] = { ev: 0, actual: 0, latestName: name };
+            userStats[uid].ev += ev;
+            userStats[uid].actual += actual;
+            if (matchNew) userStats[uid].latestName = name; // 新フォーマットなら名前を最新のものに上書き
           }
         });
       }
@@ -821,39 +835,105 @@ async function renderCalendar() {
 }
 
 function updateRankingAndAvatar(userStats) {
-  const myName = getNickname(); const myData = userStats[myName] || { ev: 0, actual: 0 }; const myActual = myData.actual;
-  const avatarIcon = document.getElementById('avatar-icon'); const avatarMsg = document.getElementById('avatar-msg'); const avatarContainer = document.getElementById('avatar-container');
+  // ★ 自分のUIDベースで判定する（過去データの名前と新データのUIDを合算してアバター判定）
+  const myUid = currentUser ? currentUser.uid : 'guest';
+  const myName = getNickname();
+  
+  const myDataNew = userStats[myUid] || { ev: 0, actual: 0 };
+  const myDataOld = (myUid !== myName && userStats[myName]) ? userStats[myName] : { ev: 0, actual: 0 };
+  const myActual = myDataNew.actual + myDataOld.actual;
+  
+  const avatarIcon = document.getElementById('avatar-icon');
+  const avatarMsg = document.getElementById('avatar-msg');
+  const avatarContainer = document.getElementById('avatar-container');
 
-  if (myActual >= 50000) { avatarIcon.innerHTML = "✨🦝🦊✨"; avatarMsg.innerHTML = "5万円以上勝ち！<br>金色のたぬきときつね"; avatarContainer.style.borderColor = "#f1c40f"; } 
-  else if (myActual >= 10000) { avatarIcon.innerHTML = "🍗🦝🔥🦊🍖"; avatarMsg.innerHTML = "1万円以上勝ち！<br>焼肉してるたぬきときつね"; avatarContainer.style.borderColor = "#e67e22"; } 
-  else if (myActual <= -50000) { avatarIcon.innerHTML = "📦🦝🦊📦"; avatarMsg.innerHTML = "5万円以上負け...<br>段ボールに入っているたぬきときつね"; avatarContainer.style.borderColor = "#34495e"; } 
-  else if (myActual <= -10000) { avatarIcon.innerHTML = "🌱🦝🦊🌱"; avatarMsg.innerHTML = "1万円以上負け...<br>もやし持ってるたぬきときつね"; avatarContainer.style.borderColor = "#95a5a6"; } 
-  else { avatarIcon.innerHTML = "🦝🦊"; avatarMsg.innerHTML = "プラマイゼロ<br>棒立ちのたぬきときつね"; avatarContainer.style.borderColor = "var(--border-color)"; }
+  if (myActual >= 50000) {
+    avatarIcon.innerHTML = "✨🦝🦊✨"; 
+    avatarMsg.innerHTML = "5万円以上勝ち！<br>金色のたぬきときつね";
+    avatarContainer.style.borderColor = "#f1c40f";
+  } else if (myActual >= 10000) {
+    avatarIcon.innerHTML = "🍗🦝🔥🦊🍖"; 
+    avatarMsg.innerHTML = "1万円以上勝ち！<br>焼肉してるたぬきときつね";
+    avatarContainer.style.borderColor = "#e67e22";
+  } else if (myActual <= -50000) {
+    avatarIcon.innerHTML = "📦🦝🦊📦"; 
+    avatarMsg.innerHTML = "5万円以上負け...<br>段ボールに入っているたぬきときつね";
+    avatarContainer.style.borderColor = "#34495e";
+  } else if (myActual <= -10000) {
+    avatarIcon.innerHTML = "🌱🦝🦊🌱"; 
+    avatarMsg.innerHTML = "1万円以上負け...<br>もやし持ってるたぬきときつね";
+    avatarContainer.style.borderColor = "#95a5a6";
+  } else {
+    avatarIcon.innerHTML = "🦝🦊"; 
+    avatarMsg.innerHTML = "プラマイゼロ<br>棒立ちのたぬきときつね";
+    avatarContainer.style.borderColor = "var(--border-color)";
+  }
 
-  let users = Object.keys(userStats).map(name => { return { name: name, ev: userStats[name].ev, actual: userStats[name].actual, diff: userStats[name].actual - userStats[name].ev }; });
+  // ★ ユーザー配列の作成（表示名はlatestNameを使用）
+  let users = Object.keys(userStats).map(key => {
+    return { name: userStats[key].latestName, ev: userStats[key].ev, actual: userStats[key].actual, diff: userStats[key].actual - userStats[key].ev };
+  });
+
+  // ページ1: 収支ランキング（実収支降順）
   users.sort((a, b) => b.actual - a.actual);
   let html1 = "";
   if (users.length > 0) {
     html1 += `<div style="font-size:18px; font-weight:bold; color:#f39c12; margin-bottom:10px;">👑 月間MVP: ${users[0].name} <span style="font-size:14px; color:#555;">(${formatCurrency(users[0].actual)})</span></div>`;
-    if (users.length > 1) { let last = users[users.length - 1]; html1 += `<div style="font-size:15px; font-weight:bold; color:#34495e; margin-bottom:15px;">💸 今月の養分: ${last.name} <span style="font-size:13px; color:#555;">(${formatCurrency(last.actual)})</span></div>`; }
+    if (users.length > 1) {
+      let last = users[users.length - 1];
+      html1 += `<div style="font-size:15px; font-weight:bold; color:#34495e; margin-bottom:15px;">💸 今月の養分: ${last.name} <span style="font-size:13px; color:#555;">(${formatCurrency(last.actual)})</span></div>`;
+    }
     html1 += `<table style="width:100%; border-collapse:collapse; font-size:13px;">`;
-    users.forEach((u, i) => { html1 += `<tr style="border-bottom:1px dashed var(--border-color);"><td style="padding:8px 0; font-weight:bold; color:var(--text-sub); width:40px;">${i+1}位</td><td style="font-weight:bold;">${u.name}</td><td style="text-align:right; font-weight:bold; color:${u.actual >= 0 ? '#2980b9' : '#e74c3c'}">${formatCurrency(u.actual)}</td></tr>`; });
+    users.forEach((u, i) => {
+      html1 += `<tr style="border-bottom:1px dashed var(--border-color);">
+        <td style="padding:8px 0; font-weight:bold; color:var(--text-sub); width:40px;">${i+1}位</td>
+        <td style="font-weight:bold;">${u.name}</td>
+        <td style="text-align:right; font-weight:bold; color:${u.actual >= 0 ? '#2980b9' : '#e74c3c'}">${formatCurrency(u.actual)}</td>
+      </tr>`;
+    });
     html1 += `</table>`;
   } else { html1 = "<div style='text-align:center; color:var(--text-muted); font-size:12px;'>稼働データがありません</div>"; }
   document.getElementById('rank-content-1').innerHTML = html1;
 
+  // ページ2: ヒキランキンググラフ（乖離額降順）
   users.sort((a, b) => b.diff - a.diff);
-  let labels = users.map(u => u.name), evData = users.map(u => u.ev), actualData = users.map(u => u.actual);
-  if(window.hikiChartInstance) window.hikiChartInstance.destroy();
-  window.hikiChartInstance = new Chart(document.getElementById('hikiChart'), { type: 'bar', data: { labels: labels, datasets: [ { label: '期待値', data: evData, backgroundColor: '#3498db', borderRadius: 4 }, { label: '実収支', data: actualData, backgroundColor: '#e74c3c', borderRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } } });
+  let labels = users.map(u => u.name);
+  let evData = users.map(u => u.ev);
+  let actualData = users.map(u => u.actual);
 
+  if(window.hikiChartInstance) window.hikiChartInstance.destroy();
+  window.hikiChartInstance = new Chart(document.getElementById('hikiChart'), {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: '期待値', data: evData, backgroundColor: '#3498db', borderRadius: 4 },
+        { label: '実収支', data: actualData, backgroundColor: '#e74c3c', borderRadius: 4 }
+      ]
+    },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } }
+  });
+
+  // ページ3: 貢献度ドーナツグラフ
   let posUsers = users.filter(u => u.actual > 0);
   if(window.pieChartInstance) window.pieChartInstance.destroy();
   if(posUsers.length > 0) {
-    document.getElementById('pieChartContainer').style.display = 'block'; document.getElementById('noPieData').style.display = 'none';
-    let pieLabels = posUsers.map(u => u.name), pieData = posUsers.map(u => u.actual);
-    window.pieChartInstance = new Chart(document.getElementById('pieChart'), { type: 'doughnut', data: { labels: pieLabels, datasets: [{ data: pieData, backgroundColor: ['#f1c40f', '#2ecc71', '#e67e22', '#9b59b6', '#3498db'], borderWidth: 0 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } }, cutout: '65%' } });
-  } else { document.getElementById('pieChartContainer').style.display = 'none'; document.getElementById('noPieData').style.display = 'block'; }
+    document.getElementById('pieChartContainer').style.display = 'block';
+    document.getElementById('noPieData').style.display = 'none';
+    let pieLabels = posUsers.map(u => u.name);
+    let pieData = posUsers.map(u => u.actual);
+    window.pieChartInstance = new Chart(document.getElementById('pieChart'), {
+      type: 'doughnut',
+      data: {
+        labels: pieLabels,
+        datasets: [{ data: pieData, backgroundColor: ['#f1c40f', '#2ecc71', '#e67e22', '#9b59b6', '#3498db'], borderWidth: 0 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 10 } } } }, cutout: '65%' }
+    });
+  } else {
+    document.getElementById('pieChartContainer').style.display = 'none';
+    document.getElementById('noPieData').style.display = 'block';
+  }
 }
 
 window.deleteCalendarDay = async function(date) {
