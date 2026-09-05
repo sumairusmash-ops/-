@@ -101,6 +101,7 @@
   input:checked + .slider:before { transform: translateX(24px); }
   .rule-check-label { display: flex; align-items: center; gap: 4px; font-weight: normal; font-size: 13px; color: var(--text-main); background: var(--bg-main); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; }
   .rule-check-label input { width: auto; margin: 0; }
+  
   input:disabled { opacity: 0.7; cursor: not-allowed; }
 </style>
 </head>
@@ -147,21 +148,36 @@
     </div>
     <div style="text-align: right; margin-top: 8px;"><button class="btn-small" style="background-color:#e74c3c; margin:0;" onclick="undoLastInput()">↩️ 入力取り消し</button></div>
     
-    <!-- 当たり出玉入力（ラウンド数対応） -->
+    <!-- ★当たり出玉入力（持ち球の差分で自動計算） -->
     <div id="payoutInputArea" style="display: none; margin-top: 15px; padding: 15px; background: var(--box-yellow-bg); border: 1px solid #ffeeba; border-radius: 6px;">
-      <div style="font-weight: bold; color: #d35400; margin-bottom: 8px; font-size:15px;" id="payoutTitle">大当たり獲得出玉を入力</div>
+      <div style="font-weight: bold; color: #d35400; margin-bottom: 8px; font-size:15px;" id="payoutTitle">大当たり結果を入力</div>
+      
       <div style="display:flex; gap:10px; margin-bottom:10px;">
         <div style="flex:1;">
-          <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">獲得出玉 (玉)</label>
-          <input type="number" id="payoutAmount" class="swipe-input" step="10" placeholder="例: 4200" style="border-color: #f39c12;">
+          <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">当たり時の持ち球数</label>
+          <input type="number" id="payoutStartBalls" class="swipe-input" step="10" placeholder="例: 0" style="border-color: #f39c12;" oninput="updateCalculatedPayout()">
         </div>
+        <div style="flex:1;">
+          <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">終了後の持ち球数</label>
+          <input type="number" id="payoutEndBalls" class="swipe-input" step="10" placeholder="例: 4200" style="border-color: #f39c12;" oninput="updateCalculatedPayout()">
+        </div>
+      </div>
+      
+      <div style="text-align:right; font-size:13px; font-weight:bold; color:#e67e22; margin-bottom:12px;">
+        獲得出玉: <span id="dispCalculatedPayout" style="font-size:16px;">0</span> 玉
+      </div>
+
+      <div style="display:flex; gap:10px; margin-bottom:10px;">
         <div style="flex:1;">
           <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">消化ラウンド数 (R)</label>
           <input type="number" id="payoutRounds" class="swipe-input" step="1" placeholder="例: 30" style="border-color: #f39c12;">
         </div>
+        <div style="flex:1;">
+          <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">備考 (タップ)</label>
+          <input type="text" id="payoutMemo" placeholder="例: 右打ちスルー" style="border-color: #f39c12;">
+        </div>
       </div>
-      <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">備考 (タップ)</label><input type="text" id="payoutMemo" placeholder="例: 右打ちスルー 等" style="border-color: #f39c12;">
-      <button class="action-btn" style="background-color: #e67e22; margin-top: 10px;" onclick="addPayout()">出玉を記録して次へ</button>
+      <button class="action-btn" style="background-color: #e67e22; margin-top: 5px;" onclick="addPayout()">出玉を記録して次へ</button>
     </div>
     
     <div style="margin-top: 25px;">
@@ -181,7 +197,6 @@
     <div style="display:flex; gap:10px;">
       <div class="form-group" style="flex:1;"><label>初当確率</label><input type="number" id="probDenom" class="swipe-input" step="0.1" placeholder="例: 319" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
       
-      <!-- ★ここに平均ラウンド逆算用の小さなボタンを配置 -->
       <div class="form-group" style="flex:1;">
         <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
           平均R <button class="btn-small" style="padding:2px 6px; margin:0; font-size:10px; background-color:#9b59b6;" onclick="openAvgRCalcModal()">逆算</button>
@@ -318,7 +333,7 @@
   <div class="modal-content"><h3 style="margin-top:0; border-bottom:2px solid #7f8c8d; padding-bottom:8px; color:var(--text-main);">同日の保存データ</h3><div id="savedRecordsContainer"></div><button class="modal-close-btn" onclick="closeSavedModal()">元の画面に戻る</button></div>
 </div>
 
-<!-- ★ 平均ラウンド数逆算モーダル -->
+<!-- 平均ラウンド数逆算モーダル -->
 <div id="avgRCalcModal" class="modal-overlay">
   <div class="modal-content">
     <h3 style="margin-top:0; border-bottom:2px solid #9b59b6; padding-bottom:8px; color:var(--text-main);">平均ラウンド逆算ツール</h3>
