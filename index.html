@@ -113,6 +113,20 @@
   .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
   input:checked + .slider { background-color: #2980b9; }
   input:checked + .slider:before { transform: translateX(24px); }
+
+  /* ボタンタップ時の沈み込みエフェクト（疑似クリック感） */
+button:active {
+  transform: scale(0.92) !important;
+  opacity: 0.8;
+  transition: transform 0.05s ease, opacity 0.05s ease;
+}
+
+/* Wタップする入力欄も、触れた瞬間に少し凹ませる */
+input[readonly]:active {
+  transform: scale(0.98);
+  background-color: rgba(0,0,0,0.05) !important;
+  transition: transform 0.05s ease;
+}
 </style>
 </head>
 <body>
