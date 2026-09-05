@@ -2,48 +2,30 @@
 // Firebase設定（★ここにキーを入れます）
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
   firebase.initializeApp(firebaseConfig);
-  firebase.firestore().enablePersistence().catch((err) => {
-    console.log("Offline persistence error: ", err.code);
-  });
+  firebase.firestore().enablePersistence().catch((err) => { console.log("Offline persistence error: ", err.code); });
 }
 
 const auth = firebase.apps.length ? firebase.auth() : null;
 const db = firebase.apps.length ? firebase.firestore() : null;
 
-// PWAサービスワーカーの登録
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => {
-      console.log('SW registration failed: ', err);
-    });
-  });
+  window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(err => { console.log('SW registration failed: ', err); }); });
 }
 
-let currentUser = null;
-let currentGroupId = localStorage.getItem('pachinko_groupId') || null;
-let isAdmin = false; 
-
-let lastCalculatedEV = 0; 
-let historyData = [];
-let currentPassData = null; 
-let editingRecordId = null; 
-let slumpChartInstance = null; 
-
-let currentCalYear = new Date().getFullYear();
-let currentCalMonth = new Date().getMonth();
-
-let unsubscribeGroup = null;
-let globalGroupData = { records: [], calendar: {}, dictionary: {} };
+let currentUser = null; let currentGroupId = localStorage.getItem('pachinko_groupId') || null; let isAdmin = false; 
+let lastCalculatedEV = 0; let historyData = []; let currentPassData = null; let editingRecordId = null; let slumpChartInstance = null; 
+let currentCalYear = new Date().getFullYear(); let currentCalMonth = new Date().getMonth();
+let unsubscribeGroup = null; let globalGroupData = { records: [], calendar: {}, dictionary: {} };
 let measurementStartTime = null; 
 
 // ==========================================
@@ -54,16 +36,13 @@ function toggleDarkMode() {
   if (isDark) { document.body.setAttribute('data-theme', 'dark'); localStorage.setItem('pachinko_theme', 'dark'); } 
   else { document.body.removeAttribute('data-theme'); localStorage.setItem('pachinko_theme', 'light'); }
 }
-
 function vibrate(ms = 40) { if (navigator.vibrate) navigator.vibrate(ms); }
-
 function openResultModal() { document.getElementById('resultModal').style.display = 'flex'; }
 function closeResultModal() { document.getElementById('resultModal').style.display = 'none'; }
 function openSavedModal() { renderSavedRecords(); document.getElementById('savedModal').style.display = 'flex'; }
 function closeSavedModal() { document.getElementById('savedModal').style.display = 'none'; }
 
-const resultModal = document.getElementById('resultModal');
-const savedModal = document.getElementById('savedModal');
+const resultModal = document.getElementById('resultModal'); const savedModal = document.getElementById('savedModal');
 if(resultModal) resultModal.addEventListener('click', function(e) { if (e.target === resultModal) closeResultModal(); });
 if(savedModal) savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
 
@@ -74,13 +53,10 @@ function applyDoubleTapToInputs() {
     if (input.hasAttribute('data-dbltap-init')) return;
     input.setAttribute('data-dbltap-init', 'true');
     if(!input.disabled) input.setAttribute('readonly', 'readonly');
-    
     let lastTap = 0;
     input.addEventListener('touchend', function(e) {
       let currentTime = new Date().getTime(); let tapLength = currentTime - lastTap;
-      if (tapLength < 400 && tapLength > 0) { 
-        if(!input.disabled) { input.removeAttribute('readonly'); input.focus(); e.preventDefault(); }
-      }
+      if (tapLength < 400 && tapLength > 0) { if(!input.disabled) { input.removeAttribute('readonly'); input.focus(); e.preventDefault(); } }
       lastTap = currentTime;
     });
     input.addEventListener('dblclick', function(e) { if(!input.disabled) { input.removeAttribute('readonly'); input.focus(); } });
@@ -88,14 +64,12 @@ function applyDoubleTapToInputs() {
   });
 }
 
-// スワイプ機能
+// スワイプ機能（透明バリア）
 function setupSwipeInput(id, step, min, max, defaultVal) {
-  const input = document.getElementById(id);
-  if (!input || input.hasAttribute('data-swipe-init')) return;
+  const input = document.getElementById(id); if (!input || input.hasAttribute('data-swipe-init')) return;
   input.setAttribute('data-swipe-init', 'true');
 
-  const wrapper = document.createElement('div');
-  wrapper.style.position = 'relative'; wrapper.style.display = 'block';
+  const wrapper = document.createElement('div'); wrapper.style.position = 'relative'; wrapper.style.display = 'block';
   input.parentNode.insertBefore(wrapper, input); wrapper.appendChild(input);
   
   const overlay = document.createElement('div');
@@ -105,10 +79,8 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
   wrapper.appendChild(overlay);
 
   let isDragging = false; let startX = 0; let startVal = 0; let hasMoved = false; 
-
   const onStart = (e) => {
-    isDragging = true; hasMoved = false;
-    startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    isDragging = true; hasMoved = false; startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
     let def = typeof defaultVal === 'function' ? defaultVal() : defaultVal;
     if (input.value === "") {
       let decimals = step.toString().includes('.') ? step.toString().split('.')[1].length : 0;
@@ -118,13 +90,10 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
   };
   
   overlay.addEventListener('mousedown', onStart); overlay.addEventListener('touchstart', onStart, {passive: true});
-  
   const onMove = (e) => {
-    if (!isDragging) return;
-    if (e.cancelable) e.preventDefault(); 
+    if (!isDragging) return; if (e.cancelable) e.preventDefault(); 
     let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    let deltaX = clientX - startX;
-    if (Math.abs(deltaX) > 5) hasMoved = true; 
+    let deltaX = clientX - startX; if (Math.abs(deltaX) > 5) hasMoved = true; 
     let steps = Math.trunc(deltaX / 8); 
     if (steps !== 0) {
       let newVal = startVal + (steps * step);
@@ -133,14 +102,11 @@ function setupSwipeInput(id, step, min, max, defaultVal) {
       input.value = newVal.toFixed(decimals); input.classList.remove('auto-filled'); if (input.oninput) input.oninput();
     }
   };
-  
   window.addEventListener('mousemove', onMove); window.addEventListener('touchmove', onMove, {passive: false}); 
   const onEnd = () => { isDragging = false; };
   window.addEventListener('mouseup', onEnd); window.addEventListener('touchend', onEnd);
 
-  overlay.addEventListener('click', (e) => {
-    if (!hasMoved) { overlay.style.display = 'none'; input.focus(); }
-  });
+  overlay.addEventListener('click', (e) => { if (!hasMoved) { overlay.style.display = 'none'; input.focus(); } });
   input.addEventListener('blur', () => { overlay.style.display = 'block'; });
 }
 
@@ -182,10 +148,8 @@ function switchTab(tabId) {
   vibrate(30); 
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.top-nav button').forEach(el => el.classList.remove('active'));
-  const targetTab = document.getElementById(tabId);
-  const targetNav = document.getElementById('nav-' + tabId);
-  if(targetTab) targetTab.classList.add('active'); 
-  if(targetNav) targetNav.classList.add('active');
+  const targetTab = document.getElementById(tabId); const targetNav = document.getElementById('nav-' + tabId);
+  if(targetTab) targetTab.classList.add('active'); if(targetNav) targetNav.classList.add('active');
   refreshActiveTabUI();
 }
 function refreshActiveTabUI() {
@@ -202,9 +166,7 @@ function attachGroupListener(groupId) {
   unsubscribeGroup = db.collection('groups').doc(groupId).onSnapshot(doc => {
     if (doc.exists) {
       globalGroupData = doc.data();
-      if(!globalGroupData.records) globalGroupData.records = [];
-      if(!globalGroupData.calendar) globalGroupData.calendar = {};
-      if(!globalGroupData.dictionary) globalGroupData.dictionary = {};
+      if(!globalGroupData.records) globalGroupData.records = []; if(!globalGroupData.calendar) globalGroupData.calendar = {}; if(!globalGroupData.dictionary) globalGroupData.dictionary = {};
       isAdmin = (globalGroupData.creator === currentUser.uid);
       updateModeIndicator(); refreshActiveTabUI(); 
     } else {
@@ -219,8 +181,7 @@ async function createGroup() {
   saveNicknameFromInput(); const newId = Math.random().toString(36).substr(2, 6).toUpperCase(); 
   try {
     await db.collection('groups').doc(newId).set({ created: Date.now(), creator: currentUser.uid });
-    currentGroupId = newId; localStorage.setItem('pachinko_groupId', newId);
-    alert(`グループを作成しました！\nID: ${newId}`);
+    currentGroupId = newId; localStorage.setItem('pachinko_groupId', newId); alert(`グループを作成しました！\nID: ${newId}`);
     attachGroupListener(newId); switchTab('tab1');
   } catch (error) { alert("グループの作成に失敗しました。"); }
 }
@@ -232,8 +193,7 @@ async function joinGroup() {
   try {
     const doc = await db.collection('groups').doc(idInput).get();
     if (doc.exists) {
-      currentGroupId = idInput; isAdmin = (doc.data().creator === currentUser.uid); 
-      localStorage.setItem('pachinko_groupId', idInput);
+      currentGroupId = idInput; localStorage.setItem('pachinko_groupId', idInput);
       document.getElementById('joinGroupId').value = ''; alert("参加しました！");
       attachGroupListener(idInput); switchTab('tab1');
     } else { alert("指定されたIDのグループが見つかりません。"); }
@@ -282,13 +242,20 @@ window.onload = function() {
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
     const start = parseInt(document.getElementById('startSpin').value) || 0;
-    let soFar = 0; historyData.forEach(d => { if (d.type === 'spin' || !d.type) soFar += d.spins; });
-    return start + soFar + 15;
+    let soFar = 0; historyData.forEach(d => { if (d.type === 'spin' || !d.type) soFar += d.spins; }); return start + soFar + 15;
   });
-  setupSwipeInput('payoutAmount', 10, 0, 100000, 1500); setupSwipeInput('border', 0.1, 10.0, 30.0, 18.0);
-  setupSwipeInput('spinRate', 0.1, 10.0, 35.0, 20.0); setupSwipeInput('exchangeRate', 0.01, 2.50, 4.00, 3.57);
-  setupSwipeInput('ballRatio', 1, 0, 100, 60); setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
-  setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); setupSwipeInput('avgPayout', 10, 100, 10500, 4500);
+  
+  // ★スワイプ入力項目の初期化
+  setupSwipeInput('payoutAmount', 10, 0, 100000, 4200); 
+  setupSwipeInput('payoutRounds', 1, 0, 1000, 30); 
+  setupSwipeInput('probDenom', 0.1, 1.0, 499.0, 319.6); 
+  setupSwipeInput('avgRounds', 0.1, 1.0, 100.0, 32.2); 
+  setupSwipeInput('payoutPerR', 1, 10, 150, 140); 
+  setupSwipeInput('spinRate', 0.1, 10.0, 35.0, 20.0); 
+  setupSwipeInput('realPayoutPerR', 0.1, 10.0, 150.0, 140.0); 
+  setupSwipeInput('exchangeRate', 0.01, 2.50, 4.00, 3.57);
+  setupSwipeInput('ballRatio', 1, 0, 100, 60); 
+  setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
 
   applyDoubleTapToInputs(); updateModeIndicator();
 
@@ -322,6 +289,24 @@ async function saveRecordsData(records) { if (currentGroupId && db) await db.col
 async function saveCalendarData(calendar) { if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ calendar: calendar }, { merge: true }); }
 async function saveDictionaryData(dict) { if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).set({ dictionary: dict }, { merge: true }); }
 
+// ★ ボーダー自動計算ロジック
+window.calcBorder = function() {
+  const P = parseFloat(document.getElementById('probDenom').value);
+  const avgR = parseFloat(document.getElementById('avgRounds').value);
+  const ppr = parseFloat(document.getElementById('payoutPerR').value);
+  const borderInput = document.getElementById('border');
+  if(P && avgR && ppr) {
+    const border = P / ((avgR * ppr) / 250);
+    borderInput.value = border.toFixed(2);
+  } else { borderInput.value = ""; }
+};
+
+window.syncMachineSpec = function() {
+  const m = document.getElementById('machineName').value.trim();
+  document.getElementById('calcMachineName').value = m;
+  window.loadMachineSpec();
+};
+
 async function renderDictionary() {
   const dict = await getDictionaryData();
   const listEl = document.getElementById('machineList'); let optionsHtml = ''; for(let m in dict) { optionsHtml += `<option value="${m}"></option>`; }
@@ -330,7 +315,11 @@ async function renderDictionary() {
   for(let m in dict) {
     const spec = dict[m];
     let adminButtons = isAdmin ? `<div style="display:flex; justify-content:flex-end; gap:5px;"><button class="btn-small" style="background:#3498db;" onclick="updateDictItem('${m}')">更新</button><button class="btn-small" style="background:#e74c3c;" onclick="deleteDictItem('${m}')">削除</button></div>` : '';
-    html += `<div class="saved-item" style="border-left: 4px solid #1abc9c;"><div style="font-weight:bold; color:var(--text-main); margin-bottom:8px;">${m}</div><div style="display:flex; gap:5px; margin-bottom:5px;"><div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">ボーダー</label><input type="number" id="dict_border_${m}" value="${spec.border || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div><div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">確率</label><input type="number" id="dict_prob_${m}" value="${spec.probDenom || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div><div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">出玉</label><input type="number" id="dict_payout_${m}" value="${spec.avgPayout || ''}" step="10" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div></div>${adminButtons}</div>`;
+    html += `<div class="saved-item" style="border-left: 4px solid #1abc9c;"><div style="font-weight:bold; color:var(--text-main); margin-bottom:8px;">${m}</div><div style="display:flex; gap:5px; margin-bottom:5px;">
+      <div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">確率</label><input type="number" id="dict_prob_${m}" value="${spec.probDenom || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div>
+      <div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">平均R</label><input type="number" id="dict_avgRounds_${m}" value="${spec.avgRounds || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div>
+      <div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">1R出玉</label><input type="number" id="dict_payoutPerR_${m}" value="${spec.payoutPerR || ''}" step="1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div>
+      </div>${adminButtons}</div>`;
   }
   if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されている機種スペックはありません。</p>';
   container.innerHTML = html; applyDoubleTapToInputs();
@@ -338,9 +327,9 @@ async function renderDictionary() {
 
 window.updateDictItem = async function(machine) {
   if (!isAdmin) return alert("権限がありません。");
-  const b = parseFloat(document.getElementById(`dict_border_${machine}`).value), p = parseFloat(document.getElementById(`dict_prob_${machine}`).value), a = parseFloat(document.getElementById(`dict_payout_${machine}`).value);
+  const p = parseFloat(document.getElementById(`dict_prob_${machine}`).value), r = parseFloat(document.getElementById(`dict_avgRounds_${machine}`).value), pr = parseFloat(document.getElementById(`dict_payoutPerR_${machine}`).value);
   const dict = await getDictionaryData(); if(!dict[machine]) dict[machine] = {};
-  if(!isNaN(b)) dict[machine].border = b; if(!isNaN(p)) dict[machine].probDenom = p; if(!isNaN(a)) dict[machine].avgPayout = a;
+  if(!isNaN(p)) dict[machine].probDenom = p; if(!isNaN(r)) dict[machine].avgRounds = r; if(!isNaN(pr)) dict[machine].payoutPerR = pr;
   await saveDictionaryData(dict); alert(`[${machine}] の辞書を更新しました。`);
 };
 window.deleteDictItem = async function(machine) {
@@ -369,8 +358,13 @@ function createRecordItemHtml(r) {
   }
   let dispRatio = (r.mochidamaRatio || 0).toFixed(1), startDisp = (r.startSpins !== undefined && r.startSpins >= 0) ? ` <span style="color:var(--text-muted); font-size:11px;">(開始${r.startSpins}G → 終了${r.startSpins + r.totalSpins}G)</span>` : '';
   let storeDisp = r.store ? `<span style="color:var(--text-muted); font-size:12px; margin-right:6px;">[${r.store}]</span>` : '', authorDisp = r.author ? `<span class="author-badge">👤 ${r.author}</span>` : '';
+  
+  // ★ 実測1R出玉を算出してツール②へ渡せるようにする
+  const totalPayoutRounds = r.history ? r.history.reduce((sum, h) => sum + (h.rounds || 0), 0) : 0;
+  const realPayoutPerR = totalPayoutRounds > 0 ? ((r.totalPayout || 0) / totalPayoutRounds) : 0;
+
   const safeStr = encodeURIComponent(JSON.stringify(r.hitHistory || [])), safeHist = encodeURIComponent(JSON.stringify(r.history || []));
-  const btnCall = `useRecordForCalc('${r.date}', ${r.avg250}, '${r.machine}', ${r.mochidamaRatio || 0}, '${r.store || ''}', ${r.totalCashBalls || 0}, ${r.totalMochiBalls || 0}, ${r.totalPayout || 0}, '${safeStr}', '${safeHist}')`;
+  const btnCall = `useRecordForCalc('${r.date}', ${r.avg250}, '${r.machine}', ${r.mochidamaRatio || 0}, '${r.store || ''}', ${r.totalCashBalls || 0}, ${r.totalMochiBalls || 0}, ${r.totalPayout || 0}, ${realPayoutPerR}, '${safeStr}', '${safeHist}')`;
   let resumeButton = `<button class="btn-small" style="background:#f39c12;" onclick="resumeRecord(${r.id})">続きを計測</button>`;
   let adminButtons = isAdmin ? `<button class="btn-small" style="background:#95a5a6;" onclick="deleteRecord(${r.id})">削除</button>` : '';
 
@@ -388,14 +382,12 @@ window.addMeasurement = function(balls) {
   
   const isMochi = document.getElementById('isMochidama').checked, hitType = document.getElementById('hitNormal').checked ? '通常' : (document.getElementById('hitRush').checked ? 'ラッシュ' : null);
   historyData.push({ type: 'spin', balls: balls, spins: spins, isMochidama: isMochi, hitType: hitType });
-  
-  // Wタップのバリア仕様に合わせて入力欄をクリアするだけに留める
   spinInput.value = ''; 
   if (!measurementStartTime) measurementStartTime = Date.now(); 
   
   if (hitType) {
     document.getElementById('payoutTitle').innerText = `${hitType}当たり 獲得出玉を入力`;
-    document.getElementById('payoutAmount').value = ''; document.getElementById('payoutMemo').value = '';
+    document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = '';
     document.getElementById('payoutInputArea').style.display = 'block';
   } else { document.getElementById('payoutInputArea').style.display = 'none'; }
   updateMeasurementDisplay();
@@ -404,12 +396,15 @@ window.addMeasurement = function(balls) {
 window.addPayout = function() {
   vibrate();
   const amountInput = document.getElementById('payoutAmount'), amount = parseFloat(amountInput.value);
+  const roundsInput = document.getElementById('payoutRounds'), rounds = parseFloat(roundsInput.value);
   if (isNaN(amount) || amount < 0) return alert("正しい出玉を入力してください。");
+  if (isNaN(rounds) || rounds <= 0) return alert("消化ラウンド数を入力してください。（例：10連チャンで合計150Rなど）");
+
   const hitType = document.getElementById('hitNormal').checked ? '通常' : (document.getElementById('hitRush').checked ? 'ラッシュ' : '不明');
-  historyData.push({ type: 'payout', amount: amount, hitType: hitType, memo: document.getElementById('payoutMemo').value.trim() });
+  historyData.push({ type: 'payout', amount: amount, rounds: rounds, hitType: hitType, memo: document.getElementById('payoutMemo').value.trim() });
   
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
-  amountInput.value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+  amountInput.value = ''; roundsInput.value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
   if (!measurementStartTime) measurementStartTime = Date.now(); 
   updateMeasurementDisplay();
 };
@@ -426,10 +421,12 @@ window.deleteHistoryItem = function(index) { historyData.splice(index, 1); updat
 function updateMeasurementDisplay() {
   const btnModal = document.getElementById('btnOpenResultModal');
   if (historyData.length === 0) { 
-    btnModal.innerText = "📊 入力データを確認 (未入力)"; document.getElementById('avg250').innerText = "0.00 回"; document.getElementById('historyList').innerHTML = ""; return; 
+    btnModal.innerText = "📊 入力データを確認 (未入力)"; document.getElementById('avg250').innerText = "0.00 回"; 
+    document.getElementById('historyList').innerHTML = ""; document.getElementById('workValueArea').innerHTML = ""; return; 
   }
   
   let totalBalls = 0, totalSpins = 0, mochidamaBalls = 0, historyHtml = '', spinCount = 0;
+  let totalPayoutAmount = 0, totalPayoutRounds = 0;
   for (let i = 0; i < historyData.length; i++) {
     let item = historyData[i]; let itemHtml = '';
     if (item.type === 'spin' || !item.type) {
@@ -439,8 +436,9 @@ function updateMeasurementDisplay() {
       let hitLabel = item.hitType ? `<span style="color:#d35400; font-size:11px; margin-left:4px; font-weight:bold;">[${item.hitType}当たり!]</span>` : "";
       itemHtml = `<div class="history-item"><span>${spinCount}回目: ${item.balls}玉で <strong>${item.spins}回</strong>${typeLabel}${hitLabel}${cvt}</span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
     } else if (item.type === 'payout') {
+      totalPayoutAmount += item.amount; if(item.rounds) totalPayoutRounds += item.rounds;
       let memoHtml = item.memo ? `<span style="font-size:11px; color:var(--text-muted); margin-left:6px;">(${item.memo})</span>` : "";
-      itemHtml = `<div class="history-item" style="background-color:var(--box-yellow-bg); padding:4px 8px; border-radius:4px; margin-top:2px; margin-bottom:2px;"><span style="color:#d35400; font-weight:bold; font-size:13px;">🎉 ${item.hitType}獲得: ${item.amount}玉${memoHtml}</span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
+      itemHtml = `<div class="history-item" style="background-color:var(--box-yellow-bg); padding:4px 8px; border-radius:4px; margin-top:2px; margin-bottom:2px;"><span style="color:#d35400; font-weight:bold; font-size:13px;">🎉 ${item.hitType}獲得: ${item.amount}玉 (${item.rounds}R)${memoHtml}</span><button class="btn-delete-item" onclick="deleteHistoryItem(${i})">× 削除</button></div>`;
     }
     historyHtml = itemHtml + historyHtml; 
   }
@@ -454,11 +452,37 @@ function updateMeasurementDisplay() {
   document.getElementById('totalMeasuredSpins').innerText = totalSpins + " 回"; document.getElementById('absoluteTotalSpins').innerText = absoluteTotalSpins + " 回";
   document.getElementById('totalMeasuredBalls').innerText = totalBalls + " 玉"; document.getElementById('historyList').innerHTML = historyHtml;
   
-  let speedHtml = "";
+  // ★ 仕事量と期待時給の算出
+  let realPayoutPerR = totalPayoutRounds > 0 ? (totalPayoutAmount / totalPayoutRounds) : 0;
+  const P = parseFloat(document.getElementById('probDenom').value), avgR = parseFloat(document.getElementById('avgRounds').value), specPayoutPerR = parseFloat(document.getElementById('payoutPerR').value);
+  const currentPayoutR = realPayoutPerR > 0 ? realPayoutPerR : specPayoutPerR;
+
+  let workValueHtml = ""; let spinsPerHour = 0;
   if (measurementStartTime && totalSpins > 0) {
     const elapsedMinutes = (Date.now() - measurementStartTime) / 60000;
-    if (elapsedMinutes > 3) { speedHtml = ` / 時速:${Math.round(totalSpins / (elapsedMinutes / 60))}回`; }
+    if (elapsedMinutes > 3) spinsPerHour = totalSpins / (elapsedMinutes / 60);
   }
+
+  if (P && avgR && currentPayoutR && avg250 > 0) {
+    const E_out = avgR * currentPayoutR, Ex = parseFloat(document.getElementById('exchangeRate').value) || 4.0, M = mochiRatio / 100;
+    const costPerSpin = (250 / avg250) * (M * Ex + (1 - M) * 4.0), returnPerSpin = (E_out / P) * Ex, unitPrice = returnPerSpin - costPerSpin;
+    const workValue = unitPrice * totalSpins, hourlyWage = unitPrice * spinsPerHour;
+    
+    workValueHtml = `<hr>
+      <p><span>実測1R出玉:</span> <span style="font-weight:bold; color:#e67e22;">${realPayoutPerR > 0 ? realPayoutPerR.toFixed(1) : '-'} 玉</span></p>
+      <p><span>現在の回転単価:</span> <span style="font-weight:bold;">${unitPrice.toFixed(2)} 円</span></p>
+      <p><span>積んだ仕事量:</span> <span class="highlight" style="color:#27ae60;">${Math.round(workValue).toLocaleString()} 円</span></p>
+      <p><span>現在の期待時給:</span> <span style="font-weight:bold;">${hourlyWage > 0 ? Math.round(hourlyWage).toLocaleString() + ' 円' : '-'}</span></p>`;
+    
+    // ツール②へデータを自動流し込み
+    document.getElementById('spinRate').value = avg250.toFixed(2); document.getElementById('spinRate').classList.add('auto-filled');
+    if (realPayoutPerR > 0) { document.getElementById('realPayoutPerR').value = realPayoutPerR.toFixed(1); document.getElementById('realPayoutPerR').classList.add('auto-filled'); }
+  } else {
+    workValueHtml = `<hr><p style="font-size:11px; color:var(--text-muted);">※「設定」タブの辞書でスペックを入力すると、仕事量が自動計算されます。</p>`;
+  }
+  document.getElementById('workValueArea').innerHTML = workValueHtml;
+
+  let speedHtml = spinsPerHour > 0 ? ` / 時速:${Math.round(spinsPerHour)}回` : "";
   btnModal.innerText = `📊 データ確認 (投資:${totalBalls}玉 / 平均:${avg250.toFixed(1)}回${speedHtml})`;
 
   if (editingRecordId) { document.getElementById('btnSaveRecord').innerText = "この記録を上書き保存"; document.getElementById('btnSaveRecord').style.backgroundColor = "#d35400"; } 
@@ -469,7 +493,7 @@ window.resetMeasurement = function() {
   if(confirm("現在の入力データをすべてクリアしますか？")) { 
     historyData = []; editingRecordId = null; measurementStartTime = null;
     document.getElementById('startSpin').value = ''; document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
-    document.getElementById('payoutAmount').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+    document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
     updateMeasurementDisplay(); closeResultModal();
   }
 };
@@ -489,33 +513,27 @@ window.saveCurrentRecord = async function() {
   const startSpin = parseInt(document.getElementById('startSpin').value) || 0, avg250 = (totalSpins / totalBalls) * 250, mochiRatio = totalBalls > 0 ? (mochidamaBalls / totalBalls * 100) : 0;
   
   if (isAdmin) {
-    const dict = await getDictionaryData();
-    if (!dict[machine]) { dict[machine] = { border: "", probDenom: "", avgPayout: "" }; await saveDictionaryData(dict); }
+    const P = parseFloat(document.getElementById('probDenom').value), avgR = parseFloat(document.getElementById('avgRounds').value), pr = parseFloat(document.getElementById('payoutPerR').value);
+    if(P && avgR && pr) {
+      const dict = await getDictionaryData();
+      if (!dict[machine]) { dict[machine] = { probDenom: P, avgRounds: avgR, payoutPerR: pr }; await saveDictionaryData(dict); renderDictionary(); }
+    }
   }
   
   const records = await getRecordsData();
   const newRecord = { 
-    id: editingRecordId ? editingRecordId : Date.now(), 
-    date: date, store: store, machine: machine, author: getNickname(), 
-    totalBalls: totalBalls, totalSpins: totalSpins, startSpins: startSpin,
-    totalCashBalls: cashBalls, totalMochiBalls: mochidamaBalls, totalPayout: totalPayout,
+    id: editingRecordId ? editingRecordId : Date.now(), date: date, store: store, machine: machine, author: getNickname(), 
+    totalBalls: totalBalls, totalSpins: totalSpins, startSpins: startSpin, totalCashBalls: cashBalls, totalMochiBalls: mochidamaBalls, totalPayout: totalPayout,
     avg250: avg250, mochidamaRatio: mochiRatio, history: [...historyData], hitHistory: hitHistory
   };
   
-  if (editingRecordId) {
-    const idx = records.findIndex(rec => rec.id === editingRecordId);
-    if(idx !== -1) records[idx] = newRecord; else records.push(newRecord);
-    editingRecordId = null; 
-  } else { records.push(newRecord); }
-  
+  if (editingRecordId) { const idx = records.findIndex(rec => rec.id === editingRecordId); if(idx !== -1) records[idx] = newRecord; else records.push(newRecord); editingRecordId = null; } else { records.push(newRecord); }
   await saveRecordsData(records); alert(`${machine} のデータを保存しました。`);
   
   historyData = []; measurementStartTime = null;
   document.getElementById('machineName').value = ''; document.getElementById('startSpin').value = '';
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
-  document.getElementById('payoutAmount').value = ''; document.getElementById('payoutMemo').value = '';
-  document.getElementById('payoutInputArea').style.display = 'none';
-  
+  document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
   updateMeasurementDisplay(); closeResultModal(); 
 };
 
@@ -527,7 +545,7 @@ window.resumeRecord = async function(id) {
   document.getElementById('machineName').value = r.machine || ''; document.getElementById('startSpin').value = r.startSpins || 0;
   historyData = JSON.parse(JSON.stringify(r.history || [])); editingRecordId = r.id; measurementStartTime = Date.now(); 
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
-  document.getElementById('payoutAmount').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
+  document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
   updateMeasurementDisplay(); closeSavedModal(); window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
@@ -546,26 +564,23 @@ window.deleteRecord = async function(id) {
 
 window.loadMachineSpec = async function() {
   const machine = document.getElementById('calcMachineName').value.trim(); document.getElementById('evSaveMachine').value = machine; 
-  if(!machine) return;
-  const dict = await getDictionaryData();
+  if(!machine) return; const dict = await getDictionaryData();
   if(dict[machine]) {
     const spec = dict[machine];
-    if(spec.border) { document.getElementById('border').value = spec.border; document.getElementById('border').classList.add('auto-filled'); }
     if(spec.probDenom) { document.getElementById('probDenom').value = spec.probDenom; document.getElementById('probDenom').classList.add('auto-filled'); }
-    if(spec.avgPayout) { document.getElementById('avgPayout').value = spec.avgPayout; document.getElementById('avgPayout').classList.add('auto-filled'); }
+    if(spec.avgRounds) { document.getElementById('avgRounds').value = spec.avgRounds; document.getElementById('avgRounds').classList.add('auto-filled'); }
+    if(spec.payoutPerR) { document.getElementById('payoutPerR').value = spec.payoutPerR; document.getElementById('payoutPerR').classList.add('auto-filled'); }
+    window.calcBorder();
   }
 };
 
-window.useRecordForCalc = async function(recordDate, avg, machineName, mochidamaRatio, storeName, cashBalls, mochiBalls, payout, hitHistoryStr, historyStr) {
-  currentPassData = {
-    cashBalls: cashBalls || 0, mochiBalls: mochiBalls || 0, payout: payout || 0,
-    hitHistory: hitHistoryStr ? JSON.parse(decodeURIComponent(hitHistoryStr)) : [], history: historyStr ? JSON.parse(decodeURIComponent(historyStr)) : []
-  };
+window.useRecordForCalc = async function(recordDate, avg, machineName, mochidamaRatio, storeName, cashBalls, mochiBalls, payout, realPayoutPerR, hitHistoryStr, historyStr) {
+  currentPassData = { cashBalls: cashBalls || 0, mochiBalls: mochiBalls || 0, payout: payout || 0, hitHistory: hitHistoryStr ? JSON.parse(decodeURIComponent(hitHistoryStr)) : [], history: historyStr ? JSON.parse(decodeURIComponent(historyStr)) : [] };
   document.getElementById('calcMachineName').value = machineName || ""; await window.loadMachineSpec(); 
   document.getElementById('spinRate').value = avg.toFixed(2); document.getElementById('spinRate').classList.add('auto-filled');
+  if (realPayoutPerR > 0) { document.getElementById('realPayoutPerR').value = realPayoutPerR.toFixed(1); document.getElementById('realPayoutPerR').classList.add('auto-filled'); }
   if (mochidamaRatio !== undefined) { document.getElementById('ballRatio').value = Math.round(mochidamaRatio); document.getElementById('ballRatio').classList.add('auto-filled'); }
-  if (recordDate) document.getElementById('evSaveDate').value = recordDate;
-  document.getElementById('evSaveStore').value = storeName || ""; 
+  if (recordDate) document.getElementById('evSaveDate').value = recordDate; document.getElementById('evSaveStore').value = storeName || ""; 
   closeSavedModal(); switchTab('tab2');
 };
 
@@ -582,53 +597,46 @@ function drawSlumpGraph() {
   });
 
   if (slumpChartInstance) slumpChartInstance.destroy();
-  slumpChartInstance = new Chart(ctx, {
-    type: 'line', data: { datasets: [{ label: '差玉 (玉)', data: chartData, borderColor: '#3498db', backgroundColor: 'rgba(52, 152, 219, 0.1)', borderWidth: 2, pointRadius: 2, pointBackgroundColor: '#e67e22', fill: true, stepped: false }] },
-    options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', title: { display: true, text: '累積投資玉数 (玉)', font: {size: 11} }, min: 0 }, y: { title: { display: true, text: '差玉 (玉)', font: {size: 11} } } }, plugins: { legend: { display: false } } }
-  });
+  slumpChartInstance = new Chart(ctx, { type: 'line', data: { datasets: [{ label: '差玉 (玉)', data: chartData, borderColor: '#3498db', backgroundColor: 'rgba(52, 152, 219, 0.1)', borderWidth: 2, pointRadius: 2, pointBackgroundColor: '#e67e22', fill: true, stepped: false }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'linear', title: { display: true, text: '累積投資玉数 (玉)', font: {size: 11} }, min: 0 }, y: { title: { display: true, text: '差玉 (玉)', font: {size: 11} } } }, plugins: { legend: { display: false } } } });
 }
 
-// 🚀 フリーズしない 10万回 Web Worker シミュレーション
+// 🚀 フリーズしない 10万回 Web Worker シミュレーション（専業用期待値）
 window.calculateAndSimulate = function() {
   vibrate(); 
   const inputs = [
-    { id: 'border', name: '等価ボーダー' }, { id: 'spinRate', name: '現在の平均回転数' },
-    { id: 'exchangeRate', name: '交換率' }, { id: 'ballRatio', name: '持ち球比率' },
-    { id: 'totalSpins', name: '総回転数' }, { id: 'probDenom', name: '大当たり確率' },
-    { id: 'avgPayout', name: '初当たり平均獲得出玉' }
+    { id: 'probDenom', name: '初当たり確率' }, { id: 'avgRounds', name: '平均ラウンド数' },
+    { id: 'payoutPerR', name: '1R表記出玉' }, { id: 'spinRate', name: '現在の平均回転数' },
+    { id: 'exchangeRate', name: '交換率' }, { id: 'ballRatio', name: '持ち球比率' }, { id: 'totalSpins', name: '総回転数' }
   ];
   let missing = []; inputs.forEach(item => { if (!document.getElementById(item.id).value) missing.push(item.name); });
   if (missing.length > 0) return alert("以下の項目が未入力です：\n・" + missing.join("\n・"));
 
-  const B = parseFloat(document.getElementById('border').value), R = parseFloat(document.getElementById('spinRate').value);
-  const E = parseFloat(document.getElementById('exchangeRate').value), M = parseFloat(document.getElementById('ballRatio').value) / 100;
-  const totalSpins = parseFloat(document.getElementById('totalSpins').value), probDenom = parseFloat(document.getElementById('probDenom').value), avgPayout = parseFloat(document.getElementById('avgPayout').value);
+  const P = parseFloat(document.getElementById('probDenom').value), avgR = parseFloat(document.getElementById('avgRounds').value);
+  const specPayoutPerR = parseFloat(document.getElementById('payoutPerR').value), realPayoutPerR = parseFloat(document.getElementById('realPayoutPerR').value) || specPayoutPerR;
+  const R = parseFloat(document.getElementById('spinRate').value), E = parseFloat(document.getElementById('exchangeRate').value);
+  const M = parseFloat(document.getElementById('ballRatio').value) / 100, totalSpins = parseFloat(document.getElementById('totalSpins').value);
 
-  const calcMachine = document.getElementById('calcMachineName').value.trim();
-  if(calcMachine && isAdmin) {
-    getDictionaryData().then(dict => {
-      if(!dict[calcMachine]) dict[calcMachine] = {};
-      dict[calcMachine].border = B; dict[calcMachine].probDenom = probDenom; dict[calcMachine].avgPayout = avgPayout;
-      saveDictionaryData(dict); 
-    });
-  }
+  const E_out = avgR * realPayoutPerR; // 実測平均出玉
+  const returnPerSpin = (E_out / P) * E;
+  const costPerSpin = (250 / R) * (M * E + (1 - M) * 4.0);
+  const evSpin = returnPerSpin - costPerSpin; // 単価
+  lastCalculatedEV = evSpin * totalSpins; 
+
+  document.getElementById('resSpin').innerText = evSpin.toFixed(2) + " 円";
+  document.getElementById('resTotal').innerText = formatCurrency(Math.ceil(lastCalculatedEV));
+  document.getElementById('resultArea').style.display = 'block';
 
   const btn = document.querySelector('button[onclick="calculateAndSimulate()"]');
   if(btn) btn.innerText = "🚀 10万回シミュレート中...";
 
   const worker = new Worker('./worker.js');
-  worker.postMessage({ B, R, E, M, totalSpins, probDenom, avgPayout });
+  worker.postMessage({ R: R, E: E, M: M, totalSpins: totalSpins, P: P, E_out: E_out });
   
   worker.onmessage = function(e) {
     if(btn) btn.innerText = "期待値を計算＆シミュレート";
     const data = e.data;
-    lastCalculatedEV = data.totalEV; 
-    document.getElementById('resSpin').innerText = data.evSpin.toFixed(2) + " 円"; document.getElementById('resTotal').innerText = formatCurrency(Math.ceil(lastCalculatedEV));
-    document.getElementById('resultArea').style.display = 'block';
-
     document.getElementById('simBot5').innerText = formatCurrency(data.simBot5); document.getElementById('simBot25').innerText = formatCurrency(data.simBot25);
     document.getElementById('simMedian').innerText = formatCurrency(data.simMedian); document.getElementById('simTop25').innerText = formatCurrency(data.simTop25); document.getElementById('simTop5').innerText = formatCurrency(data.simTop5);
-    
     document.getElementById('simArea').style.display = 'block'; drawSlumpGraph(); worker.terminate();
   };
 };
@@ -649,21 +657,19 @@ window.saveExpectedValueToCalendar = async function() {
       }
   }
 
-  const cal = await getCalendarData();
-  if(!cal[date]) cal[date] = { ev: 0, actual: 0, actualBalls: 0, details: [] };
-  
+  const cal = await getCalendarData(); if(!cal[date]) cal[date] = { ev: 0, actual: 0, actualBalls: 0, details: [] };
   cal[date].ev = (cal[date].ev || 0) + lastCalculatedEV; cal[date].actual = (cal[date].actual || 0) + actualAmt; cal[date].actualBalls = (cal[date].actualBalls || 0) + diffBalls;
   cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:var(--text-muted);">👤 ${getNickname()}</span>${hitText}`);
   await saveCalendarData(cal); alert(`${date} の収支にデータを保存しました。`); renderCalendar();
 
   document.getElementById('calcMachineName').value = ''; document.getElementById('border').value = ''; document.getElementById('spinRate').value = ''; document.getElementById('exchangeRate').value = '';
-  document.getElementById('ballRatio').value = ''; document.getElementById('totalSpins').value = ''; document.getElementById('probDenom').value = ''; document.getElementById('avgPayout').value = '';
+  document.getElementById('ballRatio').value = ''; document.getElementById('totalSpins').value = ''; document.getElementById('probDenom').value = ''; document.getElementById('avgRounds').value = ''; document.getElementById('payoutPerR').value = ''; document.getElementById('realPayoutPerR').value = '';
   document.getElementById('evSaveStore').value = ''; document.getElementById('evSaveMachine').value = '';
   const today = new Date(), yyyy = today.getFullYear(), mm = String(today.getMonth() + 1).padStart(2, '0'), dd = String(today.getDate()).padStart(2, '0');
   document.getElementById('evSaveDate').value = `${yyyy}-${mm}-${dd}`;
   document.getElementById('resultArea').style.display = 'none'; document.getElementById('simArea').style.display = 'none';
   if(document.getElementById('graphContainer')) document.getElementById('graphContainer').style.display = 'none';
-  ['border', 'spinRate', 'ballRatio', 'probDenom', 'avgPayout'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.remove('auto-filled'); });
+  ['probDenom', 'avgRounds', 'payoutPerR', 'spinRate', 'realPayoutPerR', 'ballRatio'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.remove('auto-filled'); });
   lastCalculatedEV = 0; currentPassData = null;
 };
 
@@ -713,7 +719,7 @@ async function renderCalendar() {
 
 window.deleteCalendarDay = async function(date) {
   if (!isAdmin) return alert("権限がありません。");
-  if(confirm(`${date} の記録をすべて削除しますか？`)) { const cal = await getCalendarData(); delete cal[date]; await saveCalendarData(cal); }
+  if(confirm(`${date} の記録をすべて削除しますか？`)) { const cal = await getCalendarData(); delete cal[date]; await saveCalendarData(cal); renderCalendar(); }
 };
 
 window.renderHistoryTab = async function() {
@@ -723,19 +729,3 @@ window.renderHistoryTab = async function() {
   if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">条件に一致する過去1年間のデータはありません。</p>';
   filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); }); container.innerHTML = html;
 };
-
-// ==========================================
-// ボタン等をグローバルスコープに割り当て（HTML側からの呼び出しのため）
-// ==========================================
-window.createGroup = createGroup;
-window.joinGroup = joinGroup;
-window.leaveGroup = leaveGroup;
-window.mergePersonalDataToGroup = mergePersonalDataToGroup;
-window.login = login;
-window.logout = logout;
-window.openResultModal = openResultModal;
-window.closeResultModal = closeResultModal;
-window.openSavedModal = openSavedModal;
-window.closeSavedModal = closeSavedModal;
-window.switchTab = switchTab;
-window.toggleDarkMode = toggleDarkMode;
