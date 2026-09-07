@@ -268,6 +268,9 @@ window.onload = function() {
   updateModeIndicator();
 
   if (auth) {
+    auth.getRedirectResult().catch(error => {
+      alert("ログインエラー詳細: " + error.message);
+    });
     auth.onAuthStateChanged(user => {
       if (user) {
         currentUser = user; document.getElementById('user-info').innerText = `ログイン中: ${user.email}`; document.getElementById('user-info').style.color = '#27ae60';
