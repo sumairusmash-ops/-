@@ -215,16 +215,11 @@ window.onload = function() {
   
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
   
-  // ★ データ機回転数の初期値提案ロジックもラッシュ終了回転数に対応
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
     let lastMachineSpin = parseInt(document.getElementById('startSpin').value) || 0;
     historyData.forEach(d => { 
-      if (d.type === 'spin' || !d.type) { 
-        lastMachineSpin += d.spins; 
-        if (d.hitType) lastMachineSpin = 0; 
-      } else if (d.type === 'payout' && d.rushEndSpin !== undefined) {
-        lastMachineSpin = d.rushEndSpin; // ラッシュ終了回転数で上書き
-      }
+      if (d.type === 'spin' || !d.type) { lastMachineSpin += d.spins; if (d.hitType) lastMachineSpin = 0; }
+      else if (d.type === 'payout' && d.rushEndSpin !== undefined) { lastMachineSpin = d.rushEndSpin; }
     }); 
     return lastMachineSpin + 15;
   });
@@ -339,9 +334,22 @@ window.updateDictItem = async function(machine) {
   if(!isNaN(p)) dict[machine].probDenom = p; if(!isNaN(r)) dict[machine].avgRounds = r; if(!isNaN(pr)) dict[machine].payoutPerR = pr;
   await saveDictionaryData(dict); alert(`[${machine}] の辞書を更新しました。`);
 };
+
+// ★ 辞書の確実な削除
 window.deleteDictItem = async function(machine) {
   if (!isAdmin) return alert("権限がありません。");
-  if(confirm(`[${machine}] を辞書から削除しますか？`)) { const dict = await getDictionaryData(); delete dict[machine]; await saveDictionaryData(dict); }
+  if(confirm(`[${machine}] を辞書から削除しますか？`)) { 
+    try {
+      if (currentGroupId && db) {
+        await db.collection('groups').doc(currentGroupId).update({
+          [`dictionary.${machine}`]: firebase.firestore.FieldValue.delete()
+        });
+      }
+      renderDictionary(); 
+    } catch (e) {
+      alert("削除に失敗しました。");
+    }
+  }
 };
 
 window.saveHall = async function() {
@@ -353,9 +361,21 @@ window.saveHall = async function() {
   document.getElementById('hallNameInput').value = ''; checkboxes.forEach(cb => cb.checked = false); renderHalls(); analyzeHalls();
 };
 
+// ★ ホールの確実な削除
 window.deleteHall = async function(name) {
   if (!isAdmin) return alert("権限がありません。");
-  if(confirm(`[${name}] を削除しますか？`)) { const halls = await getHallsData(); delete halls[name]; await saveHallsData(halls); renderHalls(); analyzeHalls(); }
+  if(confirm(`[${name}] を削除しますか？`)) { 
+    try {
+      if (currentGroupId && db) {
+        await db.collection('groups').doc(currentGroupId).update({
+          [`halls.${name}`]: firebase.firestore.FieldValue.delete()
+        });
+      }
+      renderHalls(); analyzeHalls(); 
+    } catch (e) {
+      alert("削除に失敗しました。");
+    }
+  }
 };
 
 window.renderHalls = async function() {
@@ -448,7 +468,6 @@ function createRecordItemHtml(r) {
   return `<div class="saved-item"><div style="font-weight:bold; color:var(--text-main); font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}${authorDisp}</div><div style="font-size:13px; margin:6px 0; color:var(--text-sub);">総投資: ${r.totalBalls}玉 / 自力回転: ${r.totalSpins}回${startDisp}<br><span style="color:#e74c3c; font-weight:bold; font-size:14px;">250玉平均: ${r.avg250.toFixed(2)} 回</span><span style="color:#e67e22; font-weight:bold; font-size:13px; margin-left:10px;">持球比率: ${dispRatio}%</span></div>${historyHtml}<div style="margin-top: 10px; display: flex; gap: 4px; flex-wrap: wrap;">${resumeButton}<button class="btn-small" style="background:#3498db;" onclick="${btnCall}">期待値を計算</button>${adminButtons}</div></div>`;
 }
 
-// ★ ラッシュ終了回転数の対応ロジック
 window.addMeasurement = function(balls) {
   vibrate();
   const spinInput = document.getElementById('measuredSpin'), currentMachineSpin = parseFloat(spinInput.value);
@@ -460,7 +479,7 @@ window.addMeasurement = function(balls) {
       lastMachineSpin += d.spins; 
       if (d.hitType) lastMachineSpin = 0; 
     } else if (d.type === 'payout' && d.rushEndSpin !== undefined) {
-      lastMachineSpin = d.rushEndSpin; // ラッシュ抜け回転数で上書き
+      lastMachineSpin = d.rushEndSpin; 
     }
   });
   
@@ -476,13 +495,7 @@ window.addMeasurement = function(balls) {
     ['payoutStartBalls', 'payoutEndBalls', 'rType1', 'rCount1', 'rType2', 'rCount2', 'rType3', 'rCount3', 'payoutMemo', 'rushEndSpinInput'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('payoutAmount').value = '0'; document.getElementById('dispPayoutAmount').innerText = '0';
     document.getElementById('payoutRounds').value = '0'; document.getElementById('dispPayoutRounds').innerText = '0';
-    
-    // ラッシュの場合のみ入力枠を表示
-    if (hitType === 'ラッシュ') {
-      document.getElementById('rushEndSpinArea').style.display = 'block';
-    } else {
-      document.getElementById('rushEndSpinArea').style.display = 'none';
-    }
+    if (hitType === 'ラッシュ') { document.getElementById('rushEndSpinArea').style.display = 'block'; } else { document.getElementById('rushEndSpinArea').style.display = 'none'; }
     document.getElementById('payoutInputArea').style.display = 'block';
   } else { document.getElementById('payoutInputArea').style.display = 'none'; }
   updateMeasurementDisplay();
@@ -495,13 +508,8 @@ window.addPayout = function() {
   if (isNaN(rounds) || rounds <= 0) return alert("消化ラウンド数が計算されていません。（ラウンド数と回数を入力してください）");
 
   const hitType = document.getElementById('hitNormal').checked ? '通常' : (document.getElementById('hitRush').checked ? 'ラッシュ' : '不明');
-  
-  // ラッシュ抜けの回転数を取得
   let rushEndSpin = undefined;
-  if (hitType === 'ラッシュ') {
-    const val = parseInt(document.getElementById('rushEndSpinInput').value);
-    if (!isNaN(val) && val >= 0) rushEndSpin = val;
-  }
+  if (hitType === 'ラッシュ') { const val = parseInt(document.getElementById('rushEndSpinInput').value); if (!isNaN(val) && val >= 0) rushEndSpin = val; }
 
   historyData.push({ type: 'payout', amount: amount, rounds: rounds, hitType: hitType, memo: document.getElementById('payoutMemo').value.trim(), rushEndSpin: rushEndSpin });
   
@@ -675,7 +683,11 @@ async function renderSavedRecords() {
 
 window.deleteRecord = async function(id) {
   if (!isAdmin) return alert("権限がありません。");
-  if(confirm("このデータを削除しますか？")) { let records = await getRecordsData(); await saveRecordsData(records.filter(r => r.id !== id)); }
+  if(confirm("このデータを削除しますか？")) { 
+    let records = await getRecordsData(); records = records.filter(r => r.id !== id);
+    if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ records: records });
+    renderSavedRecords(); renderHistoryTab();
+  }
 };
 
 window.loadMachineSpec = async function() {
@@ -777,7 +789,8 @@ window.saveExpectedValueToCalendar = async function() {
   
   cal[date].ev = (cal[date].ev || 0) + lastCalculatedEV; cal[date].actual = (cal[date].actual || 0) + actualAmt; cal[date].actualBalls = (cal[date].actualBalls || 0) + diffBalls;
   cal[date].details.push(`[${store}] ${machine} (期待値: ${formatCurrency(Math.ceil(lastCalculatedEV))} / 実収支: ${formatCurrency(actualAmt)}) <span style="font-size:11px; color:var(--text-muted);" data-uid="${uid}" data-name="${nick}">👤 ${nick}</span>${hitText}`);
-  await saveCalendarData(cal); alert(`${date} の収支にデータを保存しました。`); renderCalendar();
+  if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ calendar: cal });
+  alert(`${date} の収支にデータを保存しました。`); renderCalendar();
 
   document.getElementById('calcMachineName').value = ''; document.getElementById('border').value = ''; document.getElementById('spinRate').value = ''; document.getElementById('exchangeRate').value = '';
   document.getElementById('ballRatio').value = ''; document.getElementById('totalSpins').value = ''; document.getElementById('probDenom').value = ''; document.getElementById('avgRounds').value = ''; document.getElementById('payoutPerR').value = ''; document.getElementById('realPayoutPerR').value = '';
@@ -795,6 +808,16 @@ window.saveExpectedValueToCalendar = async function() {
 // ==========================================
 window.changeMonth = function(diff) { currentCalMonth += diff; if(currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; } if(currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; } renderCalendar(); };
 window.selectDate = function(dateStr) { document.getElementById('actualDate').value = dateStr; renderCalendar(); };
+
+window.deleteCalendarDay = async function(date) {
+  if (!isAdmin) return alert("権限がありません。");
+  if(confirm(`${date} の記録をすべて削除しますか？`)) { 
+    try {
+      if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ [`calendar.${date}`]: firebase.firestore.FieldValue.delete() });
+      renderCalendar(); 
+    } catch (e) { alert("削除に失敗しました。"); }
+  }
+};
 
 async function renderCalendar() {
   const cal = await getCalendarData(); const year = currentCalYear, month = currentCalMonth;
@@ -823,10 +846,8 @@ async function renderCalendar() {
           const matchNew = detail.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円.*data-uid="([^"]+)" data-name="([^"]+)">/);
           const matchOld = detail.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円.*👤\s*(.*?)<\/span>/);
           let ev = 0, actual = 0, uid = "", name = "";
-          
           if (matchNew) { ev = parseInt(matchNew[1].replace(/,/g, '')) || 0; actual = parseInt(matchNew[2].replace(/,/g, '')) || 0; uid = matchNew[3]; name = matchNew[4]; } 
           else if (matchOld) { ev = parseInt(matchOld[1].replace(/,/g, '')) || 0; actual = parseInt(matchOld[2].replace(/,/g, '')) || 0; name = matchOld[3].trim(); uid = name; }
-
           if (uid) { if (!userStats[uid]) userStats[uid] = { ev: 0, actual: 0, latestName: name }; userStats[uid].ev += ev; userStats[uid].actual += actual; if (matchNew) userStats[uid].latestName = name; }
         });
       }
@@ -890,11 +911,6 @@ function updateRankingAndAvatar(userStats) {
   } else { document.getElementById('pieChartContainer').style.display = 'none'; document.getElementById('noPieData').style.display = 'block'; }
 }
 
-window.deleteCalendarDay = async function(date) {
-  if (!isAdmin) return alert("権限がありません。");
-  if(confirm(`${date} の記録をすべて削除しますか？`)) { const cal = await getCalendarData(); delete cal[date]; await saveCalendarData(cal); renderCalendar(); }
-};
-
 window.renderHistoryTab = async function() {
   const records = await getRecordsData(), container = document.getElementById('historyRecordsContainer'), filterText = document.getElementById('historyMachineFilter').value.trim();
   const today = new Date(), oneYearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
@@ -904,7 +920,7 @@ window.renderHistoryTab = async function() {
 };
 
 // ==========================================
-// お遊び・運試しコーナー（占い＆1/99仮想ボタン）
+// お遊び・運試しコーナー
 // ==========================================
 
 window.drawFortune = function() {
