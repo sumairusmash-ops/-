@@ -52,10 +52,16 @@ function openAvgRCalcModal() {
 }
 function closeAvgRCalcModal() { document.getElementById('avgRCalcModal').style.display = 'none'; }
 
-const resultModal = document.getElementById('resultModal'); const savedModal = document.getElementById('savedModal'); const avgRCalcModal = document.getElementById('avgRCalcModal');
+// ★ カレンダー個別編集モーダル開閉
+window.closeCalEditModal = function() { document.getElementById('calEditModal').style.display = 'none'; };
+
+const resultModal = document.getElementById('resultModal'); const savedModal = document.getElementById('savedModal'); 
+const avgRCalcModal = document.getElementById('avgRCalcModal'); const calEditModal = document.getElementById('calEditModal');
+
 if(resultModal) resultModal.addEventListener('click', function(e) { if (e.target === resultModal) closeResultModal(); });
 if(savedModal) savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
 if(avgRCalcModal) avgRCalcModal.addEventListener('click', function(e) { if (e.target === avgRCalcModal) closeAvgRCalcModal(); });
+if(calEditModal) calEditModal.addEventListener('click', function(e) { if (e.target === calEditModal) closeCalEditModal(); });
 
 window.switchRankTab = function(num) {
   document.querySelectorAll('.rank-tab').forEach(el => el.classList.remove('active'));
@@ -214,7 +220,6 @@ window.onload = function() {
   document.getElementById('analyzeDate').value = todayStr;
   
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
-  
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
     let lastMachineSpin = parseInt(document.getElementById('startSpin').value) || 0;
     historyData.forEach(d => { 
@@ -235,6 +240,10 @@ window.onload = function() {
   setupSwipeInput('ballRatio', 1, 0, 100, 60); setupSwipeInput('totalSpins', 10, 100, 15000, 2000);
   setupSwipeInput('calc_b_border', 0.1, 10.0, 30.0, 18.0); setupSwipeInput('calc_b_prob', 0.1, 1.0, 499.0, 319.6);
   setupSwipeInput('calc_b_payout', 1, 10, 160, 140); setupSwipeInput('calc_p_total', 10, 100, 10000, 4500); setupSwipeInput('calc_p_payout', 1, 10, 160, 140);
+
+  // カレンダー編集用スワイプ
+  setupSwipeInput('calEditEV', 100, -1000000, 1000000, 0);
+  setupSwipeInput('calEditActual', 500, -1000000, 1000000, 0);
 
   updateModeIndicator();
 
@@ -335,20 +344,13 @@ window.updateDictItem = async function(machine) {
   await saveDictionaryData(dict); alert(`[${machine}] の辞書を更新しました。`);
 };
 
-// ★ 辞書の確実な削除
 window.deleteDictItem = async function(machine) {
   if (!isAdmin) return alert("権限がありません。");
   if(confirm(`[${machine}] を辞書から削除しますか？`)) { 
     try {
-      if (currentGroupId && db) {
-        await db.collection('groups').doc(currentGroupId).update({
-          [`dictionary.${machine}`]: firebase.firestore.FieldValue.delete()
-        });
-      }
+      if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ [`dictionary.${machine}`]: firebase.firestore.FieldValue.delete() });
       renderDictionary(); 
-    } catch (e) {
-      alert("削除に失敗しました。");
-    }
+    } catch (e) { alert("削除に失敗しました。"); }
   }
 };
 
@@ -361,20 +363,13 @@ window.saveHall = async function() {
   document.getElementById('hallNameInput').value = ''; checkboxes.forEach(cb => cb.checked = false); renderHalls(); analyzeHalls();
 };
 
-// ★ ホールの確実な削除
 window.deleteHall = async function(name) {
   if (!isAdmin) return alert("権限がありません。");
   if(confirm(`[${name}] を削除しますか？`)) { 
     try {
-      if (currentGroupId && db) {
-        await db.collection('groups').doc(currentGroupId).update({
-          [`halls.${name}`]: firebase.firestore.FieldValue.delete()
-        });
-      }
+      if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ [`halls.${name}`]: firebase.firestore.FieldValue.delete() });
       renderHalls(); analyzeHalls(); 
-    } catch (e) {
-      alert("削除に失敗しました。");
-    }
+    } catch (e) { alert("削除に失敗しました。"); }
   }
 };
 
@@ -416,6 +411,7 @@ window.analyzeHalls = async function() {
   container.innerHTML = html;
 };
 
+// 履歴編集機能（ツール①）
 window.editHistoryItem = function(index) { editingHistoryIndex = index; updateMeasurementDisplay(); };
 window.cancelEditHistoryItem = function() { editingHistoryIndex = null; updateMeasurementDisplay(); };
 
@@ -804,11 +800,12 @@ window.saveExpectedValueToCalendar = async function() {
 };
 
 // ==========================================
-// ツール③：カレンダー機能＆ランキング自動集計
+// ★ ツール③：カレンダー機能 ＆ 台ごとの個別編集・削除 ★
 // ==========================================
 window.changeMonth = function(diff) { currentCalMonth += diff; if(currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; } if(currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; } renderCalendar(); };
 window.selectDate = function(dateStr) { document.getElementById('actualDate').value = dateStr; renderCalendar(); };
 
+// 全削除
 window.deleteCalendarDay = async function(date) {
   if (!isAdmin) return alert("権限がありません。");
   if(confirm(`${date} の記録をすべて削除しますか？`)) { 
@@ -819,6 +816,95 @@ window.deleteCalendarDay = async function(date) {
   }
 };
 
+// ★ カレンダー個別編集モーダルを開く
+window.editCalendarDetail = async function(date, index) {
+  vibrate();
+  const cal = await getCalendarData(); const dayData = cal[date];
+  if(!dayData || !dayData.details || !dayData.details[index]) return;
+  
+  let dStr = dayData.details[index];
+  let store = "", machine = "", ev = 0, actual = 0;
+  
+  let m1 = dStr.match(/^\[(.*?)\]\s*(.*?)\s*\(/);
+  if(m1) { store = m1[1]; machine = m1[2]; }
+  
+  let m2 = dStr.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円/);
+  if(m2) { ev = parseInt(m2[1].replace(/,/g, '')) || 0; actual = parseInt(m2[2].replace(/,/g, '')) || 0; }
+  
+  document.getElementById('calEditStore').value = store;
+  document.getElementById('calEditMachine').value = machine;
+  document.getElementById('calEditEV').value = ev;
+  document.getElementById('calEditActual').value = actual;
+  document.getElementById('calEditDate').value = date;
+  document.getElementById('calEditIndex').value = index;
+  
+  document.getElementById('calEditModal').style.display = 'flex';
+};
+
+// ★ カレンダー個別編集を保存する
+window.saveCalEdit = async function() {
+  const date = document.getElementById('calEditDate').value;
+  const index = parseInt(document.getElementById('calEditIndex').value);
+  const newStore = document.getElementById('calEditStore').value.trim();
+  const newMachine = document.getElementById('calEditMachine').value.trim();
+  const newEv = parseInt(document.getElementById('calEditEV').value) || 0;
+  const newActual = parseInt(document.getElementById('calEditActual').value) || 0;
+  
+  const cal = await getCalendarData(); const dayData = cal[date];
+  if(!dayData || !dayData.details || !dayData.details[index]) return;
+  
+  let dStr = dayData.details[index]; let oldEv = 0, oldActual = 0;
+  let m2 = dStr.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円/);
+  if(m2) { oldEv = parseInt(m2[1].replace(/,/g, '')) || 0; oldActual = parseInt(m2[2].replace(/,/g, '')) || 0; }
+  
+  let diffEv = newEv - oldEv;
+  let diffActual = newActual - oldActual;
+  let diffBalls = Math.round(diffActual / 4); // 差玉は実収支から大まかに逆算補正
+  
+  // 文字列の差し替え（元のユーザー名やヒット履歴は残す）
+  let splitIdx = dStr.indexOf(') <span');
+  if(splitIdx === -1) splitIdx = dStr.indexOf(') 👤') !== -1 ? dStr.indexOf(') 👤') - 1 : dStr.length;
+  let newDetailStr = `[${newStore}] ${newMachine} (期待値: ${formatCurrency(newEv)} / 実収支: ${formatCurrency(newActual)}${dStr.substring(splitIdx)}`;
+  
+  dayData.details[index] = newDetailStr;
+  dayData.ev += diffEv;
+  dayData.actual += diffActual;
+  dayData.actualBalls += diffBalls;
+  
+  if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ calendar: cal });
+  closeCalEditModal(); vibrate(30); renderCalendar();
+};
+
+// ★ カレンダー個別削除
+window.deleteCalendarDetail = async function(date, index) {
+  if (!isAdmin) return alert("権限がありません。");
+  if(!confirm("この台の記録を削除しますか？\n（その日の合計収支からもマイナスされて計算し直されます）")) return;
+  
+  const cal = await getCalendarData(); const dayData = cal[date];
+  if(!dayData || !dayData.details || !dayData.details[index]) return;
+  
+  let dStr = dayData.details[index]; let oldEv = 0, oldActual = 0;
+  let m2 = dStr.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円/);
+  if(m2) { oldEv = parseInt(m2[1].replace(/,/g, '')) || 0; oldActual = parseInt(m2[2].replace(/,/g, '')) || 0; }
+  
+  dayData.ev -= oldEv;
+  dayData.actual -= oldActual;
+  dayData.actualBalls -= Math.round(oldActual / 4);
+  
+  dayData.details.splice(index, 1);
+  
+  // もしその日のデータが0件になったら、日付ごと消去する
+  if(dayData.details.length === 0) {
+    if (currentGroupId && db) {
+      await db.collection('groups').doc(currentGroupId).update({ [`calendar.${date}`]: firebase.firestore.FieldValue.delete() });
+    }
+  } else {
+    if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ calendar: cal });
+  }
+  vibrate(30); renderCalendar();
+};
+
+
 async function renderCalendar() {
   const cal = await getCalendarData(); const year = currentCalYear, month = currentCalMonth;
   document.getElementById('calendarMonthLabel').innerText = `${year}年 ${month + 1}月`;
@@ -828,6 +914,7 @@ async function renderCalendar() {
   
   let monthlyEV = 0, monthlyActual = 0, monthlyBalls = 0;
   const monthStr = `${year}-${String(month+1).padStart(2,'0')}`; const selectedDateVal = document.getElementById('actualDate').value;
+
   let userStats = {};
 
   for(let day=1; day<=daysInMonth; day++){
@@ -846,8 +933,10 @@ async function renderCalendar() {
           const matchNew = detail.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円.*data-uid="([^"]+)" data-name="([^"]+)">/);
           const matchOld = detail.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円.*👤\s*(.*?)<\/span>/);
           let ev = 0, actual = 0, uid = "", name = "";
+          
           if (matchNew) { ev = parseInt(matchNew[1].replace(/,/g, '')) || 0; actual = parseInt(matchNew[2].replace(/,/g, '')) || 0; uid = matchNew[3]; name = matchNew[4]; } 
           else if (matchOld) { ev = parseInt(matchOld[1].replace(/,/g, '')) || 0; actual = parseInt(matchOld[2].replace(/,/g, '')) || 0; name = matchOld[3].trim(); uid = name; }
+
           if (uid) { if (!userStats[uid]) userStats[uid] = { ev: 0, actual: 0, latestName: name }; userStats[uid].ev += ev; userStats[uid].actual += actual; if (matchNew) userStats[uid].latestName = name; }
         });
       }
@@ -861,11 +950,29 @@ async function renderCalendar() {
   const mDiff = monthlyActual - monthlyEV, mDiffEl = document.getElementById('monthlyDiff'); mDiffEl.innerText = formatCurrency(mDiff); mDiffEl.className = mDiff > 0 ? 'plus' : (mDiff < 0 ? 'minus' : '');
 
   document.getElementById('selectedDateDisp').innerText = selectedDateVal || '未選択'; const dayData = cal[selectedDateVal];
+  
+  // ★ カレンダー詳細リストの描画（個別編集・削除ボタンを追加）
   if (dayData) {
     const ceiledEV = Math.ceil(dayData.ev || 0), actualVal = dayData.actual || 0, actualBallsVal = dayData.actualBalls || 0, diff = actualVal - ceiledEV, diffColor = diff > 0 ? 'plus' : (diff < 0 ? 'minus' : '');
-    let adminBtn = isAdmin ? `<button class="btn-small" style="background:#e74c3c; margin-top:10px;" onclick="deleteCalendarDay('${selectedDateVal}')">この日の記録を全削除</button>` : '';
+    let adminBtn = isAdmin ? `<button class="btn-small" style="background:#e74c3c; margin-top:10px; width:100%; padding:10px;" onclick="deleteCalendarDay('${selectedDateVal}')">⚠️ この日の全記録を一括削除</button>` : '';
+    
+    let detailsHtml = "";
+    if (dayData.details && dayData.details.length > 0) {
+      dayData.details.forEach((dStr, idx) => {
+        let btnHtml = isAdmin ? `<div style="text-align:right; margin-top:6px;"><button class="btn-small" style="background:#3498db; padding:6px 12px; margin:0 4px;" onclick="editCalendarDetail('${selectedDateVal}', ${idx})">✏️ 編集</button><button class="btn-small" style="background:#e74c3c; padding:6px 12px; margin:0;" onclick="deleteCalendarDetail('${selectedDateVal}', ${idx})">✖ 削除</button></div>` : '';
+        detailsHtml += `<div style="padding:8px 0;">${dStr}${btnHtml}</div>`;
+        if(idx < dayData.details.length - 1) detailsHtml += `<hr style="margin:4px 0; border-top:1px dashed var(--border-color);">`;
+      });
+    } else { detailsHtml = '稼働記録なし'; }
+
     document.getElementById('calendarList').innerHTML = `
-    <div class="saved-item" style="border-left: 4px solid #9b59b6;"><div style="font-weight:bold; color:var(--text-main);">${selectedDateVal}</div><div style="font-size: 13px; margin: 6px 0; display: flex; justify-content: space-between;"><span>期待値: <span style="color:#27ae60; font-weight:bold;">${formatCurrency(ceiledEV)}</span></span><span>実収支: <span style="color:#2980b9; font-weight:bold;">${formatCurrency(actualVal)}</span></span></div><div style="font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between;"><span>獲得差玉: <span style="color:#e67e22; font-weight:bold;">${actualBallsVal > 0 ? '+' : ''}${actualBallsVal.toLocaleString()} 玉</span></span><span>ブレ: <span class="${diffColor}">${formatCurrency(diff)}</span></span></div><div style="font-size: 13px; color: var(--text-sub); background: var(--bg-main); padding: 6px; border-radius: 4px; line-height: 1.4;">${dayData.details && dayData.details.length > 0 ? dayData.details.join('<br><hr style="margin:6px 0; border-top:1px dashed var(--border-color);">') : '稼働記録なし'}</div>${adminBtn}</div>`;
+    <div class="saved-item" style="border-left: 4px solid #9b59b6;">
+      <div style="font-weight:bold; color:var(--text-main);">${selectedDateVal}</div>
+      <div style="font-size: 13px; margin: 6px 0; display: flex; justify-content: space-between;"><span>期待値: <span style="color:#27ae60; font-weight:bold;">${formatCurrency(ceiledEV)}</span></span><span>実収支: <span style="color:#2980b9; font-weight:bold;">${formatCurrency(actualVal)}</span></span></div>
+      <div style="font-size: 13px; margin-bottom: 6px; display: flex; justify-content: space-between;"><span>獲得差玉: <span style="color:#e67e22; font-weight:bold;">${actualBallsVal > 0 ? '+' : ''}${actualBallsVal.toLocaleString()} 玉</span></span><span>ブレ: <span class="${diffColor}">${formatCurrency(diff)}</span></span></div>
+      <div style="font-size: 13px; color: var(--text-sub); background: var(--bg-main); padding: 8px; border-radius: 4px; line-height: 1.5;">${detailsHtml}</div>
+      ${adminBtn}
+    </div>`;
   } else { document.getElementById('calendarList').innerHTML = '<p style="font-size:13px; color:var(--text-muted);">選択した日付のデータはありません。</p>'; }
 
   updateRankingAndAvatar(userStats);
