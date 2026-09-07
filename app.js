@@ -9,11 +9,10 @@ const firebaseConfig = {
   messagingSenderId: "695101913449",
   appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
 };
+
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
   firebase.initializeApp(firebaseConfig);
-  firebase.firestore().settings({
-    cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-  });
+  firebase.firestore().settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
   firebase.firestore().enablePersistence().catch((err) => { console.log("Offline persistence error: ", err.code); });
 }
 
@@ -34,33 +33,40 @@ let virtualSpins = 0;
 // ==========================================
 // ユーティリティ・UI機能
 // ==========================================
-window.toggleDarkMode = function() {
+function toggleDarkMode() {
   const isDark = document.getElementById('darkModeToggle').checked;
   if (isDark) { document.body.setAttribute('data-theme', 'dark'); localStorage.setItem('pachinko_theme', 'dark'); } 
   else { document.body.removeAttribute('data-theme'); localStorage.setItem('pachinko_theme', 'light'); }
-};
+}
 
-window.vibrate = function(ms = 40) { 
+function vibrate(ms = 40) { 
   if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
-  if (navigator.vibrate) {
-    try { navigator.vibrate(ms); } catch(e) {}
-  }
-};
+  if (navigator.vibrate) { try { navigator.vibrate(ms); } catch(e) {} }
+}
 
-window.openResultModal = function() { document.getElementById('resultModal').style.display = 'flex'; };
-window.closeResultModal = function() { document.getElementById('resultModal').style.display = 'none'; editingHistoryIndex = null; window.updateMeasurementDisplay(); };
-window.openSavedModal = function() { window.renderSavedRecords(); document.getElementById('savedModal').style.display = 'flex'; };
-window.closeSavedModal = function() { document.getElementById('savedModal').style.display = 'none'; };
-window.closeCalEditModal = function() { document.getElementById('calEditModal').style.display = 'none'; };
+function openResultModal() { document.getElementById('resultModal').style.display = 'flex'; }
+function closeResultModal() { document.getElementById('resultModal').style.display = 'none'; editingHistoryIndex = null; updateMeasurementDisplay(); }
+function openSavedModal() { renderSavedRecords(); document.getElementById('savedModal').style.display = 'flex'; }
+function closeSavedModal() { document.getElementById('savedModal').style.display = 'none'; }
 
-window.openAvgRCalcModal = function() { 
-  window.vibrate(); document.getElementById('avgRCalcModal').style.display = 'flex'; 
+function openAvgRCalcModal() { 
+  vibrate(); document.getElementById('avgRCalcModal').style.display = 'flex'; 
   const p = document.getElementById('probDenom').value; const pr = document.getElementById('payoutPerR').value;
   if(p) document.getElementById('calc_b_prob').value = p;
   if(pr) { document.getElementById('calc_b_payout').value = pr; document.getElementById('calc_p_payout').value = pr; }
   window.doAvgRCalc1(); window.doAvgRCalc2();
-};
-window.closeAvgRCalcModal = function() { document.getElementById('avgRCalcModal').style.display = 'none'; };
+}
+function closeAvgRCalcModal() { document.getElementById('avgRCalcModal').style.display = 'none'; }
+
+window.closeCalEditModal = function() { document.getElementById('calEditModal').style.display = 'none'; };
+
+const resultModal = document.getElementById('resultModal'); const savedModal = document.getElementById('savedModal'); 
+const avgRCalcModal = document.getElementById('avgRCalcModal'); const calEditModal = document.getElementById('calEditModal');
+
+if(resultModal) resultModal.addEventListener('click', function(e) { if (e.target === resultModal) closeResultModal(); });
+if(savedModal) savedModal.addEventListener('click', function(e) { if (e.target === savedModal) closeSavedModal(); });
+if(avgRCalcModal) avgRCalcModal.addEventListener('click', function(e) { if (e.target === avgRCalcModal) closeAvgRCalcModal(); });
+if(calEditModal) calEditModal.addEventListener('click', function(e) { if (e.target === calEditModal) closeCalEditModal(); });
 
 window.switchRankTab = function(num) {
   document.querySelectorAll('.rank-tab').forEach(el => el.classList.remove('active'));
@@ -115,11 +121,11 @@ function getNickname() {
   if (currentUser && currentUser.email) return currentUser.email.substring(0, 5);
   return "名無し";
 }
-window.updateNickname = function() {
+function updateNickname() {
   const newName = document.getElementById('updateNicknameInput').value.trim();
-  if(newName) { localStorage.setItem('pachinko_nickname', newName); alert("ニックネームを更新しました！\nランキングにも順次反映されます。"); document.getElementById('updateNicknameInput').value = ''; updateModeIndicator(); window.renderCalendar(); } 
+  if(newName) { localStorage.setItem('pachinko_nickname', newName); alert("ニックネームを更新しました！\nランキングにも順次反映されます。"); document.getElementById('updateNicknameInput').value = ''; updateModeIndicator(); renderCalendar(); } 
   else { alert("ニックネームを入力してください。"); }
-};
+}
 function saveNicknameFromInput() {
   const name = document.getElementById('nicknameInput').value.trim();
   if (name) localStorage.setItem('pachinko_nickname', name); else localStorage.removeItem('pachinko_nickname');
@@ -141,31 +147,31 @@ function updateModeIndicator() {
     document.getElementById('group-none').style.display = 'block'; document.getElementById('group-active').style.display = 'none';
     if(hdSection) hdSection.style.display = 'none'; 
     const hallSec = document.getElementById('hall-management-section'); if(hallSec) hallSec.style.display = 'none';
-    window.switchTab('tab4');
+    switchTab('tab4');
   }
 }
 
-window.switchTab = function(tabId) {
-  window.vibrate(30); 
+function switchTab(tabId) {
+  vibrate(30); 
   document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.top-nav button').forEach(el => el.classList.remove('active'));
   const targetTab = document.getElementById(tabId); const targetNav = document.getElementById('nav-' + tabId);
   if(targetTab) targetTab.classList.add('active'); if(targetNav) targetNav.classList.add('active');
-  window.refreshActiveTabUI();
-};
+  refreshActiveTabUI();
+}
 
-window.refreshActiveTabUI = function() {
+function refreshActiveTabUI() {
   const activeTabBtn = document.querySelector('.top-nav button.active'); if(!activeTabBtn) return;
   const tabId = activeTabBtn.id.replace('nav-', '');
-  if(tabId === 'tab1') { if(window.renderSavedRecords) window.renderSavedRecords(); }
-  if(tabId === 'tab3') { if(window.renderCalendar) window.renderCalendar(); }
+  if(tabId === 'tab1') { if(typeof renderSavedRecords === 'function') renderSavedRecords(); }
+  if(tabId === 'tab3') { if(typeof renderCalendar === 'function') renderCalendar(); }
   if(tabId === 'tab4') { 
-    if(window.renderDictionary) window.renderDictionary(); 
-    if(window.renderHistoryTab) window.renderHistoryTab(); 
-    if(window.renderHalls) window.renderHalls(); 
-    if(window.analyzeHalls) window.analyzeHalls(); 
+    if(typeof renderDictionary === 'function') renderDictionary(); 
+    if(typeof window.renderHistoryTab === 'function') window.renderHistoryTab(); 
+    if(typeof window.renderHalls === 'function') window.renderHalls(); 
+    if(typeof window.analyzeHalls === 'function') window.analyzeHalls(); 
   }
-};
+}
 
 function attachGroupListener(groupId) {
   if (unsubscribeGroup) unsubscribeGroup();
@@ -176,7 +182,7 @@ function attachGroupListener(groupId) {
       if(!globalGroupData.records) globalGroupData.records = []; if(!globalGroupData.calendar) globalGroupData.calendar = {}; 
       if(!globalGroupData.dictionary) globalGroupData.dictionary = {}; if(!globalGroupData.halls) globalGroupData.halls = {};
       isAdmin = (globalGroupData.creator === currentUser.uid);
-      updateModeIndicator(); window.refreshActiveTabUI(); 
+      updateModeIndicator(); refreshActiveTabUI(); 
     } else {
       currentGroupId = null; isAdmin = false; localStorage.removeItem('pachinko_groupId');
       if(unsubscribeGroup) unsubscribeGroup(); updateModeIndicator();
@@ -184,17 +190,17 @@ function attachGroupListener(groupId) {
   }, error => { console.error("Firebase sync error:", error); });
 }
 
-window.createGroup = async function() {
+async function createGroup() {
   if (!currentUser || !db) return alert("Firebaseにログインしてください。");
   saveNicknameFromInput(); const newId = Math.random().toString(36).substr(2, 6).toUpperCase(); 
   try {
     await db.collection('groups').doc(newId).set({ created: Date.now(), creator: currentUser.uid });
     currentGroupId = newId; localStorage.setItem('pachinko_groupId', newId); alert(`グループを作成しました！\nID: ${newId}`);
-    attachGroupListener(newId); window.switchTab('tab1');
+    attachGroupListener(newId); switchTab('tab1');
   } catch (error) { alert("グループの作成に失敗しました。"); }
-};
+}
 
-window.joinGroup = async function() {
+async function joinGroup() {
   if (!currentUser || !db) return alert("Firebaseにログインしてください。");
   saveNicknameFromInput(); const idInput = document.getElementById('joinGroupId').value.trim().toUpperCase();
   if (idInput.length !== 6) return alert("6桁のグループIDを入力してください。");
@@ -203,30 +209,30 @@ window.joinGroup = async function() {
     if (doc.exists) {
       currentGroupId = idInput; localStorage.setItem('pachinko_groupId', idInput);
       document.getElementById('joinGroupId').value = ''; alert("参加しました！");
-      attachGroupListener(idInput); window.switchTab('tab1');
+      attachGroupListener(idInput); switchTab('tab1');
     } else { alert("指定されたIDのグループが見つかりません。"); }
   } catch (error) { alert("グループの参加に失敗しました。"); }
-};
+}
 
-window.leaveGroup = function() {
+function leaveGroup() {
   if(confirm("グループから退出しますか？\n（再度IDを入力すれば戻れます）")) {
     currentGroupId = null; isAdmin = false; localStorage.removeItem('pachinko_groupId');
     if(unsubscribeGroup) unsubscribeGroup(); updateModeIndicator();
   }
-};
+}
 
-window.login = function() {
+// ★ポップアップ方式ログイン（完全復元）
+function login() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
   const provider = new firebase.auth.GoogleAuthProvider(); 
   provider.setCustomParameters({ prompt: 'select_account' });
-  
   auth.signInWithPopup(provider).catch(error => { 
-    console.error("Login Error:", error);
-    alert("ログインに失敗しました。\n" + error.message); 
+    console.error(error);
+    alert("ログインに失敗しました。"); 
   });
-};
+}
 
-window.logout = function() { if(auth) auth.signOut(); };
+function logout() { if(auth) auth.signOut(); }
 
 window.onload = function() {
   if (localStorage.getItem('pachinko_theme') === 'dark') document.getElementById('darkModeToggle').checked = true;
@@ -267,20 +273,13 @@ window.onload = function() {
   if (auth) {
     auth.onAuthStateChanged(user => {
       if (user) {
-        currentUser = user; 
-        document.getElementById('user-info').innerText = `ログイン中: ${user.email}`; 
-        document.getElementById('user-info').style.color = '#27ae60';
-        document.getElementById('login-btn').style.display = 'none'; 
-        document.getElementById('logout-btn').style.display = 'inline-block';
+        currentUser = user; document.getElementById('user-info').innerText = `ログイン中: ${user.email}`; document.getElementById('user-info').style.color = '#27ae60';
+        document.getElementById('login-btn').style.display = 'none'; document.getElementById('logout-btn').style.display = 'inline-block';
         if (currentGroupId && db) { attachGroupListener(currentGroupId); } else { updateModeIndicator(); }
       } else {
-        currentUser = null; currentGroupId = null; isAdmin = false; 
-        if(unsubscribeGroup) unsubscribeGroup();
-        document.getElementById('user-info').innerText = 'ログインしていません'; 
-        document.getElementById('user-info').style.color = '#e74c3c';
-        document.getElementById('login-btn').style.display = 'inline-block'; 
-        document.getElementById('logout-btn').style.display = 'none'; 
-        updateModeIndicator();
+        currentUser = null; currentGroupId = null; isAdmin = false; if(unsubscribeGroup) unsubscribeGroup();
+        document.getElementById('user-info').innerText = 'ログインしていません'; document.getElementById('user-info').style.color = '#e74c3c';
+        document.getElementById('login-btn').style.display = 'inline-block'; document.getElementById('logout-btn').style.display = 'none'; updateModeIndicator();
       }
     });
   }
@@ -325,19 +324,19 @@ window.doAvgRCalc2 = function() {
   if (total > 0 && pr > 0) { resEl.innerText = (total / pr).toFixed(2); } else { resEl.innerText = "0.00"; }
 };
 window.applyAvgR = function(spanId) {
-  window.vibrate(); const val = document.getElementById(spanId).innerText;
+  vibrate(); const val = document.getElementById(spanId).innerText;
   if (val === "0.00" || isNaN(val)) return alert("正しく計算されていません。");
   document.getElementById('avgRounds').value = val; document.getElementById('avgRounds').classList.remove('auto-filled');
   if(spanId === 'res_b_avgR') {
     const p = document.getElementById('calc_b_prob').value, pr = document.getElementById('calc_b_payout').value;
     if(p) document.getElementById('probDenom').value = p; if(pr) document.getElementById('payoutPerR').value = pr;
   } else if(spanId === 'res_p_avgR') { const pr = document.getElementById('calc_p_payout').value; if(pr) document.getElementById('payoutPerR').value = pr; }
-  window.calcBorder(); window.updateMeasurementDisplay(); window.closeAvgRCalcModal();
+  window.calcBorder(); updateMeasurementDisplay(); closeAvgRCalcModal();
 };
 
 window.syncMachineSpec = function() { const m = document.getElementById('machineName').value.trim(); document.getElementById('calcMachineName').value = m; window.loadMachineSpec(); };
 
-window.renderDictionary = async function() {
+async function renderDictionary() {
   const dict = await getDictionaryData(), listEl = document.getElementById('machineList'); let optionsHtml = ''; for(let m in dict) { optionsHtml += `<option value="${m}"></option>`; }
   listEl.innerHTML = optionsHtml; const container = document.getElementById('dictContainer'); let html = '';
   for(let m in dict) {
@@ -351,7 +350,7 @@ window.renderDictionary = async function() {
   }
   if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されている機種スペックはありません。</p>'; container.innerHTML = html; 
   for(let m in dict) { setupSwipeInput(`dict_prob_${m}`, 0.1, 1.0, 999.0, 319.6); setupSwipeInput(`dict_avgRounds_${m}`, 0.1, 1.0, 100.0, 32.2); setupSwipeInput(`dict_payoutPerR_${m}`, 1, 10, 150, 140); }
-};
+}
 
 window.updateDictItem = async function(machine) {
   if (!isAdmin) return alert("権限がありません。");
@@ -366,7 +365,7 @@ window.deleteDictItem = async function(machine) {
   if(confirm(`[${machine}] を辞書から削除しますか？`)) { 
     try {
       if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ [`dictionary.${machine}`]: firebase.firestore.FieldValue.delete() });
-      window.renderDictionary(); 
+      renderDictionary(); 
     } catch (e) { alert("削除に失敗しました。"); }
   }
 };
@@ -428,8 +427,8 @@ window.analyzeHalls = async function() {
   container.innerHTML = html;
 };
 
-window.editHistoryItem = function(index) { editingHistoryIndex = index; window.updateMeasurementDisplay(); };
-window.cancelEditHistoryItem = function() { editingHistoryIndex = null; window.updateMeasurementDisplay(); };
+window.editHistoryItem = function(index) { editingHistoryIndex = index; updateMeasurementDisplay(); };
+window.cancelEditHistoryItem = function() { editingHistoryIndex = null; updateMeasurementDisplay(); };
 
 window.saveEditHistoryItem = function(index, type) {
   if (type === 'spin') {
@@ -443,10 +442,10 @@ window.saveEditHistoryItem = function(index, type) {
     historyData[index].amount = a; historyData[index].rounds = r; historyData[index].hitType = h; historyData[index].memo = memo;
     if(re !== undefined && !isNaN(re)) historyData[index].rushEndSpin = re; else delete historyData[index].rushEndSpin;
   }
-  editingHistoryIndex = null; window.vibrate(30); window.updateMeasurementDisplay();
+  editingHistoryIndex = null; vibrate(30); updateMeasurementDisplay();
 };
 
-window.createRecordItemHtml = function(r) {
+function createRecordItemHtml(r) {
   let historyHtml = '';
   if (r.history && r.history.length > 0) {
     historyHtml = `<details style="margin-top: 8px;"><summary style="cursor: pointer; font-size: 13px; font-weight: bold; color: #2980b9;">計測履歴を表示</summary><div class="saved-history-box">`;
@@ -478,10 +477,10 @@ window.createRecordItemHtml = function(r) {
   let adminButtons = isAdmin ? `<button class="btn-small" style="background:#95a5a6;" onclick="window.deleteRecord(${r.id})">削除</button>` : '';
 
   return `<div class="saved-item"><div style="font-weight:bold; color:var(--text-main); font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}${authorDisp}</div><div style="font-size:13px; margin:6px 0; color:var(--text-sub);">総投資: ${r.totalBalls}玉 / 自力回転: ${r.totalSpins}回${startDisp}<br><span style="color:#e74c3c; font-weight:bold; font-size:14px;">250玉平均: ${r.avg250.toFixed(2)} 回</span><span style="color:#e67e22; font-weight:bold; font-size:13px; margin-left:10px;">持球比率: ${dispRatio}%</span></div>${historyHtml}<div style="margin-top: 10px; display: flex; gap: 4px; flex-wrap: wrap;">${resumeButton}<button class="btn-small" style="background:#3498db;" onclick="${btnCall}">期待値を計算</button>${adminButtons}</div></div>`;
-};
+}
 
 window.addMeasurement = function(balls) {
-  window.vibrate();
+  vibrate();
   const spinInput = document.getElementById('measuredSpin'), currentMachineSpin = parseFloat(spinInput.value);
   if (isNaN(currentMachineSpin) || currentMachineSpin < 0) return alert("現在のデータ機回転数を正しく入力してください。");
   
@@ -510,11 +509,11 @@ window.addMeasurement = function(balls) {
     if (hitType === 'ラッシュ') { document.getElementById('rushEndSpinArea').style.display = 'block'; } else { document.getElementById('rushEndSpinArea').style.display = 'none'; }
     document.getElementById('payoutInputArea').style.display = 'block';
   } else { document.getElementById('payoutInputArea').style.display = 'none'; }
-  window.updateMeasurementDisplay();
+  updateMeasurementDisplay();
 };
 
 window.addPayout = function() {
-  window.vibrate();
+  vibrate();
   const amount = parseFloat(document.getElementById('payoutAmount').value), rounds = parseFloat(document.getElementById('payoutRounds').value);
   if (isNaN(amount) || amount <= 0) return alert("獲得出玉が計算されていません。（終了時の持ち球を入力してください）");
   if (isNaN(rounds) || rounds <= 0) return alert("消化ラウンド数が計算されていません。（ラウンド数と回数を入力してください）");
@@ -527,16 +526,16 @@ window.addPayout = function() {
   
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
   document.getElementById('payoutInputArea').style.display = 'none';
-  if (!measurementStartTime) measurementStartTime = Date.now(); editingHistoryIndex = null; window.updateMeasurementDisplay();
+  if (!measurementStartTime) measurementStartTime = Date.now(); editingHistoryIndex = null; updateMeasurementDisplay();
 };
 
 window.undoLastInput = function() {
   if (historyData.length === 0) return alert("取り消す入力がありません。");
   if (!confirm("直前の入力を取り消しますか？\n※この操作は元に戻せません。")) return;
-  window.vibrate(40); historyData.pop(); if (historyData.length === 0) measurementStartTime = null; editingHistoryIndex = null; window.updateMeasurementDisplay();
+  vibrate(40); historyData.pop(); if (historyData.length === 0) measurementStartTime = null; editingHistoryIndex = null; updateMeasurementDisplay();
 };
 
-window.deleteHistoryItem = function(index) { historyData.splice(index, 1); window.updateMeasurementDisplay(); };
+window.deleteHistoryItem = function(index) { historyData.splice(index, 1); updateMeasurementDisplay(); };
 
 window.updateMeasurementDisplay = function() {
   const btnModal = document.getElementById('btnOpenResultModal'); const startSpinInput = document.getElementById('startSpin');
@@ -630,12 +629,12 @@ window.resetMeasurement = function() {
     historyData = []; editingRecordId = null; measurementStartTime = null; editingHistoryIndex = null;
     document.getElementById('startSpin').value = ''; document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
     document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
-    window.updateMeasurementDisplay(); window.closeResultModal();
+    updateMeasurementDisplay(); closeResultModal();
   }
 };
 
 window.saveCurrentRecord = async function() {
-  window.vibrate(50); 
+  vibrate(50); 
   const date = document.getElementById('recordDate').value, store = document.getElementById('storeName').value.trim(), machine = document.getElementById('machineName').value.trim();
   if (!date || !machine) return alert("日付と機種名を入力してください。");
   if (historyData.length === 0) return alert("回転数の履歴がありません。");
@@ -670,7 +669,7 @@ window.saveCurrentRecord = async function() {
   document.getElementById('machineName').value = ''; document.getElementById('startSpin').value = '';
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
   document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
-  window.updateMeasurementDisplay(); window.closeResultModal(); 
+  updateMeasurementDisplay(); closeResultModal(); 
 };
 
 window.resumeRecord = async function(id) {
@@ -682,7 +681,7 @@ window.resumeRecord = async function(id) {
   historyData = JSON.parse(JSON.stringify(r.history || [])); editingRecordId = r.id; measurementStartTime = Date.now(); editingHistoryIndex = null;
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
   document.getElementById('payoutAmount').value = ''; document.getElementById('payoutRounds').value = ''; document.getElementById('payoutMemo').value = ''; document.getElementById('payoutInputArea').style.display = 'none';
-  window.updateMeasurementDisplay(); window.closeSavedModal(); window.scrollTo({ top: 0, behavior: 'smooth' });
+  updateMeasurementDisplay(); closeSavedModal(); window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 window.renderSavedRecords = async function() {
@@ -690,7 +689,7 @@ window.renderSavedRecords = async function() {
   if (!targetDate) return container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">日付を選択してください。</p>';
   const filtered = records.filter(r => r.date === targetDate);
   if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">この日付に保存されたデータはありません。</p>';
-  filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); let html = ''; filtered.forEach(r => { html += window.createRecordItemHtml(r); }); container.innerHTML = html;
+  filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); }); container.innerHTML = html;
 };
 
 window.deleteRecord = async function(id) {
@@ -721,7 +720,7 @@ window.useRecordForCalc = async function(recordDate, avg, machineName, mochidama
   if (realPayoutPerR > 0) { document.getElementById('realPayoutPerR').value = realPayoutPerR.toFixed(1); document.getElementById('realPayoutPerR').classList.add('auto-filled'); }
   if (mochidamaRatio !== undefined) { document.getElementById('ballRatio').value = Math.round(mochidamaRatio); document.getElementById('ballRatio').classList.add('auto-filled'); }
   if (recordDate) document.getElementById('evSaveDate').value = recordDate; document.getElementById('evSaveStore').value = storeName || ""; 
-  window.closeSavedModal(); window.switchTab('tab2');
+  closeSavedModal(); window.switchTab('tab2');
 };
 
 function drawSlumpGraph() {
@@ -741,7 +740,7 @@ function drawSlumpGraph() {
 }
 
 window.calculateAndSimulate = function() {
-  window.vibrate(); 
+  vibrate(); 
   const inputs = [
     { id: 'probDenom', name: '初当たり確率' }, { id: 'avgRounds', name: '平均ラウンド数' },
     { id: 'payoutPerR', name: '1R表記出玉' }, { id: 'spinRate', name: '現在の平均回転数' },
@@ -765,7 +764,7 @@ window.calculateAndSimulate = function() {
   document.getElementById('resTotal').innerText = formatCurrency(Math.ceil(lastCalculatedEV));
   document.getElementById('resultArea').style.display = 'block';
 
-  const btn = document.querySelector('button[onclick="calculateAndSimulate()"]');
+  const btn = document.querySelector('button[onclick="window.calculateAndSimulate()"]');
   if(btn) btn.innerText = "🚀 10万回シミュレート中...";
 
   const worker = new Worker('./worker.js');
@@ -781,7 +780,7 @@ window.calculateAndSimulate = function() {
 };
 
 window.saveExpectedValueToCalendar = async function() {
-  window.vibrate(50); 
+  vibrate(50); 
   const date = document.getElementById('evSaveDate').value, store = document.getElementById('evSaveStore').value || "店舗不明", machine = document.getElementById('evSaveMachine').value || "機種不明";
   if(!date) return alert("日付を入力してください");
   if(lastCalculatedEV === 0) return alert("期待値が計算されていません。");
@@ -832,7 +831,7 @@ window.deleteCalendarDay = async function(date) {
 };
 
 window.editCalendarDetail = async function(date, index) {
-  window.vibrate();
+  vibrate();
   const cal = await getCalendarData(); const dayData = cal[date];
   if(!dayData || !dayData.details || !dayData.details[index]) return;
   
@@ -865,7 +864,7 @@ window.saveCalEdit = async function() {
   
   dayData.details[index] = newDetailStr; dayData.ev += diffEv; dayData.actual += diffActual; dayData.actualBalls += diffBalls;
   if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ calendar: cal });
-  window.closeCalEditModal(); window.vibrate(30); window.renderCalendar();
+  window.closeCalEditModal(); vibrate(30); window.renderCalendar();
 };
 
 window.deleteCalendarDetail = async function(date, index) {
@@ -886,7 +885,7 @@ window.deleteCalendarDetail = async function(date, index) {
   } else {
     if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ calendar: cal });
   }
-  window.vibrate(30); window.renderCalendar();
+  vibrate(30); window.renderCalendar();
 };
 
 window.renderCalendar = async function() {
@@ -1006,14 +1005,14 @@ window.renderHistoryTab = async function() {
   const today = new Date(), oneYearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
   let filtered = records.filter(r => { if (!r.date) return false; if (new Date(r.date) < oneYearAgo) return false; if (filterText && r.machine && !r.machine.includes(filterText)) return false; return true; });
   if (filtered.length === 0) return container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">条件に一致する過去1年間のデータはありません。</p>';
-  filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); let html = ''; filtered.forEach(r => { html += window.createRecordItemHtml(r); }); container.innerHTML = html;
+  filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); let html = ''; filtered.forEach(r => { html += createRecordItemHtml(r); }); container.innerHTML = html;
 };
 
 // ==========================================
 // お遊び・運試しコーナー
 // ==========================================
 window.drawFortune = function() {
-  window.vibrate();
+  vibrate();
   const fortunes = [
     "【超大吉】オスイチ確定レベル！今日はいける！🔥",
     "【大吉】期待値以上のヒキを見せつける日！✨",
@@ -1029,7 +1028,7 @@ window.drawFortune = function() {
   el.style.color = "var(--text-main)"; el.innerHTML = "抽選中...";
   
   setTimeout(() => {
-    window.vibrate(100);
+    vibrate(100);
     if (result.includes("超大吉") || result.includes("大吉")) el.style.color = "#e74c3c";
     else if (result.includes("大凶") || result.includes("凶")) el.style.color = "#34495e";
     else el.style.color = "#27ae60";
@@ -1038,11 +1037,11 @@ window.drawFortune = function() {
 };
 
 window.spinVirtual = function() {
-  window.vibrate(20); virtualSpins++; document.getElementById('virtualSpinCount').innerText = virtualSpins;
+  vibrate(20); virtualSpins++; document.getElementById('virtualSpinCount').innerText = virtualSpins;
   const resEl = document.getElementById('virtualSpinResult'); resEl.style.animation = "none"; resEl.offsetHeight; 
   if (Math.random() < (1 / 99.9)) {
     resEl.innerHTML = `<span style="color:#e74c3c; font-size:18px; text-shadow: 0 0 10px #f1c40f; animation: pop 0.3s ease-out;">🌈 キュイン！当たり！！🌈</span>`;
-    window.vibrate([100, 50, 100, 50, 200]); virtualSpins = 0;
+    vibrate([100, 50, 100, 50, 200]); virtualSpins = 0;
   } else {
     if (Math.random() < 0.05) resEl.innerHTML = `<span style="color:#f39c12; animation: pop 0.2s ease-out;">⚡ 激アツハズレ... ⚡</span>`;
     else resEl.innerHTML = `<span style="color:var(--text-muted);">ハズレ...</span>`;
@@ -1050,10 +1049,10 @@ window.spinVirtual = function() {
 };
 
 window.spinUntilHit = function() {
-  window.vibrate(50); let count = 0; while(count < 3000) { count++; if (Math.random() < (1 / 99.9)) break; }
+  vibrate(50); let count = 0; while(count < 3000) { count++; if (Math.random() < (1 / 99.9)) break; }
   virtualSpins += count; document.getElementById('virtualSpinCount').innerText = virtualSpins;
   const resEl = document.getElementById('virtualSpinResult'); let msg = "";
   if (count <= 10) msg = `神引き！たった ${count} 回転で当たり！🎉`; else if (count >= 300) msg = `地獄の ${count} 回転ハマり...💸`; else msg = `${count} 回転で当たり！`;
   resEl.innerHTML = `<span style="color:#e74c3c; font-size:16px; animation: flashRed 1.5s infinite;">🌈 ${msg} 🌈</span>`;
-  window.vibrate([100, 50, 100, 50, 200]); virtualSpins = 0; 
+  vibrate([100, 50, 100, 50, 200]); virtualSpins = 0; 
 };
