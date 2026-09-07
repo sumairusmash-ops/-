@@ -37,7 +37,13 @@ function toggleDarkMode() {
   if (isDark) { document.body.setAttribute('data-theme', 'dark'); localStorage.setItem('pachinko_theme', 'dark'); } 
   else { document.body.removeAttribute('data-theme'); localStorage.setItem('pachinko_theme', 'light'); }
 }
-function vibrate(ms = 40) { if (navigator.vibrate) navigator.vibrate(ms); }
+function vibrate(ms = 40) { 
+  // ユーザーがまだ画面をタップしていない場合はバイブをキャンセルしてエラーを防ぐ
+  if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
+  if (navigator.vibrate) {
+    try { navigator.vibrate(ms); } catch(e) {}
+  }
+}
 function openResultModal() { document.getElementById('resultModal').style.display = 'flex'; }
 function closeResultModal() { document.getElementById('resultModal').style.display = 'none'; editingHistoryIndex = null; updateMeasurementDisplay(); }
 function openSavedModal() { renderSavedRecords(); document.getElementById('savedModal').style.display = 'flex'; }
