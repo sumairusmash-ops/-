@@ -2,12 +2,12 @@
 // Firebase設定（★ここにキーを入れます）
 // ==========================================
 const firebaseConfig = {
-  apiKey: "AIzaSyCDIcsuYRabzTNm1QC93ecV5YKkExenseI",
-  authDomain: "pachinco-fb565.firebaseapp.com",
-  projectId: "pachinco-fb565",
-  storageBucket: "pachinco-fb565.firebasestorage.app",
-  messagingSenderId: "695101913449",
-  appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
@@ -27,7 +27,7 @@ let lastCalculatedEV = 0; let historyData = []; let currentPassData = null; let 
 let currentCalYear = new Date().getFullYear(); let currentCalMonth = new Date().getMonth();
 let unsubscribeGroup = null; let globalGroupData = { records: [], calendar: {}, dictionary: {}, halls: {} };
 let measurementStartTime = null; let editingHistoryIndex = null; 
-let virtualSpins = 0; // ★ 1/99 お遊び用
+let virtualSpins = 0;
 
 // ==========================================
 // ユーティリティ・UI機能
@@ -214,14 +214,22 @@ window.onload = function() {
   document.getElementById('analyzeDate').value = todayStr;
   
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
+  
+  // ★ データ機回転数の初期値提案ロジックもラッシュ終了回転数に対応
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
     let lastMachineSpin = parseInt(document.getElementById('startSpin').value) || 0;
     historyData.forEach(d => { 
-      if (d.type === 'spin' || !d.type) { lastMachineSpin += d.spins; if (d.hitType) lastMachineSpin = 0; }
+      if (d.type === 'spin' || !d.type) { 
+        lastMachineSpin += d.spins; 
+        if (d.hitType) lastMachineSpin = 0; 
+      } else if (d.type === 'payout' && d.rushEndSpin !== undefined) {
+        lastMachineSpin = d.rushEndSpin; // ラッシュ終了回転数で上書き
+      }
     }); 
     return lastMachineSpin + 15;
   });
   
+  setupSwipeInput('rushEndSpinInput', 1, 0, 9999, 130);
   setupSwipeInput('payoutStartBalls', 10, 0, 100000, 0); setupSwipeInput('payoutEndBalls', 10, 0, 100000, 0);
   setupSwipeInput('rType1', 1, 1, 16, 10); setupSwipeInput('rCount1', 1, 0, 100, 0);
   setupSwipeInput('rType2', 1, 1, 16, 3); setupSwipeInput('rCount2', 1, 0, 100, 0);
@@ -398,8 +406,10 @@ window.saveEditHistoryItem = function(index, type) {
     historyData[index].balls = b; historyData[index].spins = s; historyData[index].isMochidama = m; historyData[index].hitType = h || null;
   } else if (type === 'payout') {
     const a = parseFloat(document.getElementById(`edit_amount_${index}`).value), r = parseFloat(document.getElementById(`edit_rounds_${index}`).value), h = document.getElementById(`edit_hitType_${index}`).value, memo = document.getElementById(`edit_memo_${index}`).value;
+    const reStr = document.getElementById(`edit_rushEndSpin_${index}`).value; const re = reStr === '' ? undefined : parseInt(reStr);
     if (isNaN(a) || isNaN(r)) return alert('獲得出玉とラウンド数を正しく入力してください。');
     historyData[index].amount = a; historyData[index].rounds = r; historyData[index].hitType = h; historyData[index].memo = memo;
+    if(re !== undefined && !isNaN(re)) historyData[index].rushEndSpin = re; else delete historyData[index].rushEndSpin;
   }
   editingHistoryIndex = null; vibrate(30); updateMeasurementDisplay();
 };
@@ -418,7 +428,8 @@ function createRecordItemHtml(r) {
         historyHtml += `<div style="margin-bottom: 4px; border-bottom: 1px dashed var(--border-color); padding-bottom: 2px;">${spinCount}回目: ${h.balls}玉 で <strong>${h.spins}回</strong>${typeLabel}${hitLabel}${cvt}</div>`; 
       } else if (h.type === 'payout') {
         let memoHtml = h.memo ? `<span style="font-size:11px; color: var(--text-muted); margin-left:6px;">(${h.memo})</span>` : "";
-        historyHtml += `<div style="margin-bottom: 4px; background-color:var(--box-yellow-bg); padding: 2px 4px; border-radius:2px; font-size:11px;"><span style="color:#d35400; font-weight:bold;">🎉 ${h.hitType}獲得: ${h.amount}玉 (${h.rounds}R)${memoHtml}</span></div>`;
+        let rushHtml = h.rushEndSpin !== undefined ? `<span style="font-size:11px; color:#8e44ad; margin-left:6px; font-weight:bold;">[抜け後:${h.rushEndSpin}G]</span>` : "";
+        historyHtml += `<div style="margin-bottom: 4px; background-color:var(--box-yellow-bg); padding: 2px 4px; border-radius:2px; font-size:11px;"><span style="color:#d35400; font-weight:bold;">🎉 ${h.hitType}獲得: ${h.amount}玉 (${h.rounds}R)${rushHtml}${memoHtml}</span></div>`;
       }
     });
     historyHtml += `</div></details>`;
@@ -437,13 +448,21 @@ function createRecordItemHtml(r) {
   return `<div class="saved-item"><div style="font-weight:bold; color:var(--text-main); font-size: 15px;">${r.date} ｜ ${storeDisp}${r.machine}${authorDisp}</div><div style="font-size:13px; margin:6px 0; color:var(--text-sub);">総投資: ${r.totalBalls}玉 / 自力回転: ${r.totalSpins}回${startDisp}<br><span style="color:#e74c3c; font-weight:bold; font-size:14px;">250玉平均: ${r.avg250.toFixed(2)} 回</span><span style="color:#e67e22; font-weight:bold; font-size:13px; margin-left:10px;">持球比率: ${dispRatio}%</span></div>${historyHtml}<div style="margin-top: 10px; display: flex; gap: 4px; flex-wrap: wrap;">${resumeButton}<button class="btn-small" style="background:#3498db;" onclick="${btnCall}">期待値を計算</button>${adminButtons}</div></div>`;
 }
 
+// ★ ラッシュ終了回転数の対応ロジック
 window.addMeasurement = function(balls) {
   vibrate();
   const spinInput = document.getElementById('measuredSpin'), currentMachineSpin = parseFloat(spinInput.value);
   if (isNaN(currentMachineSpin) || currentMachineSpin < 0) return alert("現在のデータ機回転数を正しく入力してください。");
   
   let lastMachineSpin = parseInt(document.getElementById('startSpin').value) || 0;
-  historyData.forEach(d => { if (d.type === 'spin' || !d.type) { lastMachineSpin += d.spins; if (d.hitType) lastMachineSpin = 0; } });
+  historyData.forEach(d => { 
+    if (d.type === 'spin' || !d.type) { 
+      lastMachineSpin += d.spins; 
+      if (d.hitType) lastMachineSpin = 0; 
+    } else if (d.type === 'payout' && d.rushEndSpin !== undefined) {
+      lastMachineSpin = d.rushEndSpin; // ラッシュ抜け回転数で上書き
+    }
+  });
   
   const spins = currentMachineSpin - lastMachineSpin;
   if (spins <= 0) return alert(`現在の回転数は、前回の回転数 (${lastMachineSpin}回) より大きい数値を入力してください。`);
@@ -454,9 +473,16 @@ window.addMeasurement = function(balls) {
   
   if (hitType) {
     document.getElementById('payoutTitle').innerText = `${hitType}当たり 結果を入力`;
-    ['payoutStartBalls', 'payoutEndBalls', 'rType1', 'rCount1', 'rType2', 'rCount2', 'rType3', 'rCount3', 'payoutMemo'].forEach(id => { document.getElementById(id).value = ''; });
+    ['payoutStartBalls', 'payoutEndBalls', 'rType1', 'rCount1', 'rType2', 'rCount2', 'rType3', 'rCount3', 'payoutMemo', 'rushEndSpinInput'].forEach(id => { document.getElementById(id).value = ''; });
     document.getElementById('payoutAmount').value = '0'; document.getElementById('dispPayoutAmount').innerText = '0';
     document.getElementById('payoutRounds').value = '0'; document.getElementById('dispPayoutRounds').innerText = '0';
+    
+    // ラッシュの場合のみ入力枠を表示
+    if (hitType === 'ラッシュ') {
+      document.getElementById('rushEndSpinArea').style.display = 'block';
+    } else {
+      document.getElementById('rushEndSpinArea').style.display = 'none';
+    }
     document.getElementById('payoutInputArea').style.display = 'block';
   } else { document.getElementById('payoutInputArea').style.display = 'none'; }
   updateMeasurementDisplay();
@@ -469,7 +495,15 @@ window.addPayout = function() {
   if (isNaN(rounds) || rounds <= 0) return alert("消化ラウンド数が計算されていません。（ラウンド数と回数を入力してください）");
 
   const hitType = document.getElementById('hitNormal').checked ? '通常' : (document.getElementById('hitRush').checked ? 'ラッシュ' : '不明');
-  historyData.push({ type: 'payout', amount: amount, rounds: rounds, hitType: hitType, memo: document.getElementById('payoutMemo').value.trim() });
+  
+  // ラッシュ抜けの回転数を取得
+  let rushEndSpin = undefined;
+  if (hitType === 'ラッシュ') {
+    const val = parseInt(document.getElementById('rushEndSpinInput').value);
+    if (!isNaN(val) && val >= 0) rushEndSpin = val;
+  }
+
+  historyData.push({ type: 'payout', amount: amount, rounds: rounds, hitType: hitType, memo: document.getElementById('payoutMemo').value.trim(), rushEndSpin: rushEndSpin });
   
   document.getElementById('hitNormal').checked = false; document.getElementById('hitRush').checked = false;
   document.getElementById('payoutInputArea').style.display = 'none';
@@ -510,13 +544,14 @@ window.updateMeasurementDisplay = function() {
     } else if (item.type === 'payout') {
       totalPayoutAmount += item.amount; if(item.rounds) totalPayoutRounds += item.rounds;
       currentHitCount++;
+      if (item.rushEndSpin !== undefined) currentMachineSpin = item.rushEndSpin;
     }
 
     if (editingHistoryIndex === i) {
       if (item.type === 'spin' || !item.type) {
         itemHtml = `<div class="history-item" style="flex-direction:column; align-items:flex-start; background:var(--box-blue-bg); padding:10px; border:1px solid #3498db; border-radius:6px; margin:4px 0;"><div style="font-weight:bold; margin-bottom:8px; color:#2980b9; font-size:12px;">${spinCount}回目の計測を編集</div><div style="display:flex; gap:5px; width:100%; margin-bottom:5px;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">使用玉数</label><input type="number" id="edit_balls_${i}" value="${item.balls}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">回転数</label><input type="number" id="edit_spins_${i}" value="${item.spins}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="display:flex; gap:5px; width:100%;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">玉の種類</label><select id="edit_mochi_${i}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"><option value="false" ${!item.isMochidama ? 'selected' : ''}>現金</option><option value="true" ${item.isMochidama ? 'selected' : ''}>持球</option></select></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">当り有無</label><select id="edit_hit_${i}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"><option value="" ${!item.hitType ? 'selected' : ''}>当り無し</option><option value="通常" ${item.hitType === '通常' ? 'selected' : ''}>通常</option><option value="ラッシュ" ${item.hitType === 'ラッシュ' ? 'selected' : ''}>ラッシュ</option></select></div></div><div style="margin-top:10px; display:flex; gap:8px; width:100%; justify-content:flex-end;"><button class="btn-small" style="background:#7f8c8d; margin:0;" onclick="cancelEditHistoryItem()">キャンセル</button><button class="btn-small" style="background:#3498db; margin:0;" onclick="saveEditHistoryItem(${i}, 'spin')">保存して再計算</button></div></div>`;
       } else if (item.type === 'payout') {
-        itemHtml = `<div class="history-item" style="flex-direction:column; align-items:flex-start; background:var(--box-yellow-bg); padding:10px; border:1px solid #f39c12; border-radius:6px; margin:4px 0;"><div style="font-weight:bold; margin-bottom:8px; color:#d35400; font-size:12px;">出玉記録を編集</div><div style="display:flex; gap:5px; width:100%; margin-bottom:5px;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">獲得出玉</label><input type="number" id="edit_amount_${i}" value="${item.amount}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">R数</label><input type="number" id="edit_rounds_${i}" value="${item.rounds || 0}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="display:flex; gap:5px; width:100%;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">種類</label><select id="edit_hitType_${i}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"><option value="通常" ${item.hitType === '通常' ? 'selected' : ''}>通常</option><option value="ラッシュ" ${item.hitType === 'ラッシュ' ? 'selected' : ''}>ラッシュ</option><option value="不明" ${item.hitType === '不明' ? 'selected' : ''}>不明</option></select></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">備考</label><input type="text" id="edit_memo_${i}" value="${item.memo || ''}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="margin-top:10px; display:flex; gap:8px; width:100%; justify-content:flex-end;"><button class="btn-small" style="background:#7f8c8d; margin:0;" onclick="cancelEditHistoryItem()">キャンセル</button><button class="btn-small" style="background:#e67e22; margin:0;" onclick="saveEditHistoryItem(${i}, 'payout')">保存して再計算</button></div></div>`;
+        itemHtml = `<div class="history-item" style="flex-direction:column; align-items:flex-start; background:var(--box-yellow-bg); padding:10px; border:1px solid #f39c12; border-radius:6px; margin:4px 0;"><div style="font-weight:bold; margin-bottom:8px; color:#d35400; font-size:12px;">出玉記録を編集</div><div style="display:flex; gap:5px; width:100%; margin-bottom:5px;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">獲得出玉</label><input type="number" id="edit_amount_${i}" value="${item.amount}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">R数</label><input type="number" id="edit_rounds_${i}" value="${item.rounds || 0}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="display:flex; gap:5px; width:100%; margin-bottom:5px;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">ラッシュ後回転</label><input type="number" id="edit_rushEndSpin_${i}" value="${item.rushEndSpin !== undefined ? item.rushEndSpin : ''}" placeholder="空欄可" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">種類</label><select id="edit_hitType_${i}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"><option value="通常" ${item.hitType === '通常' ? 'selected' : ''}>通常</option><option value="ラッシュ" ${item.hitType === 'ラッシュ' ? 'selected' : ''}>ラッシュ</option><option value="不明" ${item.hitType === '不明' ? 'selected' : ''}>不明</option></select></div></div><div style="display:flex; gap:5px; width:100%;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">備考</label><input type="text" id="edit_memo_${i}" value="${item.memo || ''}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="margin-top:10px; display:flex; gap:8px; width:100%; justify-content:flex-end;"><button class="btn-small" style="background:#7f8c8d; margin:0;" onclick="cancelEditHistoryItem()">キャンセル</button><button class="btn-small" style="background:#e67e22; margin:0;" onclick="saveEditHistoryItem(${i}, 'payout')">保存して再計算</button></div></div>`;
       }
     } else {
       if (item.type === 'spin' || !item.type) {
@@ -526,7 +561,8 @@ window.updateMeasurementDisplay = function() {
         itemHtml = `<div class="history-item"><div style="line-height:1.4;"><span style="display:inline-block; min-width:35px;">${spinCount}回目</span>: ${item.balls}玉で <strong>${item.spins}回</strong>${typeLabel}${hitLabel}<br>${cvt}</div><div style="display:flex; flex-direction:column; gap:4px; margin-left:8px;"><button class="btn-small" style="background:#3498db; margin:0; padding:4px 8px;" onclick="editHistoryItem(${i})">✏️</button><button class="btn-small" style="background:#e74c3c; margin:0; padding:4px 8px;" onclick="deleteHistoryItem(${i})">✖️</button></div></div>`;
       } else if (item.type === 'payout') {
         let memoHtml = item.memo ? `<span style="font-size:11px; color:var(--text-muted); margin-left:6px;">(${item.memo})</span>` : "";
-        itemHtml = `<div class="history-item" style="background-color:var(--box-yellow-bg); padding:4px 8px; border-radius:4px; margin-top:2px; margin-bottom:2px;"><div style="color:#d35400; font-weight:bold; font-size:13px; line-height:1.4;">🎉 ${item.hitType}獲得: ${item.amount}玉 (${item.rounds}R)${memoHtml}</div><div style="display:flex; flex-direction:column; gap:4px; margin-left:8px;"><button class="btn-small" style="background:#3498db; margin:0; padding:4px 8px;" onclick="editHistoryItem(${i})">✏️</button><button class="btn-small" style="background:#e74c3c; margin:0; padding:4px 8px;" onclick="deleteHistoryItem(${i})">✖️</button></div></div>`;
+        let rushHtml = item.rushEndSpin !== undefined ? `<span style="font-size:11px; color:#8e44ad; margin-left:6px; font-weight:bold;">[抜け後:${item.rushEndSpin}G]</span>` : "";
+        itemHtml = `<div class="history-item" style="background-color:var(--box-yellow-bg); padding:4px 8px; border-radius:4px; margin-top:2px; margin-bottom:2px;"><div style="color:#d35400; font-weight:bold; font-size:13px; line-height:1.4;">🎉 ${item.hitType}獲得: ${item.amount}玉 (${item.rounds}R)${rushHtml}${memoHtml}</div><div style="display:flex; flex-direction:column; gap:4px; margin-left:8px;"><button class="btn-small" style="background:#3498db; margin:0; padding:4px 8px;" onclick="editHistoryItem(${i})">✏️</button><button class="btn-small" style="background:#e74c3c; margin:0; padding:4px 8px;" onclick="deleteHistoryItem(${i})">✖️</button></div></div>`;
       }
     }
     historyHtml = itemHtml + historyHtml; 
@@ -868,7 +904,7 @@ window.renderHistoryTab = async function() {
 };
 
 // ==========================================
-// ★ お遊び・運試しコーナー（占い＆1/99仮想ボタン）
+// お遊び・運試しコーナー（占い＆1/99仮想ボタン）
 // ==========================================
 
 window.drawFortune = function() {
@@ -890,11 +926,9 @@ window.drawFortune = function() {
   
   setTimeout(() => {
     vibrate(100);
-    // 超大吉・大吉・大凶には色をつける
     if (result.includes("超大吉") || result.includes("大吉")) el.style.color = "#e74c3c";
     else if (result.includes("大凶") || result.includes("凶")) el.style.color = "#34495e";
     else el.style.color = "#27ae60";
-    
     el.innerHTML = `<span style="animation: fadeIn 0.5s;">${result}</span>`;
   }, 600);
 };
@@ -904,33 +938,21 @@ window.spinVirtual = function() {
   virtualSpins++;
   document.getElementById('virtualSpinCount').innerText = virtualSpins;
   const resEl = document.getElementById('virtualSpinResult');
-  resEl.style.animation = "none"; 
-  resEl.offsetHeight; // リフローでアニメーションリセット
+  resEl.style.animation = "none"; resEl.offsetHeight; 
   
-  // 1/99.9の抽選
   if (Math.random() < (1 / 99.9)) {
     resEl.innerHTML = `<span style="color:#e74c3c; font-size:18px; text-shadow: 0 0 10px #f1c40f; animation: pop 0.3s ease-out;">🌈 キュイン！当たり！！🌈</span>`;
-    vibrate([100, 50, 100, 50, 200]);
-    virtualSpins = 0; // 当たったらリセット
+    vibrate([100, 50, 100, 50, 200]); virtualSpins = 0;
   } else {
-    // リーチ演出（フェイク）
-    if (Math.random() < 0.05) {
-      resEl.innerHTML = `<span style="color:#f39c12; animation: pop 0.2s ease-out;">⚡ 激アツハズレ... ⚡</span>`;
-    } else {
-      resEl.innerHTML = `<span style="color:var(--text-muted);">ハズレ...</span>`;
-    }
+    if (Math.random() < 0.05) resEl.innerHTML = `<span style="color:#f39c12; animation: pop 0.2s ease-out;">⚡ 激アツハズレ... ⚡</span>`;
+    else resEl.innerHTML = `<span style="color:var(--text-muted);">ハズレ...</span>`;
   }
 };
 
 window.spinUntilHit = function() {
   vibrate(50);
   let count = 0;
-  
-  // 当たるまでループ（ブラウザクラッシュ防止のため上限3000）
-  while(count < 3000) {
-    count++;
-    if (Math.random() < (1 / 99.9)) break;
-  }
+  while(count < 3000) { count++; if (Math.random() < (1 / 99.9)) break; }
   
   virtualSpins += count;
   document.getElementById('virtualSpinCount').innerText = virtualSpins;
@@ -942,6 +964,5 @@ window.spinUntilHit = function() {
   else msg = `${count} 回転で当たり！`;
   
   resEl.innerHTML = `<span style="color:#e74c3c; font-size:16px; animation: flashRed 1.5s infinite;">🌈 ${msg} 🌈</span>`;
-  vibrate([100, 50, 100, 50, 200]);
-  virtualSpins = 0; // リセット
+  vibrate([100, 50, 100, 50, 200]); virtualSpins = 0; 
 };
