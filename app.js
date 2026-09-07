@@ -279,8 +279,14 @@ window.onload = function() {
 
 function login() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
-  const provider = new firebase.auth.GoogleAuthProvider(); provider.setCustomParameters({ prompt: 'select_account' });
-  auth.signInWithPopup(provider).catch(error => { alert("ログインに失敗しました。"); });
+  const provider = new firebase.auth.GoogleAuthProvider(); 
+  provider.setCustomParameters({ prompt: 'select_account' });
+  
+  // signInWithPopup を signInWithRedirect に変更
+  auth.signInWithRedirect(provider).catch(error => { 
+    console.error(error);
+    alert("ログイン画面への移動に失敗しました。"); 
+  });
 }
 function logout() { if(auth) auth.signOut(); }
 
