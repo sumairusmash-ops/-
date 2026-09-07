@@ -155,7 +155,12 @@ function refreshActiveTabUI() {
   const tabId = activeTabBtn.id.replace('nav-', '');
   if(tabId === 'tab1') renderSavedRecords();
   if(tabId === 'tab3') renderCalendar();
-  if(tabId === 'tab4') { renderDictionary(); renderHistoryTab(); renderHalls(); window.analyzeHalls(); }
+  if(tabId === 'tab4') { 
+    renderDictionary(); 
+    if(window.renderHistoryTab) window.renderHistoryTab(); 
+    if(window.renderHalls) window.renderHalls(); 
+    if(window.analyzeHalls) window.analyzeHalls(); 
+  }
 }
 
 function attachGroupListener(groupId) {
