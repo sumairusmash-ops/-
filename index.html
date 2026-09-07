@@ -117,10 +117,10 @@
 <datalist id="machineList"></datalist>
 
 <nav class="top-nav">
-  <button id="nav-tab1" onclick="window.switchTab('tab1')" style="display:none;"><span class="icon">⏱️</span>計測</button>
-  <button id="nav-tab2" onclick="window.switchTab('tab2')" style="display:none;"><span class="icon">🧮</span>期待値</button>
-  <button id="nav-tab3" onclick="window.switchTab('tab3')" style="display:none;"><span class="icon">📅</span>収支</button>
-  <button id="nav-tab4" class="active" onclick="window.switchTab('tab4')"><span class="icon">⚙️</span>設定</button>
+  <button id="nav-tab1" onclick="switchTab('tab1')" style="display:none;"><span class="icon">⏱️</span>計測</button>
+  <button id="nav-tab2" onclick="switchTab('tab2')" style="display:none;"><span class="icon">🧮</span>期待値</button>
+  <button id="nav-tab3" onclick="switchTab('tab3')" style="display:none;"><span class="icon">📅</span>収支</button>
+  <button id="nav-tab4" class="active" onclick="switchTab('tab4')"><span class="icon">⚙️</span>設定</button>
 </nav>
 
 <div class="card">
@@ -129,11 +129,11 @@
     <div style="display: flex; gap: 8px; margin-bottom: 12px;">
       <div style="flex: 1;"><label>日付</label><input type="date" id="recordDate"></div>
       <div style="flex: 1.5;"><label>店舗名</label><input type="text" id="storeName" placeholder="例: マルハン" list="machineList"></div>
-      <div style="flex: 1.5;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15" list="machineList" onchange="window.syncMachineSpec()"></div>
+      <div style="flex: 1.5;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15" list="machineList" onchange="syncMachineSpec()"></div>
     </div>
     <div class="form-group" style="margin-top: 15px;">
       <label>スタート時点の回転数 <span class="hint-text">※スワイプ/タップで手入力</span></label>
-      <input type="number" id="startSpin" class="swipe-input" step="10" value="" placeholder="例: 150" oninput="window.updateMeasurementDisplay()">
+      <input type="number" id="startSpin" class="swipe-input" step="10" value="" placeholder="例: 150" oninput="updateMeasurementDisplay()">
     </div>
     <div class="form-group" style="margin-top: 15px; background: var(--bg-main); padding: 10px; border-radius: 6px; border: 1px solid var(--border-color);">
       <label>現在のデータ機回転数 <span class="hint-text">※スワイプ/タップで手入力</span></label>
@@ -150,10 +150,10 @@
       </div>
     </div>
     <div class="btn-container">
-      <button class="btn-half" onclick="window.addMeasurement(125)" style="background-color: #1abc9c;">125玉(500円)追加</button>
-      <button class="btn-half" onclick="window.addMeasurement(250)" style="background-color: #16a085;">250玉(1000円)追加</button>
+      <button class="btn-half" onclick="addMeasurement(125)" style="background-color: #1abc9c;">125玉(500円)追加</button>
+      <button class="btn-half" onclick="addMeasurement(250)" style="background-color: #16a085;">250玉(1000円)追加</button>
     </div>
-    <div style="text-align: right; margin-top: 8px;"><button class="btn-small" style="background-color:#e74c3c; margin:0;" onclick="window.undoLastInput()">↩️ 入力取り消し</button></div>
+    <div style="text-align: right; margin-top: 8px;"><button class="btn-small" style="background-color:#e74c3c; margin:0;" onclick="undoLastInput()">↩️ 入力取り消し</button></div>
     
     <!-- 当たり出玉・ラウンド数の自動計算エリア -->
     <div id="payoutInputArea" style="display: none; margin-top: 15px; padding: 15px; background: var(--box-yellow-bg); border: 1px solid #ffeeba; border-radius: 6px;">
@@ -161,8 +161,8 @@
       <div style="background:var(--card-bg); padding:10px; border-radius:4px; border:1px solid var(--border-color); margin-bottom:10px;">
         <div style="font-size:12px; font-weight:bold; color:#2980b9; margin-bottom:8px;">① 出玉の計算（終了時持ち球 - 開始時持ち球）</div>
         <div style="display:flex; gap:10px; margin-bottom:5px;">
-          <div style="flex:1;"><label style="font-size: 11px; margin-bottom: 2px;">開始時</label><input type="number" id="payoutStartBalls" class="swipe-input" step="10" placeholder="例: 1500" oninput="window.calcPayoutAmount()"></div>
-          <div style="flex:1;"><label style="font-size: 11px; margin-bottom: 2px;">終了時</label><input type="number" id="payoutEndBalls" class="swipe-input" step="10" placeholder="例: 8500" oninput="window.calcPayoutAmount()"></div>
+          <div style="flex:1;"><label style="font-size: 11px; margin-bottom: 2px;">開始時</label><input type="number" id="payoutStartBalls" class="swipe-input" step="10" placeholder="例: 1500" oninput="calcPayoutAmount()"></div>
+          <div style="flex:1;"><label style="font-size: 11px; margin-bottom: 2px;">終了時</label><input type="number" id="payoutEndBalls" class="swipe-input" step="10" placeholder="例: 8500" oninput="calcPayoutAmount()"></div>
         </div>
         <div style="text-align:right; font-size:14px; font-weight:bold; color:var(--text-main);">獲得出玉: <span id="dispPayoutAmount" style="color:#e74c3c;">0</span> 玉</div>
         <input type="hidden" id="payoutAmount" value="0">
@@ -170,16 +170,16 @@
       <div style="background:var(--card-bg); padding:10px; border-radius:4px; border:1px solid var(--border-color); margin-bottom:10px;">
         <div style="font-size:12px; font-weight:bold; color:#27ae60; margin-bottom:8px;">② 消化ラウンド数の計算</div>
         <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
-          <input type="number" id="rType1" class="swipe-input" style="width:60px; padding:6px;" placeholder="10" oninput="window.calcPayoutRounds()"> <span style="font-size:12px; color:var(--text-sub);">R ×</span>
-          <input type="number" id="rCount1" class="swipe-input" style="flex:1; padding:6px;" placeholder="回数" oninput="window.calcPayoutRounds()">
+          <input type="number" id="rType1" class="swipe-input" style="width:60px; padding:6px;" placeholder="10" oninput="calcPayoutRounds()"> <span style="font-size:12px; color:var(--text-sub);">R ×</span>
+          <input type="number" id="rCount1" class="swipe-input" style="flex:1; padding:6px;" placeholder="回数" oninput="calcPayoutRounds()">
         </div>
         <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
-          <input type="number" id="rType2" class="swipe-input" style="width:60px; padding:6px;" placeholder="3" oninput="window.calcPayoutRounds()"> <span style="font-size:12px; color:var(--text-sub);">R ×</span>
-          <input type="number" id="rCount2" class="swipe-input" style="flex:1; padding:6px;" placeholder="回数" oninput="window.calcPayoutRounds()">
+          <input type="number" id="rType2" class="swipe-input" style="width:60px; padding:6px;" placeholder="3" oninput="calcPayoutRounds()"> <span style="font-size:12px; color:var(--text-sub);">R ×</span>
+          <input type="number" id="rCount2" class="swipe-input" style="flex:1; padding:6px;" placeholder="回数" oninput="calcPayoutRounds()">
         </div>
         <div style="display:flex; gap:5px; margin-bottom:5px; align-items:center;">
-          <input type="number" id="rType3" class="swipe-input" style="width:60px; padding:6px;" placeholder="2" oninput="window.calcPayoutRounds()"> <span style="font-size:12px; color:var(--text-sub);">R ×</span>
-          <input type="number" id="rCount3" class="swipe-input" style="flex:1; padding:6px;" placeholder="回数" oninput="window.calcPayoutRounds()">
+          <input type="number" id="rType3" class="swipe-input" style="width:60px; padding:6px;" placeholder="2" oninput="calcPayoutRounds()"> <span style="font-size:12px; color:var(--text-sub);">R ×</span>
+          <input type="number" id="rCount3" class="swipe-input" style="flex:1; padding:6px;" placeholder="回数" oninput="calcPayoutRounds()">
         </div>
         <div style="text-align:right; font-size:14px; font-weight:bold; color:var(--text-main);">合計: <span id="dispPayoutRounds" style="color:#e74c3c;">0</span> R</div>
         <input type="hidden" id="payoutRounds" value="0">
@@ -193,12 +193,12 @@
       </div>
       <label style="font-size: 11px; color: #d35400; margin-bottom: 4px;">備考 (タップ)</label>
       <input type="text" id="payoutMemo" placeholder="例: 右打ちスルー 等" style="border-color: #f39c12;">
-      <button class="action-btn" style="background-color: #e67e22; margin-top: 10px;" onclick="window.addPayout()">出玉を記録して次へ</button>
+      <button class="action-btn" style="background-color: #e67e22; margin-top: 10px;" onclick="addPayout()">出玉を記録して次へ</button>
     </div>
     
     <div style="margin-top: 25px;">
-      <button id="btnOpenResultModal" class="action-btn" style="background-color: #34495e; padding: 16px; font-size:14px;" onclick="window.openResultModal()">📊 入力データを確認 (未入力)</button>
-      <button class="action-btn" style="background-color: #7f8c8d; padding: 12px; margin-top: 10px; font-size:13px;" onclick="window.openSavedModal()">💾 同日の保存データを呼び出し</button>
+      <button id="btnOpenResultModal" class="action-btn" style="background-color: #34495e; padding: 16px; font-size:14px;" onclick="openResultModal()">📊 入力データを確認 (未入力)</button>
+      <button class="action-btn" style="background-color: #7f8c8d; padding: 12px; margin-top: 10px; font-size:13px;" onclick="openSavedModal()">💾 同日の保存データを呼び出し</button>
     </div>
   </div>
 
@@ -208,15 +208,15 @@
     
     <div class="section-title">機種スペック（辞書連動）</div>
     <div class="form-group" style="background: var(--box-blue-bg); padding: 10px; border-radius: 6px; border: 1px solid #3498db; margin-bottom: 15px;">
-      <label style="color: #2980b9;">機種名 (辞書から自動読込)</label><input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="window.loadMachineSpec()">
+      <label style="color: #2980b9;">機種名 (辞書から自動読込)</label><input type="text" id="calcMachineName" list="machineList" placeholder="例: エヴァ15" onchange="loadMachineSpec()">
     </div>
     <div style="display:flex; gap:10px;">
-      <div class="form-group" style="flex:1;"><label>初当確率</label><input type="number" id="probDenom" class="swipe-input" step="0.1" placeholder="例: 319" oninput="this.classList.remove('auto-filled'); window.calcBorder(); window.updateMeasurementDisplay();"></div>
+      <div class="form-group" style="flex:1;"><label>初当確率</label><input type="number" id="probDenom" class="swipe-input" step="0.1" placeholder="例: 319" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
       <div class="form-group" style="flex:1;">
-        <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">平均R <button class="btn-small" style="padding:2px 6px; margin:0; font-size:10px; background-color:#9b59b6;" onclick="window.openAvgRCalcModal()">逆算</button></label>
-        <input type="number" id="avgRounds" class="swipe-input" step="0.1" placeholder="例: 32.2" oninput="this.classList.remove('auto-filled'); window.calcBorder(); window.updateMeasurementDisplay();">
+        <label style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">平均R <button class="btn-small" style="padding:2px 6px; margin:0; font-size:10px; background-color:#9b59b6;" onclick="openAvgRCalcModal()">逆算</button></label>
+        <input type="number" id="avgRounds" class="swipe-input" step="0.1" placeholder="例: 32.2" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();">
       </div>
-      <div class="form-group" style="flex:1;"><label>1R出玉(玉)</label><input type="number" id="payoutPerR" class="swipe-input" step="1" placeholder="例: 140" oninput="this.classList.remove('auto-filled'); window.calcBorder(); window.updateMeasurementDisplay();"></div>
+      <div class="form-group" style="flex:1;"><label>1R出玉(玉)</label><input type="number" id="payoutPerR" class="swipe-input" step="1" placeholder="例: 140" oninput="this.classList.remove('auto-filled'); calcBorder(); updateMeasurementDisplay();"></div>
     </div>
     <div class="form-group"><label>【自動計算】等価ボーダー (回/千円)</label><input type="text" id="border" readonly style="background:var(--bg-main); color:var(--text-muted); border-style:dashed;"></div>
 
@@ -226,12 +226,12 @@
       <div class="form-group" style="flex:1;"><label>実測1R出玉(玉)</label><input type="number" id="realPayoutPerR" class="swipe-input" step="0.1" placeholder="例: 135" oninput="this.classList.remove('auto-filled')"></div>
     </div>
     <div style="display:flex; gap:10px;">
-      <div class="form-group" style="flex:1;"><label>交換率(円/玉)</label><input type="number" id="exchangeRate" class="swipe-input" step="0.01" value="" placeholder="例: 3.57" oninput="window.updateMeasurementDisplay()"></div>
-      <div class="form-group" style="flex:1;"><label>持ち球比率(%)</label><input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60" oninput="this.classList.remove('auto-filled'); window.updateMeasurementDisplay()"></div>
+      <div class="form-group" style="flex:1;"><label>交換率(円/玉)</label><input type="number" id="exchangeRate" class="swipe-input" step="0.01" value="" placeholder="例: 3.57" oninput="updateMeasurementDisplay()"></div>
+      <div class="form-group" style="flex:1;"><label>持ち球比率(%)</label><input type="number" id="ballRatio" class="swipe-input" step="1" value="" placeholder="例: 60" oninput="this.classList.remove('auto-filled'); updateMeasurementDisplay()"></div>
     </div>
     <div class="form-group"><label>総回転数(回) <span class="hint-text">※シミュレーション用</span></label><input type="number" id="totalSpins" class="swipe-input" step="10" value="" placeholder="例: 2000"></div>
 
-    <button class="action-btn" onclick="window.calculateAndSimulate()">期待値を計算＆シミュレート</button>
+    <button class="action-btn" onclick="calculateAndSimulate()">期待値を計算＆シミュレート</button>
     <p style="font-size:11px; text-align:center; color:var(--text-muted); margin-top:5px;">※管理者のみ、計算時にスペックが自動的に「辞書」に登録・上書きされます。</p>
 
     <div class="result" id="resultArea" style="display: none;">
@@ -239,7 +239,7 @@
       <div style="margin-top: 15px; background: var(--card-bg); padding: 15px; border-radius: 4px; border: 1px solid #3498db;">
         <div style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #2980b9;">この結果から実収支を自動計算しカレンダーへ</div>
         <div style="display: flex; gap: 8px; margin-bottom: 8px;"><input type="date" id="evSaveDate" style="flex: 1;"><input type="text" id="evSaveStore" placeholder="店舗名" style="flex: 1;"><input type="text" id="evSaveMachine" placeholder="機種名" style="flex: 1;"></div>
-        <button class="btn-small" style="width: 100%; background: #3498db; margin:0;" onclick="window.saveExpectedValueToCalendar()">自動計算して収支タブに保存</button>
+        <button class="btn-small" style="width: 100%; background: #3498db; margin:0;" onclick="saveExpectedValueToCalendar()">自動計算して収支タブに保存</button>
       </div>
     </div>
     <div class="simulation" id="simArea" style="display: none;">
@@ -259,9 +259,9 @@
     </div>
 
     <div class="rank-tab-container">
-      <div id="btn-rank-1" class="rank-tab active" onclick="window.switchRankTab(1)">🏆 収支</div>
-      <div id="btn-rank-2" class="rank-tab" onclick="window.switchRankTab(2)">📊 ヒキ</div>
-      <div id="btn-rank-3" class="rank-tab" onclick="window.switchRankTab(3)">🍩 貢献度</div>
+      <div id="btn-rank-1" class="rank-tab active" onclick="switchRankTab(1)">🏆 収支</div>
+      <div id="btn-rank-2" class="rank-tab" onclick="switchRankTab(2)">📊 ヒキ</div>
+      <div id="btn-rank-3" class="rank-tab" onclick="switchRankTab(3)">🍩 貢献度</div>
     </div>
     
     <div id="rank-content-1" class="rank-content active"></div>
@@ -275,9 +275,9 @@
     </div>
 
     <div class="calendar-header">
-      <button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="window.changeMonth(-1)">◀ 前月</button>
+      <button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(-1)">◀ 前月</button>
       <div id="calendarMonthLabel" style="font-weight:bold; font-size:16px; color:#2c3e50;"></div>
-      <button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="window.changeMonth(1)">次月 ▶</button>
+      <button class="btn-small" style="margin:0; background-color:#7f8c8d; padding: 6px 15px;" onclick="changeMonth(1)">次月 ▶</button>
     </div>
     <div id="visualCalendar" class="calendar-grid" style="margin-bottom: 15px;"></div>
     <div class="result summary-box" style="margin-top: 0;"><p><span>月間期待値:</span> <span id="monthlyEV" style="font-weight: bold; color: #27ae60;"></span></p><p><span>月間実収支:</span> <span id="monthlyActual" style="font-weight: bold; color: #2980b9;"></span></p><p><span>月間獲得差玉:</span> <span id="monthlyBalls" style="font-weight: bold; color: #e67e22;"></span></p><hr><p><span>収支のブレ:</span> <span id="monthlyDiff" style="font-weight: bold;"></span></p></div>
@@ -287,7 +287,7 @@
     <h2 style="margin-top: 40px; color:#e67e22; border-bottom: 2px solid #e67e22;">🎰 お遊び・運試しコーナー</h2>
     <div style="background: var(--card-bg); border: 2px solid #f1c40f; border-radius: 8px; padding: 15px; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(241,196,15,0.2);">
       <div style="font-weight:bold; color:#f39c12; margin-bottom:10px; font-size:15px; display:flex; align-items:center; gap:6px;">🔮 今日のパチンコ運勢占い</div>
-      <button class="action-btn" style="background-color:#f1c40f; color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,0.3); margin-top:0;" onclick="window.drawFortune()">おみくじを引く</button>
+      <button class="action-btn" style="background-color:#f1c40f; color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,0.3); margin-top:0;" onclick="drawFortune()">おみくじを引く</button>
       <div id="fortuneResult" style="margin-top:10px; font-size:14px; font-weight:bold; color:var(--text-main); text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; background:var(--bg-main); border-radius:4px;">ここに結果が出ます</div>
 
       <hr style="margin: 20px 0; border-top:1px dashed var(--border-color);">
@@ -295,8 +295,8 @@
       <div style="font-weight:bold; color:#3498db; margin-bottom:5px; font-size:15px; display:flex; align-items:center; gap:6px;">🔘 1/99 仮想プッシュボタン</div>
       <p style="font-size:11px; color:var(--text-sub); margin-top:0; margin-bottom:12px;">「当たる気がしない…」そんな時のヒキ試し！</p>
       <div style="display:flex; gap:10px;">
-        <button class="action-btn" style="background-color:#3498db; flex:1; margin-top:0;" onclick="window.spinVirtual()">1回転プッシュ</button>
-        <button class="action-btn" style="background-color:#e74c3c; flex:1; margin-top:0;" onclick="window.spinUntilHit()">当たるまで全ツ</button>
+        <button class="action-btn" style="background-color:#3498db; flex:1; margin-top:0;" onclick="spinVirtual()">1回転プッシュ</button>
+        <button class="action-btn" style="background-color:#e74c3c; flex:1; margin-top:0;" onclick="spinUntilHit()">当たるまで全ツ</button>
       </div>
       <div style="margin-top:15px; text-align:center; background:var(--box-blue-bg); padding:15px; border-radius:4px; border:1px solid #3498db;">
         <div style="font-size:13px; color:var(--text-sub);">現在のハマり: <span id="virtualSpinCount" style="font-size:20px; font-weight:bold; color:#e74c3c;">0</span> 回</div>
@@ -310,31 +310,32 @@
     <div id="mode-indicator-container"><div id="mode-indicator" class="mode-badge mode-warning">⚠️ グループ未参加</div></div>
     <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px; display:flex; justify-content:space-between; align-items:center;">
       <div><span style="font-weight:bold; font-size:15px; color:var(--text-main);">🌙 ダークモード</span><div style="font-size:11px; color:var(--text-muted); margin-top:4px;">目とバッテリーに優しい配色</div></div>
-      <label class="switch"><input type="checkbox" id="darkModeToggle" onchange="window.toggleDarkMode()"><span class="slider"></span></label>
+      <label class="switch"><input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()"><span class="slider"></span></label>
     </div>
     <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; margin-bottom: 25px;">
       <p style="margin-top:0; font-weight:bold; color:var(--text-main); font-size:15px;">アカウント連携</p><p id="user-info" style="font-size: 13px; font-weight: bold; color: #e74c3c; margin-bottom:10px;">ログインしていません</p>
-      <button id="login-btn" class="btn-auth" onclick="window.login()">Googleでログイン</button><button id="logout-btn" class="btn-auth logout" onclick="window.logout()" style="display:none;">ログアウト</button>
+      <button id="login-btn" class="btn-auth" onclick="login()">Googleでログイン</button><button id="logout-btn" class="btn-auth logout" onclick="logout()" style="display:none;">ログアウト</button>
     </div>
     
     <div id="group-none" class="group-box" style="margin-top:0;">
       <p style="font-size:13px; color:var(--text-sub); margin-bottom: 15px; line-height:1.5;">ツールを利用するにはグループを作成または参加してください。</p>
       <div class="form-group" style="text-align: left; background: var(--box-yellow-bg); padding: 10px; border-radius: 6px; border: 1px solid #ffeeba; margin-bottom: 20px;"><label style="color: #d35400;">参加時のニックネーム (任意)</label><input type="text" id="nicknameInput" placeholder="例: たろう"></div>
-      <div style="margin-bottom: 20px;"><p style="font-size:14px; font-weight:bold; color:var(--text-main); margin-bottom:10px;">新しくグループを作る</p><button class="action-btn" style="background-color: #9b59b6; margin-top:0;" onclick="window.createGroup()">グループを作成する</button></div><hr style="border-top:1px dashed var(--border-color); margin: 20px 0;">
-      <div><p style="font-size:14px; font-weight:bold; color:var(--text-main); margin-bottom:10px;">既存のグループに参加する</p><input type="text" id="joinGroupId" placeholder="6桁のグループIDを入力" style="margin-bottom:10px; text-align:center; font-weight:bold; letter-spacing:2px; text-transform:uppercase;"><button class="btn-half" style="width:100%; background-color:#34495e;" onclick="window.joinGroup()">参加する</button></div>
+      <div style="margin-bottom: 20px;"><p style="font-size:14px; font-weight:bold; color:var(--text-main); margin-bottom:10px;">新しくグループを作る</p><button class="action-btn" style="background-color: #9b59b6; margin-top:0;" onclick="createGroup()">グループを作成する</button></div><hr style="border-top:1px dashed var(--border-color); margin: 20px 0;">
+      <div><p style="font-size:14px; font-weight:bold; color:var(--text-main); margin-bottom:10px;">既存のグループに参加する</p><input type="text" id="joinGroupId" placeholder="6桁のグループIDを入力" style="margin-bottom:10px; text-align:center; font-weight:bold; letter-spacing:2px; text-transform:uppercase;"><button class="btn-half" style="width:100%; background-color:#34495e;" onclick="joinGroup()">参加する</button></div>
     </div>
     
     <div id="group-active" class="group-box" style="display: none; border-color:#27ae60; background:var(--bg-main); margin-top:0;">
       <p style="font-size:13px; color:#27ae60; font-weight:bold; margin-bottom:5px;">現在共有中のグループID</p><div id="dispGroupId" style="font-size:32px; font-weight:bold; letter-spacing:4px; color:var(--text-main); margin-bottom:10px;"></div><div id="dispUserRole" style="font-size:14px; font-weight:bold; margin-bottom:20px; color:#e67e22;"></div>
-      <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;"><p style="font-size:12px; color:var(--text-sub); margin-top:0; margin-bottom:5px;">現在のニックネーム: <span id="dispNickname" style="font-weight:bold; color:#2980b9; font-size:14px;"></span></p><div style="display:flex; gap:5px;"><input type="text" id="updateNicknameInput" placeholder="新しいニックネーム" style="flex:1; padding:6px; font-size:14px;"><button class="btn-small" style="background-color:#3498db; margin:0;" onclick="window.updateNickname()">変更</button></div></div>
-      <button class="btn-reset" onclick="window.leaveGroup()">グループから退出する</button>
+      <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;"><p style="font-size:12px; color:var(--text-sub); margin-top:0; margin-bottom:5px;">現在のニックネーム: <span id="dispNickname" style="font-weight:bold; color:#2980b9; font-size:14px;"></span></p><div style="display:flex; gap:5px;"><input type="text" id="updateNicknameInput" placeholder="新しいニックネーム" style="flex:1; padding:6px; font-size:14px;"><button class="btn-small" style="background-color:#3498db; margin:0;" onclick="updateNickname()">変更</button></div></div>
+      <div style="background: var(--card-bg); border: 1px solid #e74c3c; border-radius: 6px; padding: 15px; margin-bottom: 20px; text-align:left;"><p style="font-size:14px; font-weight:bold; color:#e74c3c; margin-top:0; margin-bottom:8px;">⚠️ 個人データをグループに統合</p><button class="btn-small" style="width:100%; background-color:#e74c3c; padding:10px;" onclick="mergePersonalDataToGroup()">過去データをすべて統合する</button></div>
+      <button class="btn-reset" onclick="leaveGroup()">グループから退出する</button>
     </div>
 
-    <!-- 古い仕様のホール管理・特定日検索エリア -->
+    <!-- ホール管理・特定日検索エリア -->
     <div id="hall-management-section" style="display: none;">
       <h2 style="margin-top: 30px;">📅 特定日検索＆過去分析</h2>
       <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px;">
-        <div class="form-group" style="margin-bottom: 0;"><label>検索する日付</label><input type="date" id="analyzeDate" onchange="window.analyzeHalls()"></div>
+        <div class="form-group" style="margin-bottom: 0;"><label>検索する日付</label><input type="date" id="analyzeDate" onchange="analyzeHalls()"></div>
         <div id="analyzeResultContainer"></div>
       </div>
       <h2 style="margin-top: 30px;">🏠 マイホール特定日管理</h2>
@@ -356,7 +357,7 @@
             <label class="rule-check-label"><input type="checkbox" name="hallRule" value="ゾロ目">ゾロ目</label>
           </div>
         </div>
-        <button class="action-btn" style="background-color: #27ae60; margin-top:0;" onclick="window.saveHall()">ホールを登録する</button>
+        <button class="action-btn" style="background-color: #27ae60; margin-top:0;" onclick="saveHall()">ホールを登録する</button>
       </div>
       <div id="hallListContainer" style="margin-bottom: 30px;"></div>
       <h2 style="margin-top: 30px;">過去1年間の履歴</h2><div style="display: flex; gap: 10px; margin-bottom: 12px;"><div style="flex: 1;"><input type="text" id="historyMachineFilter" list="machineList" placeholder="機種名で絞り込み" oninput="window.renderHistoryTab()"></div></div><div id="historyRecordsContainer"></div>
@@ -380,43 +381,44 @@
       <p><span>自分で回した回転数:</span> <span id="totalMeasuredSpins">0 回</span></p><p><span>現在の総回転数:</span> <span id="absoluteTotalSpins" style="font-weight:bold; color:var(--text-main);">0 回</span></p><p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls">0 玉</span></p>
       <div id="workValueArea"></div><div class="history-list" id="historyList"></div>
     </div>
-    <button class="btn-save" id="btnSaveRecord" onclick="window.saveCurrentRecord()" style="margin-top: 20px;">この記録を保存</button>
-    <button class="btn-reset" onclick="window.resetMeasurement()">現在の入力をすべてリセット</button>
-    <button class="modal-close-btn" onclick="window.closeResultModal()">元の画面に戻る</button>
+    <button class="btn-save" id="btnSaveRecord" onclick="saveCurrentRecord()" style="margin-top: 20px;">この記録を保存</button>
+    <button class="btn-reset" onclick="resetMeasurement()">現在の入力をすべてリセット</button>
+    <button class="modal-close-btn" onclick="closeResultModal()">元の画面に戻る</button>
   </div>
 </div>
 
 <div id="savedModal" class="modal-overlay">
-  <div class="modal-content"><h3 style="margin-top:0; border-bottom:2px solid #7f8c8d; padding-bottom:8px; color:var(--text-main);">同日の保存データ</h3><div id="savedRecordsContainer"></div><button class="modal-close-btn" onclick="window.closeSavedModal()">元の画面に戻る</button></div>
+  <div class="modal-content"><h3 style="margin-top:0; border-bottom:2px solid #7f8c8d; padding-bottom:8px; color:var(--text-main);">同日の保存データ</h3><div id="savedRecordsContainer"></div><button class="modal-close-btn" onclick="closeSavedModal()">元の画面に戻る</button></div>
 </div>
 
+<!-- 平均ラウンド数逆算モーダル -->
 <div id="avgRCalcModal" class="modal-overlay">
   <div class="modal-content">
     <h3 style="margin-top:0; border-bottom:2px solid #9b59b6; padding-bottom:8px; color:var(--text-main);">平均ラウンド逆算ツール</h3>
     <div style="background:var(--bg-main); padding:10px; border-radius:6px; margin-bottom:15px; border:1px solid var(--border-color);">
       <div style="font-weight:bold; color:#2980b9; margin-bottom:8px; font-size:14px;">① 等価ボーダーから逆算する</div>
       <div style="display:flex; gap:5px; margin-bottom:5px;">
-        <div style="flex:1"><label style="font-size:11px;">ボーダー</label><input type="number" id="calc_b_border" step="0.1" class="swipe-input" oninput="window.doAvgRCalc1()"></div>
-        <div style="flex:1"><label style="font-size:11px;">初当確率</label><input type="number" id="calc_b_prob" step="0.1" class="swipe-input" oninput="window.doAvgRCalc1()"></div>
-        <div style="flex:1"><label style="font-size:11px;">1R出玉(玉)</label><input type="number" id="calc_b_payout" step="1" class="swipe-input" oninput="window.doAvgRCalc1()"></div>
+        <div style="flex:1"><label style="font-size:11px;">ボーダー</label><input type="number" id="calc_b_border" step="0.1" class="swipe-input" oninput="doAvgRCalc1()"></div>
+        <div style="flex:1"><label style="font-size:11px;">初当確率</label><input type="number" id="calc_b_prob" step="0.1" class="swipe-input" oninput="doAvgRCalc1()"></div>
+        <div style="flex:1"><label style="font-size:11px;">1R出玉(玉)</label><input type="number" id="calc_b_payout" step="1" class="swipe-input" oninput="doAvgRCalc1()"></div>
       </div>
       <div style="text-align:right; font-size:14px; font-weight:bold;">算出結果: <span id="res_b_avgR" style="color:#e74c3c;">0.00</span> R</div>
-      <button class="btn-small" style="width:100%; background:#9b59b6; margin-top:8px; padding:8px;" onclick="window.applyAvgR('res_b_avgR')">この数値を平均Rに適用</button>
+      <button class="btn-small" style="width:100%; background:#9b59b6; margin-top:8px; padding:8px;" onclick="applyAvgR('res_b_avgR')">この数値を平均Rに適用</button>
     </div>
     <div style="background:var(--bg-main); padding:10px; border-radius:6px; border:1px solid var(--border-color);">
       <div style="font-weight:bold; color:#27ae60; margin-bottom:8px; font-size:14px;">② 平均獲得出玉から逆算する</div>
       <div style="display:flex; gap:5px; margin-bottom:5px;">
-        <div style="flex:1"><label style="font-size:11px;">平均出玉</label><input type="number" id="calc_p_total" step="10" class="swipe-input" oninput="window.doAvgRCalc2()"></div>
-        <div style="flex:1"><label style="font-size:11px;">1R出玉(玉)</label><input type="number" id="calc_p_payout" step="1" class="swipe-input" oninput="window.doAvgRCalc2()"></div>
+        <div style="flex:1"><label style="font-size:11px;">平均出玉</label><input type="number" id="calc_p_total" step="10" class="swipe-input" oninput="doAvgRCalc2()"></div>
+        <div style="flex:1"><label style="font-size:11px;">1R出玉(玉)</label><input type="number" id="calc_p_payout" step="1" class="swipe-input" oninput="doAvgRCalc2()"></div>
       </div>
       <div style="text-align:right; font-size:14px; font-weight:bold;">算出結果: <span id="res_p_avgR" style="color:#e74c3c;">0.00</span> R</div>
-      <button class="btn-small" style="width:100%; background:#27ae60; margin-top:8px; padding:8px;" onclick="window.applyAvgR('res_p_avgR')">この数値を平均Rに適用</button>
+      <button class="btn-small" style="width:100%; background:#27ae60; margin-top:8px; padding:8px;" onclick="applyAvgR('res_p_avgR')">この数値を平均Rに適用</button>
     </div>
-    <button class="modal-close-btn" onclick="window.closeAvgRCalcModal()">閉じる</button>
+    <button class="modal-close-btn" onclick="closeAvgRCalcModal()">閉じる</button>
   </div>
 </div>
 
-<!-- カレンダー台データ 個別編集モーダル -->
+<!-- ★ カレンダー台データ 個別編集モーダル ★ -->
 <div id="calEditModal" class="modal-overlay">
   <div class="modal-content">
     <h3 style="margin-top:0; border-bottom:2px solid #9b59b6; padding-bottom:8px; color:var(--text-main);">台データの編集</h3>
@@ -430,13 +432,22 @@
     <input type="hidden" id="calEditDate">
     <input type="hidden" id="calEditIndex">
     <div style="display:flex; gap:10px; margin-top:10px;">
-      <button class="btn-half" style="background:#7f8c8d;" onclick="window.closeCalEditModal()">キャンセル</button>
-      <button class="btn-half" style="background:#9b59b6;" onclick="window.saveCalEdit()">保存する</button>
+      <button class="btn-half" style="background:#7f8c8d;" onclick="closeCalEditModal()">キャンセル</button>
+      <button class="btn-half" style="background:#9b59b6;" onclick="saveCalEdit()">保存する</button>
     </div>
   </div>
 </div>
 
-<script src="./app.js"></script>
+<script src="./app.js?v=4"></script>
+
+<!-- キャッシュ強制クリア用 -->
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    for(let registration of registrations) { registration.unregister(); }
+  });
+}
+</script>
 
 </body>
 </html>
