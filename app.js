@@ -12,6 +12,10 @@ const firebaseConfig = {
 
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
   firebase.initializeApp(firebaseConfig);
+  // ★ Firebaseの警告対策（新しいキャッシュ設定）
+  firebase.firestore().settings({
+    cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+  });
   firebase.firestore().enablePersistence().catch((err) => { console.log("Offline persistence error: ", err.code); });
 }
 
@@ -37,13 +41,15 @@ function toggleDarkMode() {
   if (isDark) { document.body.setAttribute('data-theme', 'dark'); localStorage.setItem('pachinko_theme', 'dark'); } 
   else { document.body.removeAttribute('data-theme'); localStorage.setItem('pachinko_theme', 'light'); }
 }
+
+// ★ バイブレーションのエラー対策
 function vibrate(ms = 40) { 
-  // ユーザーがまだ画面をタップしていない場合はバイブをキャンセルしてエラーを防ぐ
   if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
   if (navigator.vibrate) {
     try { navigator.vibrate(ms); } catch(e) {}
   }
 }
+
 function openResultModal() { document.getElementById('resultModal').style.display = 'flex'; }
 function closeResultModal() { document.getElementById('resultModal').style.display = 'none'; editingHistoryIndex = null; updateMeasurementDisplay(); }
 function openSavedModal() { renderSavedRecords(); document.getElementById('savedModal').style.display = 'flex'; }
@@ -161,12 +167,7 @@ function refreshActiveTabUI() {
   const tabId = activeTabBtn.id.replace('nav-', '');
   if(tabId === 'tab1') renderSavedRecords();
   if(tabId === 'tab3') renderCalendar();
-  if(tabId === 'tab4') { 
-    renderDictionary(); 
-    if(window.renderHistoryTab) window.renderHistoryTab(); 
-    if(window.renderHalls) window.renderHalls(); 
-    if(window.analyzeHalls) window.analyzeHalls(); 
-  }
+  if(tabId === 'tab4') { renderDictionary(); renderHistoryTab(); renderHalls(); window.analyzeHalls(); }
 }
 
 function attachGroupListener(groupId) {
@@ -218,7 +219,7 @@ function leaveGroup() {
   }
 }
 
-// ★ 店名辞書ロジック
+// 店名辞書ロジック
 window.addStoreToDict = async function(storeName) {
   if(!storeName) return;
   const dict = globalGroupData.hallDict || [];
@@ -234,6 +235,23 @@ window.renderHallDict = function() {
   const listEl = document.getElementById('hallList');
   if(listEl) { listEl.innerHTML = dict.map(m => `<option value="${m}"></option>`).join(''); }
 };
+
+// ==========================================
+// ★ Firebase 認証ログイン（ポップアップにリバート）
+// ==========================================
+window.login = function() {
+  if(!auth) return alert("Firebaseの設定が完了していません。");
+  const provider = new firebase.auth.GoogleAuthProvider(); 
+  provider.setCustomParameters({ prompt: 'select_account' });
+  
+  // signInWithPopup に戻す
+  auth.signInWithPopup(provider).catch(error => { 
+    console.error("Login Error:", error);
+    alert("ログインに失敗しました。\n" + error.message); 
+  });
+};
+
+window.logout = function() { if(auth) auth.signOut(); }
 
 window.onload = function() {
   if (localStorage.getItem('pachinko_theme') === 'dark') document.getElementById('darkModeToggle').checked = true;
@@ -266,43 +284,34 @@ window.onload = function() {
   setupSwipeInput('calc_b_border', 0.1, 10.0, 30.0, 18.0); setupSwipeInput('calc_b_prob', 0.1, 1.0, 499.0, 319.6);
   setupSwipeInput('calc_b_payout', 1, 10, 160, 140); setupSwipeInput('calc_p_total', 10, 100, 10000, 4500); setupSwipeInput('calc_p_payout', 1, 10, 160, 140);
 
-  // カレンダー編集用、ホール評価用スワイプ
   setupSwipeInput('calEditEV', 100, -1000000, 1000000, 0);
   setupSwipeInput('calEditActual', 500, -1000000, 1000000, 0);
   setupSwipeInput('hallRating', 1, 1, 10, 5);
 
   updateModeIndicator();
 
+  // ★ リダイレクトのデバッグコードを取り除き、シンプルにログイン状態を監視する処理に戻しました
   if (auth) {
-    auth.getRedirectResult().catch(error => {
-      alert("ログインエラー詳細: " + error.message);
-    });
     auth.onAuthStateChanged(user => {
       if (user) {
-        currentUser = user; document.getElementById('user-info').innerText = `ログイン中: ${user.email}`; document.getElementById('user-info').style.color = '#27ae60';
-        document.getElementById('login-btn').style.display = 'none'; document.getElementById('logout-btn').style.display = 'inline-block';
+        currentUser = user; 
+        document.getElementById('user-info').innerText = `ログイン中: ${user.email}`; 
+        document.getElementById('user-info').style.color = '#27ae60';
+        document.getElementById('login-btn').style.display = 'none'; 
+        document.getElementById('logout-btn').style.display = 'inline-block';
         if (currentGroupId && db) { attachGroupListener(currentGroupId); } else { updateModeIndicator(); }
       } else {
-        currentUser = null; currentGroupId = null; isAdmin = false; if(unsubscribeGroup) unsubscribeGroup();
-        document.getElementById('user-info').innerText = 'ログインしていません'; document.getElementById('user-info').style.color = '#e74c3c';
-        document.getElementById('login-btn').style.display = 'inline-block'; document.getElementById('logout-btn').style.display = 'none'; updateModeIndicator();
+        currentUser = null; currentGroupId = null; isAdmin = false; 
+        if(unsubscribeGroup) unsubscribeGroup();
+        document.getElementById('user-info').innerText = 'ログインしていません'; 
+        document.getElementById('user-info').style.color = '#e74c3c';
+        document.getElementById('login-btn').style.display = 'inline-block'; 
+        document.getElementById('logout-btn').style.display = 'none'; 
+        updateModeIndicator();
       }
     });
   }
 };
-
-function login() {
-  if(!auth) return alert("Firebaseの設定が完了していません。");
-  const provider = new firebase.auth.GoogleAuthProvider(); 
-  provider.setCustomParameters({ prompt: 'select_account' });
-  
-  // signInWithPopup を signInWithRedirect に変更
-  auth.signInWithRedirect(provider).catch(error => { 
-    console.error(error);
-    alert("ログイン画面への移動に失敗しました。"); 
-  });
-}
-function logout() { if(auth) auth.signOut(); }
 
 async function getRecordsData() { return globalGroupData.records || []; }
 async function getCalendarData() { return globalGroupData.calendar || {}; }
@@ -379,7 +388,6 @@ window.updateDictItem = async function(machine) {
   await saveDictionaryData(dict); alert(`[${machine}] の辞書を更新しました。`);
 };
 
-// 辞書の確実な削除
 window.deleteDictItem = async function(machine) {
   if (!isAdmin) return alert("権限がありません。");
   if(confirm(`[${machine}] を辞書から削除しますか？`)) { 
@@ -390,7 +398,6 @@ window.deleteDictItem = async function(machine) {
   }
 };
 
-// ★ 新・ホール管理＆評価ロジック
 window.saveHall = async function() {
   if (!isAdmin) return alert("権限がありません。");
   const name = document.getElementById('hallNameInput').value.trim();
@@ -403,12 +410,12 @@ window.saveHall = async function() {
   
   const halls = await getHallsData();
   if(!halls[name]) halls[name] = { visits: [] };
-  else if(!halls[name].visits) halls[name].visits = []; // 旧データ互換
+  else if(!halls[name].visits) halls[name].visits = []; 
   
   halls[name].visits.push({ date: date, rating: rating });
   await saveHallsData(halls); 
   
-  addStoreToDict(name); // 辞書にも登録
+  addStoreToDict(name); 
   alert(`${name} の評価を記録しました。`);
   
   document.getElementById('hallNameInput').value = '';
@@ -444,7 +451,6 @@ window.renderHalls = async function() {
   if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されているホール評価はありません。</p>'; container.innerHTML = html;
 };
 
-// ★ 新・過去分析ロジック
 window.analyzeHalls = async function() {
   const dateStr = document.getElementById('analyzeDate').value; 
   const storeStr = document.getElementById('analyzeStore').value.trim();
@@ -455,13 +461,11 @@ window.analyzeHalls = async function() {
   const halls = await getHallsData(); const records = await getRecordsData();
   let targetStores = new Set();
   
-  // 店名で検索
   if (storeStr) {
     Object.keys(halls).forEach(s => { if(s.includes(storeStr)) targetStores.add(s); });
     records.forEach(r => { if(r.store && r.store.includes(storeStr)) targetStores.add(r.store); });
   }
   
-  // 日付で検索
   if (dateStr && !storeStr) {
     Object.keys(halls).forEach(s => { if(halls[s].visits && halls[s].visits.some(v => v.date === dateStr)) targetStores.add(s); });
     records.forEach(r => { if(r.date === dateStr && r.store) targetStores.add(r.store); });
@@ -747,7 +751,7 @@ window.saveCurrentRecord = async function() {
     }
   }
   
-  addStoreToDict(store); // 保存時に自動辞書登録
+  addStoreToDict(store); 
   
   const records = await getRecordsData();
   const newRecord = { 
@@ -909,10 +913,78 @@ window.saveExpectedValueToCalendar = async function() {
 };
 
 // ==========================================
-// ツール③：カレンダー機能＆ランキング自動集計
+// ★ カレンダー 個別編集・削除 
 // ==========================================
 window.changeMonth = function(diff) { currentCalMonth += diff; if(currentCalMonth < 0) { currentCalMonth = 11; currentCalYear--; } if(currentCalMonth > 11) { currentCalMonth = 0; currentCalYear++; } renderCalendar(); };
 window.selectDate = function(dateStr) { document.getElementById('actualDate').value = dateStr; renderCalendar(); };
+
+window.deleteCalendarDay = async function(date) {
+  if (!isAdmin) return alert("権限がありません。");
+  if(confirm(`${date} の記録をすべて削除しますか？`)) { 
+    try {
+      if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ [`calendar.${date}`]: firebase.firestore.FieldValue.delete() });
+      renderCalendar(); 
+    } catch (e) { alert("削除に失敗しました。"); }
+  }
+};
+
+window.editCalendarDetail = async function(date, index) {
+  vibrate();
+  const cal = await getCalendarData(); const dayData = cal[date];
+  if(!dayData || !dayData.details || !dayData.details[index]) return;
+  
+  let dStr = dayData.details[index]; let store = "", machine = "", ev = 0, actual = 0;
+  let m1 = dStr.match(/^\[(.*?)\]\s*(.*?)\s*\(/); if(m1) { store = m1[1]; machine = m1[2]; }
+  let m2 = dStr.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円/);
+  if(m2) { ev = parseInt(m2[1].replace(/,/g, '')) || 0; actual = parseInt(m2[2].replace(/,/g, '')) || 0; }
+  
+  document.getElementById('calEditStore').value = store; document.getElementById('calEditMachine').value = machine;
+  document.getElementById('calEditEV').value = ev; document.getElementById('calEditActual').value = actual;
+  document.getElementById('calEditDate').value = date; document.getElementById('calEditIndex').value = index;
+  document.getElementById('calEditModal').style.display = 'flex';
+};
+
+window.saveCalEdit = async function() {
+  const date = document.getElementById('calEditDate').value, index = parseInt(document.getElementById('calEditIndex').value);
+  const newStore = document.getElementById('calEditStore').value.trim(), newMachine = document.getElementById('calEditMachine').value.trim();
+  const newEv = parseInt(document.getElementById('calEditEV').value) || 0, newActual = parseInt(document.getElementById('calEditActual').value) || 0;
+  
+  const cal = await getCalendarData(); const dayData = cal[date];
+  if(!dayData || !dayData.details || !dayData.details[index]) return;
+  
+  let dStr = dayData.details[index]; let oldEv = 0, oldActual = 0;
+  let m2 = dStr.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円/);
+  if(m2) { oldEv = parseInt(m2[1].replace(/,/g, '')) || 0; oldActual = parseInt(m2[2].replace(/,/g, '')) || 0; }
+  
+  let diffEv = newEv - oldEv, diffActual = newActual - oldActual, diffBalls = Math.round(diffActual / 4);
+  let splitIdx = dStr.indexOf(') <span'); if(splitIdx === -1) splitIdx = dStr.indexOf(') 👤') !== -1 ? dStr.indexOf(') 👤') - 1 : dStr.length;
+  let newDetailStr = `[${newStore}] ${newMachine} (期待値: ${formatCurrency(newEv)} / 実収支: ${formatCurrency(newActual)}${dStr.substring(splitIdx)}`;
+  
+  dayData.details[index] = newDetailStr; dayData.ev += diffEv; dayData.actual += diffActual; dayData.actualBalls += diffBalls;
+  if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ calendar: cal });
+  closeCalEditModal(); vibrate(30); renderCalendar();
+};
+
+window.deleteCalendarDetail = async function(date, index) {
+  if (!isAdmin) return alert("権限がありません。");
+  if(!confirm("この台の記録を削除しますか？\n（その日の合計収支からもマイナスされて計算し直されます）")) return;
+  const cal = await getCalendarData(); const dayData = cal[date];
+  if(!dayData || !dayData.details || !dayData.details[index]) return;
+  
+  let dStr = dayData.details[index]; let oldEv = 0, oldActual = 0;
+  let m2 = dStr.match(/期待値:\s*([+-]?[\d,]+)\s*円\s*\/\s*実収支:\s*([+-]?[\d,]+)\s*円/);
+  if(m2) { oldEv = parseInt(m2[1].replace(/,/g, '')) || 0; oldActual = parseInt(m2[2].replace(/,/g, '')) || 0; }
+  
+  dayData.ev -= oldEv; dayData.actual -= oldActual; dayData.actualBalls -= Math.round(oldActual / 4);
+  dayData.details.splice(index, 1);
+  
+  if(dayData.details.length === 0) {
+    if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ [`calendar.${date}`]: firebase.firestore.FieldValue.delete() });
+  } else {
+    if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ calendar: cal });
+  }
+  vibrate(30); renderCalendar();
+};
 
 async function renderCalendar() {
   const cal = await getCalendarData(); const year = currentCalYear, month = currentCalMonth;
@@ -923,7 +995,6 @@ async function renderCalendar() {
   
   let monthlyEV = 0, monthlyActual = 0, monthlyBalls = 0;
   const monthStr = `${year}-${String(month+1).padStart(2,'0')}`; const selectedDateVal = document.getElementById('actualDate').value;
-
   let userStats = {};
 
   for(let day=1; day<=daysInMonth; day++){
@@ -1024,6 +1095,9 @@ function updateRankingAndAvatar(userStats) {
   } else { document.getElementById('pieChartContainer').style.display = 'none'; document.getElementById('noPieData').style.display = 'block'; }
 }
 
+// ==========================================
+// お遊び・運試しコーナー
+// ==========================================
 window.drawFortune = function() {
   vibrate();
   const fortunes = [
