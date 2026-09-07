@@ -431,6 +431,16 @@
 </div>
 
 <script src="./app.js?v=2"></script>
-  
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(function(registrations) {
+    for(let registration of registrations) {
+      registration.unregister();
+      console.log('古いキャッシュ(Service Worker)を強制削除しました');
+    }
+  });
+}
+</script>
 </body>
 </html>
