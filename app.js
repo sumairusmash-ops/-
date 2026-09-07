@@ -9,10 +9,8 @@ const firebaseConfig = {
   messagingSenderId: "695101913449",
   appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
 };
-
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
   firebase.initializeApp(firebaseConfig);
-  // ★ キャッシュ設定の警告消し
   firebase.firestore().settings({
     cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
   });
@@ -29,7 +27,7 @@ if ('serviceWorker' in navigator) {
 let currentUser = null; let currentGroupId = localStorage.getItem('pachinko_groupId') || null; let isAdmin = false; 
 let lastCalculatedEV = 0; let historyData = []; let currentPassData = null; let editingRecordId = null; let slumpChartInstance = null; 
 let currentCalYear = new Date().getFullYear(); let currentCalMonth = new Date().getMonth();
-let unsubscribeGroup = null; let globalGroupData = { records: [], calendar: {}, dictionary: {}, halls: {}, hallDict: [] };
+let unsubscribeGroup = null; let globalGroupData = { records: [], calendar: {}, dictionary: {}, halls: {} };
 let measurementStartTime = null; let editingHistoryIndex = null; 
 let virtualSpins = 0;
 
@@ -42,7 +40,6 @@ window.toggleDarkMode = function() {
   else { document.body.removeAttribute('data-theme'); localStorage.setItem('pachinko_theme', 'light'); }
 };
 
-// ★ バイブレーションの警告消し
 window.vibrate = function(ms = 40) { 
   if (navigator.userActivation && !navigator.userActivation.hasBeenActive) return;
   if (navigator.vibrate) {
@@ -64,13 +61,6 @@ window.openAvgRCalcModal = function() {
   window.doAvgRCalc1(); window.doAvgRCalc2();
 };
 window.closeAvgRCalcModal = function() { document.getElementById('avgRCalcModal').style.display = 'none'; };
-
-const resultModal = document.getElementById('resultModal'); const savedModal = document.getElementById('savedModal'); 
-const avgRCalcModal = document.getElementById('avgRCalcModal'); const calEditModal = document.getElementById('calEditModal');
-if(resultModal) resultModal.addEventListener('click', function(e) { if (e.target === resultModal) window.closeResultModal(); });
-if(savedModal) savedModal.addEventListener('click', function(e) { if (e.target === savedModal) window.closeSavedModal(); });
-if(avgRCalcModal) avgRCalcModal.addEventListener('click', function(e) { if (e.target === avgRCalcModal) window.closeAvgRCalcModal(); });
-if(calEditModal) calEditModal.addEventListener('click', function(e) { if (e.target === calEditModal) window.closeCalEditModal(); });
 
 window.switchRankTab = function(num) {
   document.querySelectorAll('.rank-tab').forEach(el => el.classList.remove('active'));
@@ -145,10 +135,12 @@ function updateModeIndicator() {
     document.getElementById('dispUserRole').innerText = isAdmin ? "👑 あなたの権限: 管理者 (更新・削除可能)" : "👤 あなたの権限: メンバー (追加・閲覧のみ)";
     document.getElementById('dispNickname').innerText = getNickname(); 
     if(hdSection) hdSection.style.display = 'block';
+    const hallSec = document.getElementById('hall-management-section'); if(hallSec) hallSec.style.display = 'block';
   } else {
     if(n1) n1.style.display = 'none'; if(n2) n2.style.display = 'none'; if(n3) n3.style.display = 'none';
     document.getElementById('group-none').style.display = 'block'; document.getElementById('group-active').style.display = 'none';
     if(hdSection) hdSection.style.display = 'none'; 
+    const hallSec = document.getElementById('hall-management-section'); if(hallSec) hallSec.style.display = 'none';
     window.switchTab('tab4');
   }
 }
@@ -162,7 +154,6 @@ window.switchTab = function(tabId) {
   window.refreshActiveTabUI();
 };
 
-// ★ タブ切り替え時のエラー完全修正版
 window.refreshActiveTabUI = function() {
   const activeTabBtn = document.querySelector('.top-nav button.active'); if(!activeTabBtn) return;
   const tabId = activeTabBtn.id.replace('nav-', '');
@@ -184,9 +175,8 @@ function attachGroupListener(groupId) {
       globalGroupData = doc.data();
       if(!globalGroupData.records) globalGroupData.records = []; if(!globalGroupData.calendar) globalGroupData.calendar = {}; 
       if(!globalGroupData.dictionary) globalGroupData.dictionary = {}; if(!globalGroupData.halls) globalGroupData.halls = {};
-      if(!globalGroupData.hallDict) globalGroupData.hallDict = [];
       isAdmin = (globalGroupData.creator === currentUser.uid);
-      updateModeIndicator(); window.renderHallDict(); window.refreshActiveTabUI(); 
+      updateModeIndicator(); window.refreshActiveTabUI(); 
     } else {
       currentGroupId = null; isAdmin = false; localStorage.removeItem('pachinko_groupId');
       if(unsubscribeGroup) unsubscribeGroup(); updateModeIndicator();
@@ -225,34 +215,14 @@ window.leaveGroup = function() {
   }
 };
 
-window.addStoreToDict = async function(storeName) {
-  if(!storeName) return;
-  const dict = globalGroupData.hallDict || [];
-  if(!dict.includes(storeName)) {
-    dict.push(storeName);
-    if(currentGroupId && db && isAdmin) { await db.collection('groups').doc(currentGroupId).update({ hallDict: dict }); }
-    window.renderHallDict();
-  }
-};
-
-window.renderHallDict = function() {
-  const dict = globalGroupData.hallDict || [];
-  const listEl = document.getElementById('hallList');
-  if(listEl) { listEl.innerHTML = dict.map(m => `<option value="${m}"></option>`).join(''); }
-};
-
-// ==========================================
-// ★ Firebase 認証ログイン（リダイレクト方式）
-// ==========================================
 window.login = function() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
   const provider = new firebase.auth.GoogleAuthProvider(); 
   provider.setCustomParameters({ prompt: 'select_account' });
   
-  // Vercelなどで安全に使えるリダイレクト方式
-  auth.signInWithRedirect(provider).catch(error => { 
+  auth.signInWithPopup(provider).catch(error => { 
     console.error("Login Error:", error);
-    alert("ログイン画面への移動に失敗しました。\n" + error.message); 
+    alert("ログインに失敗しました。\n" + error.message); 
   });
 };
 
@@ -266,7 +236,6 @@ window.onload = function() {
   
   document.getElementById('recordDate').value = todayStr; document.getElementById('evSaveDate').value = todayStr; document.getElementById('actualDate').value = todayStr;
   document.getElementById('analyzeDate').value = todayStr;
-  document.getElementById('hallVisitDate').value = todayStr;
   
   setupSwipeInput('startSpin', 10, 0, 10000, 0);
   setupSwipeInput('measuredSpin', 1, 0, 9999, () => {
@@ -292,7 +261,6 @@ window.onload = function() {
 
   setupSwipeInput('calEditEV', 100, -1000000, 1000000, 0);
   setupSwipeInput('calEditActual', 500, -1000000, 1000000, 0);
-  setupSwipeInput('hallRating', 1, 1, 10, 5);
 
   updateModeIndicator();
 
@@ -374,7 +342,7 @@ window.renderDictionary = async function() {
   listEl.innerHTML = optionsHtml; const container = document.getElementById('dictContainer'); let html = '';
   for(let m in dict) {
     const spec = dict[m];
-    let adminButtons = isAdmin ? `<div style="display:flex; justify-content:flex-end; gap:5px;"><button class="btn-small" style="background:#3498db;" onclick="updateDictItem('${m}')">更新</button><button class="btn-small" style="background:#e74c3c;" onclick="deleteDictItem('${m}')">削除</button></div>` : '';
+    let adminButtons = isAdmin ? `<div style="display:flex; justify-content:flex-end; gap:5px;"><button class="btn-small" style="background:#3498db;" onclick="window.updateDictItem('${m}')">更新</button><button class="btn-small" style="background:#e74c3c;" onclick="window.deleteDictItem('${m}')">削除</button></div>` : '';
     html += `<div class="saved-item" style="border-left: 4px solid #1abc9c;"><div style="font-weight:bold; color:var(--text-main); margin-bottom:8px;">${m}</div><div style="display:flex; gap:5px; margin-bottom:5px;">
       <div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">確率</label><input type="number" id="dict_prob_${m}" value="${spec.probDenom || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div>
       <div style="flex:1"><label style="font-size:11px; margin-bottom:2px;">平均R</label><input type="number" id="dict_avgRounds_${m}" value="${spec.avgRounds || ''}" step="0.1" style="padding:6px; font-size:14px;" ${!isAdmin?'disabled':''}></div>
@@ -403,35 +371,18 @@ window.deleteDictItem = async function(machine) {
   }
 };
 
-// ★ 新・ホール管理＆評価ロジック
 window.saveHall = async function() {
   if (!isAdmin) return alert("権限がありません。");
-  const name = document.getElementById('hallNameInput').value.trim();
-  const date = document.getElementById('hallVisitDate').value;
-  const rating = parseInt(document.getElementById('hallRating').value);
-  
-  if (!name || !date || isNaN(rating) || rating < 1 || rating > 10) {
-    return alert("ホール名、来店日、評価(1〜10)を正しく入力してください。");
-  }
-  
-  const halls = await getHallsData();
-  if(!halls[name]) halls[name] = { visits: [] };
-  else if(!halls[name].visits) halls[name].visits = []; 
-  
-  halls[name].visits.push({ date: date, rating: rating });
-  await saveHallsData(halls); 
-  
-  window.addStoreToDict(name); 
-  alert(`${name} の評価を記録しました。`);
-  
-  document.getElementById('hallNameInput').value = '';
-  document.getElementById('hallRating').value = '';
-  window.renderHalls(); window.analyzeHalls();
+  const name = document.getElementById('hallNameInput').value.trim(); if (!name) return alert("ホール名を入力してください。");
+  const checkboxes = document.querySelectorAll('input[name="hallRule"]:checked'); const rules = Array.from(checkboxes).map(cb => cb.value);
+  if (rules.length === 0) return alert("特定日ルールを1つ以上選択してください。");
+  const halls = await getHallsData(); halls[name] = { rules: rules }; await saveHallsData(halls); alert(`${name} を登録しました。`);
+  document.getElementById('hallNameInput').value = ''; checkboxes.forEach(cb => cb.checked = false); window.renderHalls(); window.analyzeHalls();
 };
 
 window.deleteHall = async function(name) {
   if (!isAdmin) return alert("権限がありません。");
-  if(confirm(`[${name}] の評価履歴をすべて削除しますか？`)) { 
+  if(confirm(`[${name}] を削除しますか？`)) { 
     try {
       if (currentGroupId && db) await db.collection('groups').doc(currentGroupId).update({ [`halls.${name}`]: firebase.firestore.FieldValue.delete() });
       window.renderHalls(); window.analyzeHalls(); 
@@ -442,92 +393,39 @@ window.deleteHall = async function(name) {
 window.renderHalls = async function() {
   const halls = await getHallsData(); const container = document.getElementById('hallListContainer'); let html = '';
   for(let name in halls) {
-    const visits = halls[name].visits || [];
-    const count = visits.length;
-    let avg = 0;
-    if(count > 0) {
-      const sum = visits.reduce((acc, val) => acc + val.rating, 0);
-      avg = (sum / count).toFixed(1);
-    }
-    let adminBtn = isAdmin ? `<button class="btn-small" style="background:#e74c3c; margin:0;" onclick="deleteHall('${name}')">削除</button>` : '';
-    html += `<div class="saved-item" style="border-left: 4px solid #27ae60; display: flex; justify-content: space-between; align-items: center;">
-        <div><div style="font-weight:bold; color:var(--text-main); font-size:14px;">${name}</div><div style="font-size:12px; color:var(--text-sub);">来店: ${count}回 / 平均評価: ★${avg}</div></div>${adminBtn}
-      </div>`;
+    const rules = halls[name].rules.join(', ');
+    let adminBtn = isAdmin ? `<button class="btn-small" style="background:#e74c3c; margin:0;" onclick="window.deleteHall('${name}')">削除</button>` : '';
+    html += `<div class="saved-item" style="border-left: 4px solid #27ae60; display: flex; justify-content: space-between; align-items: center;"><div><div style="font-weight:bold; color:var(--text-main); font-size:14px;">${name}</div><div style="font-size:12px; color:var(--text-sub);">特定日: ${rules}</div></div>${adminBtn}</div>`;
   }
-  if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されているホール評価はありません。</p>'; container.innerHTML = html;
+  if(html === '') html = '<p style="font-size:13px; color:var(--text-muted);">登録されているホールはありません。</p>'; container.innerHTML = html;
 };
 
-// ★ 新・過去分析ロジック
 window.analyzeHalls = async function() {
-  const dateStr = document.getElementById('analyzeDate').value; 
-  const storeStr = document.getElementById('analyzeStore').value.trim();
-  const container = document.getElementById('analyzeResultContainer');
-  
-  if(!dateStr && !storeStr) { container.innerHTML = '<p style="font-size:13px; color:var(--text-muted);">検索条件（日付または店名）を入力してください。</p>'; return; }
-  
-  const halls = await getHallsData(); const records = await getRecordsData();
-  let targetStores = new Set();
-  
-  if (storeStr) {
-    Object.keys(halls).forEach(s => { if(s.includes(storeStr)) targetStores.add(s); });
-    records.forEach(r => { if(r.store && r.store.includes(storeStr)) targetStores.add(r.store); });
+  const dateStr = document.getElementById('analyzeDate').value; const container = document.getElementById('analyzeResultContainer');
+  if(!dateStr) { container.innerHTML = ''; return; }
+  const dateObj = new Date(dateStr), day = dateObj.getDate(), lastDigit = day.toString().slice(-1), isZorome = (day === 11 || day === 22);
+  const halls = await getHallsData(), records = await getRecordsData(); let targetHalls = [];
+  for(let name in halls) {
+    const rules = halls[name].rules; let isTarget = false;
+    if (rules.includes(lastDigit)) isTarget = true;
+    if (isZorome && rules.includes("ゾロ目")) isTarget = true;
+    if (isTarget) targetHalls.push(name);
   }
+  if (targetHalls.length === 0) { container.innerHTML = `<p style="font-size:13px; color:var(--text-sub); margin-top:15px;">${dateStr} が特定日のホールはありません。</p>`; return; }
   
-  if (dateStr && !storeStr) {
-    Object.keys(halls).forEach(s => { if(halls[s].visits && halls[s].visits.some(v => v.date === dateStr)) targetStores.add(s); });
-    records.forEach(r => { if(r.date === dateStr && r.store) targetStores.add(r.store); });
-  } else if (dateStr && storeStr) {
-    let filtered = new Set();
-    targetStores.forEach(s => {
-      const hasVisit = halls[s] && halls[s].visits && halls[s].visits.some(v => v.date === dateStr);
-      const hasRecord = records.some(r => r.store === s && r.date === dateStr);
-      if(hasVisit || hasRecord) filtered.add(s);
-    });
-    targetStores = filtered;
-  }
-  
-  if (targetStores.size === 0) { container.innerHTML = `<p style="font-size:13px; color:var(--text-sub); margin-top:15px;">条件に一致するデータはありません。</p>`; return; }
-  
-  let html = `<div style="font-weight:bold; color:var(--text-main); margin: 15px 0 10px 0;">🔍 検索結果</div>`;
-  
-  targetStores.forEach(hallName => {
-    const hallInfo = halls[hallName] || { visits: [] };
-    const visits = hallInfo.visits || [];
-    const count = visits.length;
-    let avg = "-";
-    if (count > 0) {
-      const sum = visits.reduce((acc, val) => acc + val.rating, 0);
-      avg = (sum / count).toFixed(1);
-    }
-    
-    let hallRecords = records.filter(r => r.store === hallName);
-    if (dateStr) hallRecords = hallRecords.filter(r => r.date === dateStr);
-    hallRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    let historyHtml = '';
-    if(hallRecords.length > 0) {
-       hallRecords.forEach(r => { historyHtml += window.createRecordItemHtml(r); });
-    } else {
-       historyHtml = `<div style="font-size:12px; color:var(--text-muted); margin-top:5px;">※この条件での稼働履歴はありません。</div>`;
-    }
-    
-    html += `<div class="saved-item" style="border-left: 4px solid #e67e22; margin-bottom: 15px;">
-        <div style="font-weight:bold; color:var(--text-main); font-size:16px;">${hallName}</div>
-        <div style="font-size:13px; color:var(--text-sub); margin-bottom: 10px; background:var(--bg-main); padding:8px; border-radius:4px; margin-top:6px;">
-          来店回数: <span style="font-weight:bold; color:#2980b9;">${count} 回</span> ｜ 
-          平均評価: <span style="font-weight:bold; color:#f39c12;">★ ${avg}</span>
-        </div>
-        <div style="margin-top:10px;">
-          <div style="font-size:12px; font-weight:bold; color:#e67e22; margin-bottom:6px;">👇 過去の稼働履歴</div>
-          ${historyHtml}
-        </div>
-      </div>`;
+  let html = `<div style="font-weight:bold; color:var(--text-main); margin: 15px 0 10px 0;">🔥 ${dateStr} の熱いホール</div>`;
+  targetHalls.forEach(hallName => {
+    const hallRecords = records.filter(r => r.store === hallName);
+    let totalSpins = 0, totalBalls = 0, machineCount = {};
+    hallRecords.forEach(r => { totalSpins += r.totalSpins || 0; totalBalls += r.totalBalls || 0; if (r.machine) machineCount[r.machine] = (machineCount[r.machine] || 0) + 1; });
+    let avg250 = totalBalls > 0 ? (totalSpins / totalBalls) * 250 : 0; let mainMachine = "-", maxCount = 0;
+    for(let m in machineCount) { if (machineCount[m] > maxCount) { maxCount = machineCount[m]; mainMachine = m; } }
+    let dataHtml = '';
+    if (hallRecords.length > 0) { dataHtml = `<div style="font-size:12px; color:var(--text-sub); margin-top:5px; padding:8px; background:var(--bg-main); border-radius:4px;"><div>過去の平均回転数: <span style="color:#e74c3c; font-weight:bold; font-size:14px;">${avg250.toFixed(2)} 回/k</span> (サンプル: ${hallRecords.length}件)</div><div style="margin-top:4px;">メイン機種: <strong>${mainMachine}</strong></div></div>`; } 
+    else { dataHtml = `<div style="font-size:12px; color:var(--text-muted); margin-top:5px;">過去の稼働データはありません。</div>`; }
+    html += `<div class="saved-item" style="border-left: 4px solid #e67e22; margin-bottom: 10px;"><div style="font-weight:bold; color:var(--text-main); font-size:15px;">${hallName}</div><div style="font-size:12px; color:var(--text-sub); margin-bottom: 5px;">特定日ルール: ${halls[hallName].rules.join(', ')}</div>${dataHtml}</div>`;
   });
   container.innerHTML = html;
-};
-
-window.clearAnalyzeFilters = function() {
-  document.getElementById('analyzeDate').value = ''; document.getElementById('analyzeStore').value = ''; window.analyzeHalls();
 };
 
 window.editHistoryItem = function(index) { editingHistoryIndex = index; window.updateMeasurementDisplay(); };
@@ -671,9 +569,9 @@ window.updateMeasurementDisplay = function() {
 
     if (editingHistoryIndex === i) {
       if (item.type === 'spin' || !item.type) {
-        itemHtml = `<div class="history-item" style="flex-direction:column; align-items:flex-start; background:var(--box-blue-bg); padding:10px; border:1px solid #3498db; border-radius:6px; margin:4px 0;"><div style="font-weight:bold; margin-bottom:8px; color:#2980b9; font-size:12px;">${spinCount}回目の計測を編集</div><div style="display:flex; gap:5px; width:100%; margin-bottom:5px;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">使用玉数</label><input type="number" id="edit_balls_${i}" value="${item.balls}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">回転数</label><input type="number" id="edit_spins_${i}" value="${item.spins}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="display:flex; gap:5px; width:100%;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">玉の種類</label><select id="edit_mochi_${i}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"><option value="false" ${!item.isMochidama ? 'selected' : ''}>現金</option><option value="true" ${item.isMochidama ? 'selected' : ''}>持球</option></select></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">当り有無</label><select id="edit_hit_${i}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"><option value="" ${!item.hitType ? 'selected' : ''}>当り無し</option><option value="通常" ${item.hitType === '通常' ? 'selected' : ''}>通常</option><option value="ラッシュ" ${item.hitType === 'ラッシュ' ? 'selected' : ''}>ラッシュ</option></select></div></div><div style="margin-top:10px; display:flex; gap:8px; width:100%; justify-content:flex-end;"><button class="btn-small" style="background:#7f8c8d; margin:0;" onclick="cancelEditHistoryItem()">キャンセル</button><button class="btn-small" style="background:#3498db; margin:0;" onclick="saveEditHistoryItem(${i}, 'spin')">保存して再計算</button></div></div>`;
+        itemHtml = `<div class="history-item" style="flex-direction:column; align-items:flex-start; background:var(--box-blue-bg); padding:10px; border:1px solid #3498db; border-radius:6px; margin:4px 0;"><div style="font-weight:bold; margin-bottom:8px; color:#2980b9; font-size:12px;">${spinCount}回目の計測を編集</div><div style="display:flex; gap:5px; width:100%; margin-bottom:5px;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">使用玉数</label><input type="number" id="edit_balls_${i}" value="${item.balls}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">回転数</label><input type="number" id="edit_spins_${i}" value="${item.spins}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="display:flex; gap:5px; width:100%;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">玉の種類</label><select id="edit_mochi_${i}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"><option value="false" ${!item.isMochidama ? 'selected' : ''}>現金</option><option value="true" ${item.isMochidama ? 'selected' : ''}>持球</option></select></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px;">当り有無</label><select id="edit_hit_${i}" style="width:100%; padding:6px; border:1px solid var(--border-color); border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"><option value="" ${!item.hitType ? 'selected' : ''}>当り無し</option><option value="通常" ${item.hitType === '通常' ? 'selected' : ''}>通常</option><option value="ラッシュ" ${item.hitType === 'ラッシュ' ? 'selected' : ''}>ラッシュ</option></select></div></div><div style="margin-top:10px; display:flex; gap:8px; width:100%; justify-content:flex-end;"><button class="btn-small" style="background:#7f8c8d; margin:0;" onclick="window.cancelEditHistoryItem()">キャンセル</button><button class="btn-small" style="background:#3498db; margin:0;" onclick="window.saveEditHistoryItem(${i}, 'spin')">保存して再計算</button></div></div>`;
       } else if (item.type === 'payout') {
-        itemHtml = `<div class="history-item" style="flex-direction:column; align-items:flex-start; background:var(--box-yellow-bg); padding:10px; border:1px solid #f39c12; border-radius:6px; margin:4px 0;"><div style="font-weight:bold; margin-bottom:8px; color:#d35400; font-size:12px;">出玉記録を編集</div><div style="display:flex; gap:5px; width:100%; margin-bottom:5px;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">獲得出玉</label><input type="number" id="edit_amount_${i}" value="${item.amount}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">R数</label><input type="number" id="edit_rounds_${i}" value="${item.rounds || 0}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="display:flex; gap:5px; width:100%; margin-bottom:5px;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">ラッシュ後回転</label><input type="number" id="edit_rushEndSpin_${i}" value="${item.rushEndSpin !== undefined ? item.rushEndSpin : ''}" placeholder="空欄可" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">種類</label><select id="edit_hitType_${i}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"><option value="通常" ${item.hitType === '通常' ? 'selected' : ''}>通常</option><option value="ラッシュ" ${item.hitType === 'ラッシュ' ? 'selected' : ''}>ラッシュ</option><option value="不明" ${item.hitType === '不明' ? 'selected' : ''}>不明</option></select></div></div><div style="display:flex; gap:5px; width:100%;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">備考</label><input type="text" id="edit_memo_${i}" value="${item.memo || ''}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="margin-top:10px; display:flex; gap:8px; width:100%; justify-content:flex-end;"><button class="btn-small" style="background:#7f8c8d; margin:0;" onclick="cancelEditHistoryItem()">キャンセル</button><button class="btn-small" style="background:#e67e22; margin:0;" onclick="saveEditHistoryItem(${i}, 'payout')">保存して再計算</button></div></div>`;
+        itemHtml = `<div class="history-item" style="flex-direction:column; align-items:flex-start; background:var(--box-yellow-bg); padding:10px; border:1px solid #f39c12; border-radius:6px; margin:4px 0;"><div style="font-weight:bold; margin-bottom:8px; color:#d35400; font-size:12px;">出玉記録を編集</div><div style="display:flex; gap:5px; width:100%; margin-bottom:5px;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">獲得出玉</label><input type="number" id="edit_amount_${i}" value="${item.amount}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">R数</label><input type="number" id="edit_rounds_${i}" value="${item.rounds || 0}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="display:flex; gap:5px; width:100%; margin-bottom:5px;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">ラッシュ後回転</label><input type="number" id="edit_rushEndSpin_${i}" value="${item.rushEndSpin !== undefined ? item.rushEndSpin : ''}" placeholder="空欄可" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">種類</label><select id="edit_hitType_${i}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"><option value="通常" ${item.hitType === '通常' ? 'selected' : ''}>通常</option><option value="ラッシュ" ${item.hitType === 'ラッシュ' ? 'selected' : ''}>ラッシュ</option><option value="不明" ${item.hitType === '不明' ? 'selected' : ''}>不明</option></select></div></div><div style="display:flex; gap:5px; width:100%;"><div style="flex:1"><label style="font-size:10px; margin-bottom:2px; color:#d35400;">備考</label><input type="text" id="edit_memo_${i}" value="${item.memo || ''}" style="width:100%; padding:6px; border:1px solid #f39c12; border-radius:4px; font-size:14px; background:var(--input-bg); color:var(--text-main);"></div></div><div style="margin-top:10px; display:flex; gap:8px; width:100%; justify-content:flex-end;"><button class="btn-small" style="background:#7f8c8d; margin:0;" onclick="window.cancelEditHistoryItem()">キャンセル</button><button class="btn-small" style="background:#e67e22; margin:0;" onclick="window.saveEditHistoryItem(${i}, 'payout')">保存して再計算</button></div></div>`;
       }
     } else {
       if (item.type === 'spin' || !item.type) {
@@ -757,8 +655,6 @@ window.saveCurrentRecord = async function() {
       if (!dict[machine]) { dict[machine] = { probDenom: P, avgRounds: avgR, payoutPerR: pr }; await saveDictionaryData(dict); window.renderDictionary(); }
     }
   }
-  
-  window.addStoreToDict(store); 
   
   const records = await getRecordsData();
   const newRecord = { 
