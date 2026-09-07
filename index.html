@@ -7,6 +7,7 @@
 <link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="./icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
@@ -111,7 +112,7 @@
 </head>
 <body>
 
-<!-- ★ 自動辞書用データリスト（店舗名＆機種名） -->
+<!-- 自動辞書用データリスト（店舗名＆機種名） -->
 <datalist id="machineList"></datalist>
 <datalist id="hallList"></datalist>
 
@@ -288,7 +289,9 @@
       <div style="font-weight:bold; color:#f39c12; margin-bottom:10px; font-size:15px; display:flex; align-items:center; gap:6px;">🔮 今日のパチンコ運勢占い</div>
       <button class="action-btn" style="background-color:#f1c40f; color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,0.3); margin-top:0;" onclick="drawFortune()">おみくじを引く</button>
       <div id="fortuneResult" style="margin-top:10px; font-size:14px; font-weight:bold; color:var(--text-main); text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; background:var(--bg-main); border-radius:4px;">ここに結果が出ます</div>
+
       <hr style="margin: 20px 0; border-top:1px dashed var(--border-color);">
+
       <div style="font-weight:bold; color:#3498db; margin-bottom:5px; font-size:15px; display:flex; align-items:center; gap:6px;">🔘 1/99 仮想プッシュボタン</div>
       <p style="font-size:11px; color:var(--text-sub); margin-top:0; margin-bottom:12px;">「当たる気がしない…」そんな時のヒキ試し！</p>
       <div style="display:flex; gap:10px;">
@@ -328,19 +331,19 @@
       <button class="btn-reset" onclick="leaveGroup()">グループから退出する</button>
     </div>
 
-    <!-- ★ リニューアル：過去分析エリア -->
+    <!-- 過去分析エリア -->
     <div id="hall-management-section" style="display: none;">
       <h2 style="margin-top: 30px;">📊 過去分析</h2>
       <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px;">
         <div style="display:flex; gap:10px; margin-bottom: 10px;">
-          <div style="flex:1"><label style="font-size:11px;">日付から検索</label><input type="date" id="analyzeDate" onchange="analyzeHalls()" style="padding:6px; font-size:13px;"></div>
-          <div style="flex:1"><label style="font-size:11px;">店名から検索</label><input type="text" id="analyzeStore" list="hallList" placeholder="例: マルハン" oninput="analyzeHalls()" style="padding:6px; font-size:13px;"></div>
+          <div style="flex:1"><label style="font-size:11px;">日付から検索</label><input type="date" id="analyzeDate" onchange="window.analyzeHalls()" style="padding:6px; font-size:13px;"></div>
+          <div style="flex:1"><label style="font-size:11px;">店名から検索</label><input type="text" id="analyzeStore" list="hallList" placeholder="例: マルハン" oninput="window.analyzeHalls()" style="padding:6px; font-size:13px;"></div>
         </div>
         <div style="text-align: right;"><button class="btn-small" style="background:#95a5a6; margin:0;" onclick="clearAnalyzeFilters()">条件クリア</button></div>
         <div id="analyzeResultContainer" style="margin-top: 15px;"></div>
       </div>
 
-      <!-- ★ リニューアル：マイホール来店記録・評価エリア -->
+      <!-- マイホール来店記録・評価エリア -->
       <h2 style="margin-top: 30px;">🏠 マイホール来店記録・評価</h2>
       <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px;">
         <div class="form-group"><label>ホール名</label><input type="text" id="hallNameInput" list="hallList" placeholder="例: マルハン〇〇店" onchange="addStoreToDict(this.value)"></div>
@@ -352,7 +355,7 @@
       </div>
       <div id="hallListContainer" style="margin-bottom: 30px;"></div>
 
-      <h2 style="margin-top: 30px;">過去1年間の履歴</h2><div style="display: flex; gap: 10px; margin-bottom: 12px;"><div style="flex: 1;"><input type="text" id="historyMachineFilter" list="machineList" placeholder="機種名で絞り込み" oninput="renderHistoryTab()"></div></div><div id="historyRecordsContainer"></div>
+      <h2 style="margin-top: 30px;">過去1年間の履歴</h2><div style="display: flex; gap: 10px; margin-bottom: 12px;"><div style="flex: 1;"><input type="text" id="historyMachineFilter" list="machineList" placeholder="機種名で絞り込み" oninput="window.renderHistoryTab()"></div></div><div id="historyRecordsContainer"></div>
       <h2 style="margin-top: 30px;">機種辞書管理</h2><div id="dictContainer"></div>
     </div>
   </div>
