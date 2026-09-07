@@ -244,10 +244,10 @@ window.login = function() {
   const provider = new firebase.auth.GoogleAuthProvider(); 
   provider.setCustomParameters({ prompt: 'select_account' });
   
-  // signInWithPopup に戻す
-  auth.signInWithPopup(provider).catch(error => { 
+  // ポップアップではなくリダイレクト（画面切り替え）を使う
+  auth.signInWithRedirect(provider).catch(error => { 
     console.error("Login Error:", error);
-    alert("ログインに失敗しました。\n" + error.message); 
+    alert("ログイン画面への移動に失敗しました。\n" + error.message); 
   });
 };
 
