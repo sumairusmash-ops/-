@@ -102,8 +102,6 @@
   .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
   input:checked + .slider { background-color: #2980b9; }
   input:checked + .slider:before { transform: translateX(24px); }
-  .rule-check-label { display: flex; align-items: center; gap: 4px; font-weight: normal; font-size: 13px; color: var(--text-main); background: var(--bg-main); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-color); cursor: pointer; }
-  .rule-check-label input { width: auto; margin: 0; }
   .rank-tab-container { display: flex; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); }
   .rank-tab { flex: 1; padding: 10px 0; text-align: center; background: var(--bg-main); border: 1px solid var(--border-color); cursor: pointer; font-weight: bold; font-size: 13px; color: var(--text-sub); }
   .rank-tab.active { background: var(--card-bg); color: #3498db; border-bottom: 2px solid #3498db; }
@@ -113,7 +111,9 @@
 </head>
 <body>
 
+<!-- ★ 自動辞書用データリスト（店舗名＆機種名） -->
 <datalist id="machineList"></datalist>
+<datalist id="hallList"></datalist>
 
 <nav class="top-nav">
   <button id="nav-tab1" onclick="switchTab('tab1')" style="display:none;"><span class="icon">⏱️</span>計測</button>
@@ -127,7 +127,7 @@
   <div id="tab1" class="tab-content">
     <div style="display: flex; gap: 8px; margin-bottom: 12px;">
       <div style="flex: 1;"><label>日付</label><input type="date" id="recordDate"></div>
-      <div style="flex: 1.5;"><label>店舗名</label><input type="text" id="storeName" placeholder="例: マルハン" list="machineList"></div>
+      <div style="flex: 1.5;"><label>店舗名</label><input type="text" id="storeName" placeholder="例: マルハン" list="hallList" onchange="addStoreToDict(this.value)"></div>
       <div style="flex: 1.5;"><label>機種名</label><input type="text" id="machineName" placeholder="例: エヴァ15" list="machineList" onchange="syncMachineSpec()"></div>
     </div>
     <div class="form-group" style="margin-top: 15px;">
@@ -288,9 +288,7 @@
       <div style="font-weight:bold; color:#f39c12; margin-bottom:10px; font-size:15px; display:flex; align-items:center; gap:6px;">🔮 今日のパチンコ運勢占い</div>
       <button class="action-btn" style="background-color:#f1c40f; color:#fff; text-shadow:1px 1px 2px rgba(0,0,0,0.3); margin-top:0;" onclick="drawFortune()">おみくじを引く</button>
       <div id="fortuneResult" style="margin-top:10px; font-size:14px; font-weight:bold; color:var(--text-main); text-align:center; min-height:40px; display:flex; align-items:center; justify-content:center; background:var(--bg-main); border-radius:4px;">ここに結果が出ます</div>
-
       <hr style="margin: 20px 0; border-top:1px dashed var(--border-color);">
-
       <div style="font-weight:bold; color:#3498db; margin-bottom:5px; font-size:15px; display:flex; align-items:center; gap:6px;">🔘 1/99 仮想プッシュボタン</div>
       <p style="font-size:11px; color:var(--text-sub); margin-top:0; margin-bottom:12px;">「当たる気がしない…」そんな時のヒキ試し！</p>
       <div style="display:flex; gap:10px;">
@@ -330,35 +328,30 @@
       <button class="btn-reset" onclick="leaveGroup()">グループから退出する</button>
     </div>
 
-    <!-- ホール管理・特定日検索エリア -->
+    <!-- ★ リニューアル：過去分析エリア -->
     <div id="hall-management-section" style="display: none;">
-      <h2 style="margin-top: 30px;">📅 特定日検索＆過去分析</h2>
+      <h2 style="margin-top: 30px;">📊 過去分析</h2>
       <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px;">
-        <div class="form-group" style="margin-bottom: 0;"><label>検索する日付</label><input type="date" id="analyzeDate" onchange="analyzeHalls()"></div>
-        <div id="analyzeResultContainer"></div>
-      </div>
-      <h2 style="margin-top: 30px;">🏠 マイホール特定日管理</h2>
-      <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px;">
-        <div class="form-group"><label>ホール名</label><input type="text" id="hallNameInput" placeholder="例: マルハン〇〇店"></div>
-        <div class="form-group">
-          <label>特定日ルール</label>
-          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="1">1</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="2">2</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="3">3</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="4">4</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="5">5</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="6">6</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="7">7</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="8">8</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="9">9</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="0">0</label>
-            <label class="rule-check-label"><input type="checkbox" name="hallRule" value="ゾロ目">ゾロ目</label>
-          </div>
+        <div style="display:flex; gap:10px; margin-bottom: 10px;">
+          <div style="flex:1"><label style="font-size:11px;">日付から検索</label><input type="date" id="analyzeDate" onchange="analyzeHalls()" style="padding:6px; font-size:13px;"></div>
+          <div style="flex:1"><label style="font-size:11px;">店名から検索</label><input type="text" id="analyzeStore" list="hallList" placeholder="例: マルハン" oninput="analyzeHalls()" style="padding:6px; font-size:13px;"></div>
         </div>
-        <button class="action-btn" style="background-color: #27ae60; margin-top:0;" onclick="saveHall()">ホールを登録する</button>
+        <div style="text-align: right;"><button class="btn-small" style="background:#95a5a6; margin:0;" onclick="clearAnalyzeFilters()">条件クリア</button></div>
+        <div id="analyzeResultContainer" style="margin-top: 15px;"></div>
+      </div>
+
+      <!-- ★ リニューアル：マイホール来店記録・評価エリア -->
+      <h2 style="margin-top: 30px;">🏠 マイホール来店記録・評価</h2>
+      <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 6px; padding: 15px; margin-bottom: 25px;">
+        <div class="form-group"><label>ホール名</label><input type="text" id="hallNameInput" list="hallList" placeholder="例: マルハン〇〇店" onchange="addStoreToDict(this.value)"></div>
+        <div style="display:flex; gap:10px; margin-bottom:15px;">
+          <div style="flex:1"><label>来店日</label><input type="date" id="hallVisitDate"></div>
+          <div style="flex:1"><label>評価 (1〜10)</label><input type="number" id="hallRating" class="swipe-input" step="1" min="1" max="10" placeholder="10"></div>
+        </div>
+        <button class="action-btn" style="background-color: #27ae60; margin-top:0;" onclick="saveHall()">評価を記録する</button>
       </div>
       <div id="hallListContainer" style="margin-bottom: 30px;"></div>
+
       <h2 style="margin-top: 30px;">過去1年間の履歴</h2><div style="display: flex; gap: 10px; margin-bottom: 12px;"><div style="flex: 1;"><input type="text" id="historyMachineFilter" list="machineList" placeholder="機種名で絞り込み" oninput="renderHistoryTab()"></div></div><div id="historyRecordsContainer"></div>
       <h2 style="margin-top: 30px;">機種辞書管理</h2><div id="dictContainer"></div>
     </div>
@@ -371,12 +364,10 @@
     <h3 style="margin-top:0; border-bottom:2px solid #3498db; padding-bottom:8px; color:var(--text-main);">計測結果と仕事量の詳細</h3>
     <div class="result" id="measurementResult" style="display: block; margin-top:10px; padding: 10px;">
       <p><span>250玉平均:</span> <span id="avg250" class="highlight">0.00 回</span></p><p><span>持ち球比率:</span> <span id="dispMochiRatio" style="font-weight:bold; color:#e67e22;">0.0 %</span></p>
-      
       <div style="background:var(--bg-main); padding:10px; border-radius:6px; margin:10px 0; border:1px solid var(--border-color);">
         <p style="margin-top:0;"><span>🎯 大当たり回数:</span> <span id="currentHitCount" style="font-weight:bold; color:#d35400; font-size:16px;">0 回</span></p>
         <p style="margin-bottom:0;"><span>🎰 現在のデータ機回転数:</span> <span id="currentMachineSpinDisp" style="font-weight:bold; color:#2980b9; font-size:16px;">0 回</span></p>
       </div>
-      
       <p><span>自分で回した回転数:</span> <span id="totalMeasuredSpins">0 回</span></p><p><span>現在の総回転数:</span> <span id="absoluteTotalSpins" style="font-weight:bold; color:var(--text-main);">0 回</span></p><p><span>トータル使用玉数:</span> <span id="totalMeasuredBalls">0 玉</span></p>
       <div id="workValueArea"></div><div class="history-list" id="historyList"></div>
     </div>
@@ -390,7 +381,6 @@
   <div class="modal-content"><h3 style="margin-top:0; border-bottom:2px solid #7f8c8d; padding-bottom:8px; color:var(--text-main);">同日の保存データ</h3><div id="savedRecordsContainer"></div><button class="modal-close-btn" onclick="closeSavedModal()">元の画面に戻る</button></div>
 </div>
 
-<!-- 平均ラウンド数逆算モーダル -->
 <div id="avgRCalcModal" class="modal-overlay">
   <div class="modal-content">
     <h3 style="margin-top:0; border-bottom:2px solid #9b59b6; padding-bottom:8px; color:var(--text-main);">平均ラウンド逆算ツール</h3>
@@ -417,13 +407,13 @@
   </div>
 </div>
 
-<!-- ★ カレンダー台データ 個別編集モーダル ★ -->
+<!-- カレンダー台データ 個別編集モーダル -->
 <div id="calEditModal" class="modal-overlay">
   <div class="modal-content">
     <h3 style="margin-top:0; border-bottom:2px solid #9b59b6; padding-bottom:8px; color:var(--text-main);">台データの編集</h3>
     <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">※金額を変更すると、その日の合計収支・差玉も自動で補正されます。</p>
-    <div class="form-group"><label>店舗名</label><input type="text" id="calEditStore"></div>
-    <div class="form-group"><label>機種名</label><input type="text" id="calEditMachine"></div>
+    <div class="form-group"><label>店舗名</label><input type="text" id="calEditStore" list="hallList"></div>
+    <div class="form-group"><label>機種名</label><input type="text" id="calEditMachine" list="machineList"></div>
     <div style="display:flex; gap:10px;">
       <div class="form-group" style="flex:1;"><label>期待値 (円)</label><input type="number" id="calEditEV" class="swipe-input" step="100"></div>
       <div class="form-group" style="flex:1;"><label>実収支 (円)</label><input type="number" id="calEditActual" class="swipe-input" step="500"></div>
