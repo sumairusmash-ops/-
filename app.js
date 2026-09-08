@@ -10,6 +10,8 @@ const firebaseConfig = {
   appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
 };
 
+
+
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
   firebase.initializeApp(firebaseConfig);
   firebase.firestore().settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
