@@ -9,7 +9,6 @@ const firebaseConfig = {
   messagingSenderId: "695101913449",
   appId: "1:695101913449:web:f5612d814b68dbb5bea5f8"
 };
-
 if(firebaseConfig.apiKey !== "YOUR_API_KEY") {
   firebase.initializeApp(firebaseConfig);
   firebase.firestore().settings({ cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED });
@@ -180,7 +179,7 @@ function attachGroupListener(groupId) {
       if(!globalGroupData.dictionary) globalGroupData.dictionary = {}; if(!globalGroupData.halls) globalGroupData.halls = {};
       isAdmin = (globalGroupData.creator === currentUser.uid);
       
-      // ★ 新機能：リアルタイムスタンプの受信処理
+      // ★ リアルタイムスタンプの受信処理
       if (globalGroupData.latestStamp && globalGroupData.latestStamp.timestamp > localLastStampTime) {
         if (localLastStampTime !== 0 || (Date.now() - globalGroupData.latestStamp.timestamp < 10000)) {
           window.showStampEffect(globalGroupData.latestStamp);
@@ -341,12 +340,12 @@ window.leaveGroup = function() {
   }
 };
 
+// ★ ポップアップブロック対策：リダイレクト方式に変更 ★
 window.login = function() {
   if(!auth) return alert("Firebaseの設定が完了していません。");
   const provider = new firebase.auth.GoogleAuthProvider(); 
   provider.setCustomParameters({ prompt: 'select_account' });
   
-  // ★ signInWithPopup を signInWithRedirect に変更 ★
   auth.signInWithRedirect(provider).catch(error => { 
     console.error("Login Error:", error);
     alert("ログイン画面への移動に失敗しました。\n" + error.message); 
@@ -393,6 +392,7 @@ window.onload = function() {
 
   updateModeIndicator();
 
+  // ★ 認証状態の監視（リダイレクトから戻ってきた時の処理も兼ねる）
   if (auth) {
     auth.onAuthStateChanged(user => {
       if (user) {
@@ -632,7 +632,7 @@ window.addMeasurement = function(balls) {
     if (hitType === 'ラッシュ') { document.getElementById('rushEndSpinArea').style.display = 'block'; } else { document.getElementById('rushEndSpinArea').style.display = 'none'; }
     document.getElementById('payoutInputArea').style.display = 'block';
     
-    // ★ 追加：大当たりを記録したら、自動でスタンプをグループに飛ばす
+    // ★ 大当たりを記録したら、自動でスタンプをグループに飛ばす
     if(currentGroupId && db) { window.sendStamp(`🎯 ${hitType}当たり！`); }
     
   } else { document.getElementById('payoutInputArea').style.display = 'none'; }
